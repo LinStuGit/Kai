@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.CalendarContract
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -36,6 +37,12 @@ data class CalendarEventInfo(
     val description: String?,
     val reminderMinutes: Int?,
 )
+
+sealed class EventListResult {
+    /** [source] names which query strategy found the events (diagnostics for the agent). */
+    data class Ok(val events: List<CalendarEventInfo>, val source: String) : EventListResult()
+    data class Error(val message: String) : EventListResult()
+}
 
 class CalendarRepository(
     private val context: Context,
@@ -167,16 +174,65 @@ class CalendarRepository(
      * Events starting within [startMs, endMs) via the Instances table, so
      * recurring events are expanded into occurrences. [query] filters on
      * title/description substring (LIKE %query%).
+     *
+     * Tries three strategies in order, because OEM calendar providers are
+     * inconsistent about which Instances URI form they honor:
+     * 1. Path-segment form `/instances/when/<begin>/<end>` — what the system
+     *    `content query` uses; most robust.
+     * 2. Query-parameter form `?begin=..&end=..` (AOSP-documented alternative).
+     * 3. Raw Events table (no recurrence expansion) as a last resort.
+     *
+     * Permission failures and query errors return [EventListResult.Error]
+     * instead of an empty list, so the agent can tell "no events" apart from
+     * "could not read the calendar".
      */
-    suspend fun listEvents(startMs: Long, endMs: Long, query: String?): List<CalendarEventInfo> {
-        if (!hasCalendarPermission()) {
-            if (!permissionController.requestPermission()) return emptyList()
+    suspend fun listEvents(startMs: Long, endMs: Long, query: String?): EventListResult {
+        if (!hasCalendarReadPermission()) {
+            permissionController.requestPermission()
+            if (!hasCalendarReadPermission()) {
+                return EventListResult.Error(
+                    "READ_CALENDAR permission not granted. Ask the user to grant calendar access to Kami, then retry.",
+                )
+            }
         }
 
-        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
-            .appendQueryParameter(CalendarContract.Instances.BEGIN, startMs.toString())
-            .appendQueryParameter(CalendarContract.Instances.END, endMs.toString())
-            .build()
+        try {
+            val fromPath = queryInstances(
+                uri = Uri.withAppendedPath(
+                    CalendarContract.Instances.CONTENT_URI,
+                    "$startMs/$endMs",
+                ),
+                query = query,
+            )
+            if (fromPath.isNotEmpty()) return EventListResult.Ok(fromPath, "instances")
+
+            val fromParams = queryInstances(
+                uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
+                    .appendQueryParameter(CalendarContract.Instances.BEGIN, startMs.toString())
+                    .appendQueryParameter(CalendarContract.Instances.END, endMs.toString())
+                    .build(),
+                query = query,
+            )
+            if (fromParams.isNotEmpty()) return EventListResult.Ok(fromParams, "instances-params")
+
+            val fromEventsTable = queryEventsTable(startMs, endMs, query)
+            if (fromEventsTable.isNotEmpty()) return EventListResult.Ok(fromEventsTable, "events-table")
+
+            return EventListResult.Ok(emptyList(), "instances")
+        } catch (e: Exception) {
+            Log.e(TAG, "listEvents failed", e)
+            return EventListResult.Error("Calendar query failed: ${e.message}")
+        }
+    }
+
+    /** Only READ is needed for listing — WRITE must not block read-only queries. */
+    private fun hasCalendarReadPermission(): Boolean = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.READ_CALENDAR,
+    ) == PackageManager.PERMISSION_GRANTED
+
+    /** Instances-table cursor → events, capped at [MAX_LISTED_EVENTS]. */
+    private fun queryInstances(uri: Uri, query: String?): List<CalendarEventInfo> {
         val projection = arrayOf(
             CalendarContract.Instances.EVENT_ID,
             CalendarContract.Instances.TITLE,
@@ -193,27 +249,78 @@ class CalendarRepository(
         val selectionArgs = query?.let { arrayOf("%$it", "%$it") }
 
         val events = mutableListOf<CalendarEventInfo>()
-        try {
-            context.contentResolver.query(uri, projection, selection, selectionArgs, "${CalendarContract.Instances.BEGIN} ASC")
-                ?.use { cursor ->
-                    while (cursor.moveToNext() && events.size < MAX_LISTED_EVENTS) {
-                        val eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID))
-                        events.add(
-                            CalendarEventInfo(
-                                eventId = eventId,
-                                title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)) ?: "",
-                                startIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN))),
-                                endIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.END))),
-                                allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) == 1,
-                                location = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_LOCATION)),
-                                description = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.DESCRIPTION)),
-                                reminderMinutes = getReminderMinutes(eventId),
-                            ),
-                        )
-                    }
+        context.contentResolver.query(uri, projection, selection, selectionArgs, "${CalendarContract.Instances.BEGIN} ASC")
+            ?.use { cursor ->
+                while (cursor.moveToNext() && events.size < MAX_LISTED_EVENTS) {
+                    val eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID))
+                    events.add(
+                        CalendarEventInfo(
+                            eventId = eventId,
+                            title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)) ?: "",
+                            startIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN))),
+                            endIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.END))),
+                            allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) == 1,
+                            location = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_LOCATION)),
+                            description = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.DESCRIPTION)),
+                            reminderMinutes = getReminderMinutes(eventId),
+                        ),
+                    )
                 }
-        } catch (e: Exception) {
-            Log.e(TAG, "listEvents failed", e)
+            }
+        return events
+    }
+
+    /** Fallback for providers with broken Instances views: raw Events rows starting in range (recurrences NOT expanded). */
+    private fun queryEventsTable(startMs: Long, endMs: Long, query: String?): List<CalendarEventInfo> {
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.DESCRIPTION,
+        )
+        val selection = StringBuilder(
+            CalendarContract.Events.DTSTART + " >= ? AND " + CalendarContract.Events.DTSTART + " <= ?",
+        )
+        val selectionArgs = mutableListOf(startMs.toString(), endMs.toString())
+        query?.let {
+            selection.append(
+                " AND (" + CalendarContract.Events.TITLE + " LIKE ? OR " +
+                    CalendarContract.Events.DESCRIPTION + " LIKE ?)",
+            )
+            selectionArgs += "%$it"
+            selectionArgs += "%$it"
+        }
+
+        val events = mutableListOf<CalendarEventInfo>()
+        context.contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            projection,
+            selection.toString(),
+            selectionArgs.toTypedArray(),
+            "${CalendarContract.Events.DTSTART} ASC",
+        )?.use { cursor ->
+            while (cursor.moveToNext() && events.size < MAX_LISTED_EVENTS) {
+                val eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events._ID))
+                val startMsCol = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
+                // DTEND is null for recurring events (they carry DURATION instead).
+                val dtendIndex = cursor.getColumnIndex(CalendarContract.Events.DTEND)
+                val endMsCol = if (dtendIndex >= 0) cursor.getLong(dtendIndex) else 0L
+                events.add(
+                    CalendarEventInfo(
+                        eventId = eventId,
+                        title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.TITLE)) ?: "",
+                        startIso = formatIso(startMsCol),
+                        endIso = formatIso(if (endMsCol > 0) endMsCol else startMsCol),
+                        allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)) == 1,
+                        location = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)),
+                        description = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION)),
+                        reminderMinutes = getReminderMinutes(eventId),
+                    ),
+                )
+            }
         }
         return events
     }

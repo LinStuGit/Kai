@@ -36,33 +36,37 @@ object ListCalendarEventsTool {
             val query = (args["query"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
 
             val now = System.currentTimeMillis()
-            val events = calendarRepository.listEvents(
+            return when (val result = calendarRepository.listEvents(
                 startMs = now,
                 endMs = now + days.toLong() * 24 * 60 * 60 * 1000,
                 query = query,
-            )
-
-            return mapOf(
-                "success" to true,
-                "count" to events.size,
-                "events" to events.map {
-                    mapOf(
-                        "event_id" to it.eventId,
-                        "title" to it.title,
-                        "start" to it.startIso,
-                        "end" to it.endIso,
-                        "all_day" to it.allDay,
-                        "location" to (it.location ?: ""),
-                        "description" to (it.description ?: ""),
-                        "reminder_minutes_before" to (it.reminderMinutes ?: 0),
-                    )
-                },
-                "message" to if (events.isEmpty()) {
-                    "No upcoming events in the next $days day(s)"
-                } else {
-                    "Found ${events.size} event(s) in the next $days day(s)"
-                },
-            )
+            )) {
+                is EventListResult.Error -> mapOf(
+                    "success" to false,
+                    "error" to result.message,
+                )
+                is EventListResult.Ok -> mapOf(
+                    "success" to true,
+                    "count" to result.events.size,
+                    "events" to result.events.map {
+                        mapOf(
+                            "event_id" to it.eventId,
+                            "title" to it.title,
+                            "start" to it.startIso,
+                            "end" to it.endIso,
+                            "all_day" to it.allDay,
+                            "location" to (it.location ?: ""),
+                            "description" to (it.description ?: ""),
+                            "reminder_minutes_before" to (it.reminderMinutes ?: 0),
+                        )
+                    },
+                    "message" to if (result.events.isEmpty()) {
+                        "No upcoming events in the next $days day(s)"
+                    } else {
+                        "Found ${result.events.size} event(s) in the next $days day(s)"
+                    },
+                )
+            }
         }
     }
 }
