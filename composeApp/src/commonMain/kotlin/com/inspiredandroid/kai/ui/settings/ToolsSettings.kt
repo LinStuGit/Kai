@@ -17,15 +17,27 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.inspiredandroid.kai.Platform
+import com.inspiredandroid.kai.currentPlatform
 import com.inspiredandroid.kai.mcp.PopularMcpServer
 import com.inspiredandroid.kai.network.tools.ToolInfo
 import com.inspiredandroid.kai.skills.RegistrySkillEntry
 import com.inspiredandroid.kai.skills.SkillManifest
+import com.inspiredandroid.kai.tools.AgentExtension
+import com.inspiredandroid.kai.tools.getAgentExtensions
+import com.inspiredandroid.kai.tools.removeAgentExtension
+import com.inspiredandroid.kai.tools.setAgentExtensionEnabled
 import com.inspiredandroid.kai.ui.handCursor
 import com.inspiredandroid.kai.ui.kaiAdaptiveCardBorder
 import com.inspiredandroid.kai.ui.kaiAdaptiveCardColors
@@ -141,6 +153,118 @@ internal fun ToolsContent(
                         }
                     }
                 }
+            }
+        }
+
+        // Agent-registered extensions (Shizuku-backed, Android only)
+        ExtensionsSection()
+    }
+}
+
+/**
+ * Agent extensions registered via add_extension, each toggleable/removable
+ * here. Small list read straight from the platform registry on every
+ * interaction, bumped by a revision counter — no ViewModel round-trip.
+ */
+@Composable
+private fun ExtensionsSection() {
+    if (currentPlatform !is Platform.Mobile.Android) return
+
+    var revision by remember { mutableIntStateOf(0) }
+    val extensions = remember(revision) { getAgentExtensions() }
+
+    Spacer(Modifier.height(24.dp))
+
+    Text(
+        text = "Agent 拓展",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        text = "agent 通过 add_extension 固化的宿主机命令，可在此启停或删除",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(16.dp))
+
+    if (extensions.isEmpty()) {
+        Text(
+            text = "还没有 agent 注册的拓展——在对话里让它用 add_extension 添加",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        extensions.forEach { extension ->
+            ExtensionItem(
+                extension = extension,
+                onToggle = { enabled ->
+                    setAgentExtensionEnabled(extension.id, enabled)
+                    revision++
+                },
+                onRemove = {
+                    removeAgentExtension(extension.id)
+                    revision++
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExtensionItem(
+    extension: AgentExtension,
+    onToggle: (Boolean) -> Unit,
+    onRemove: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CardDefaults.shape),
+        colors = kaiAdaptiveCardColors(),
+        border = kaiAdaptiveCardBorder(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = extension.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                if (extension.desc.isNotBlank()) {
+                    Text(
+                        text = extension.desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = extension.cmd,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Switch(
+                checked = extension.enabled,
+                onCheckedChange = onToggle,
+            )
+
+            TextButton(onClick = onRemove) {
+                Text(
+                    text = "删除",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }

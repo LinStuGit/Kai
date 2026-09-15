@@ -179,6 +179,11 @@ actual fun getPlatformToolDefinitions(): List<ToolInfo> = CommonTools.commonTool
         ShellCommandTool.toolInfo,
         ProcessManagerTool.toolInfo,
         SshConfigureHostTool.toolInfo,
+        ShizukuTools.shellToolInfo,
+        ShizukuTools.addExtensionToolInfo,
+        ShizukuTools.removeExtensionToolInfo,
+        ShizukuTools.listExtensionsToolInfo,
+        ShizukuTools.runExtensionToolInfo,
     )
 
 actual fun getAvailableTools(): List<Tool> {

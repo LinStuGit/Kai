@@ -59,6 +59,11 @@ object ExtensionStore {
     @Synchronized
     fun get(id: String): Extension? = read().firstOrNull { it.id == id }
 
+    @Synchronized
+    fun setEnabled(id: String, enabled: Boolean) {
+        write(read().map { if (it.id == id) it.copy(enabled = enabled) else it })
+    }
+
     private fun read(): List<Extension> = try {
         val f = file ?: return emptyList()
         if (f.exists()) {

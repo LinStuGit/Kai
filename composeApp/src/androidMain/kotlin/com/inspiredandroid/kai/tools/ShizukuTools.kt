@@ -2,6 +2,7 @@ package com.inspiredandroid.kai.tools
 
 import com.inspiredandroid.kai.network.tools.ParameterSchema
 import com.inspiredandroid.kai.network.tools.Tool
+import com.inspiredandroid.kai.network.tools.ToolInfo
 import com.inspiredandroid.kai.network.tools.ToolSchema
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -149,4 +150,42 @@ object ShizukuTools {
             return mapOf("success" to true, "output" to runShell(ext.cmd))
         }
     }
+
+    // Settings → Tools metadata: plain strings (no res entries); all
+    // user-toggleable, so the isToolEnabled preference gating comes free.
+    val shellToolInfo = ToolInfo(
+        id = SHELL_ID,
+        name = "宿主机 Shell（Shizuku）",
+        description = "以 shell uid 在 Android 宿主机执行命令（免 root），am/pm/dumpsys 等；容器内操作请用沙箱 shell",
+    )
+    val addExtensionToolInfo = ToolInfo(
+        id = ADD_EXTENSION_ID,
+        name = "注册拓展",
+        description = "把 shell 命令固化为命名功能，持久化保存并显示在下方拓展列表",
+    )
+    val removeExtensionToolInfo = ToolInfo(
+        id = REMOVE_EXTENSION_ID,
+        name = "删除拓展",
+        description = "删除一个已注册的拓展功能",
+    )
+    val listExtensionsToolInfo = ToolInfo(
+        id = LIST_EXTENSIONS_ID,
+        name = "列出拓展",
+        description = "列出全部已注册的拓展功能",
+    )
+    val runExtensionToolInfo = ToolInfo(
+        id = RUN_EXTENSION_ID,
+        name = "执行拓展",
+        description = "按 id 执行一个已注册的拓展功能，已停用的不可执行",
+    )
+}
+
+actual fun getAgentExtensions(): List<AgentExtension> = ExtensionStore.all().map {
+    AgentExtension(it.id, it.name, it.desc, it.cmd, it.enabled)
+}
+
+actual fun setAgentExtensionEnabled(id: String, enabled: Boolean) = ExtensionStore.setEnabled(id, enabled)
+
+actual fun removeAgentExtension(id: String) {
+    ExtensionStore.remove(id)
 }
