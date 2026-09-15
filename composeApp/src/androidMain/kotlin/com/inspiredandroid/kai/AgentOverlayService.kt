@@ -339,7 +339,7 @@ private fun OverlayContent(
                                 color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
-                                text = row.toolName.ifBlank { row.content },
+                                text = row.toolName?.ifBlank { row.content } ?: row.content,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
