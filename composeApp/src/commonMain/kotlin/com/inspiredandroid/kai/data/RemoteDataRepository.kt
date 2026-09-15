@@ -52,6 +52,8 @@ import com.inspiredandroid.kai.sms.SmsSendResult
 import com.inspiredandroid.kai.sms.SmsSender
 import com.inspiredandroid.kai.tools.NotificationListenerController
 import com.inspiredandroid.kai.tools.PermissionController
+import com.inspiredandroid.kai.tools.ToolApprovalController
+import com.inspiredandroid.kai.tools.ToolApprovalRequest
 import com.inspiredandroid.kai.tools.notifyAgentRunActive
 import com.inspiredandroid.kai.ui.chat.History
 import com.inspiredandroid.kai.ui.chat.ToolCallInfo
@@ -618,6 +620,21 @@ class RemoteDataRepository(
         arguments: String,
         history: MutableStateFlow<List<History>>,
     ): String {
+        // Manual approval mode: reject before any history row is written so
+        // nothing appears to have run; the engine still sees the refusal.
+        if (appSettings.isToolApprovalManual()) {
+            val approved = ToolApprovalController.awaitApproval(
+                ToolApprovalRequest(
+                    callId = "local-${Uuid.random()}",
+                    toolName = name,
+                    displayName = toolExecutor.getToolDisplayName(name),
+                    argsJson = arguments,
+                ),
+            )
+            if (!approved) {
+                return """{"success": false, "error": "The user rejected this tool execution."}"""
+            }
+        }
         val callId = "local-${Uuid.random()}"
         val executingId = Uuid.random().toString()
         val displayName = toolExecutor.getToolDisplayName(name)
@@ -1210,9 +1227,12 @@ class RemoteDataRepository(
                     overlayActive = true
                     notifyAgentRunActive(true)
                 }
-                val toolResults = executeToolCallsInParallel(
-                    result.toolCalls.map { Triple(it.id, it.name, it.arguments) },
-                )
+                val calls = result.toolCalls.map { Triple(it.id, it.name, it.arguments) }
+                val toolResults = if (appSettings.isToolApprovalManual()) {
+                    executeWithApproval(calls)
+                } else {
+                    executeToolCallsInParallel(calls)
+                }
 
                 history.update { h ->
                     val merged = buildList(h.size + toolResults.size) {
@@ -1345,6 +1365,39 @@ class RemoteDataRepository(
             chatHistory.update { history ->
                 history.filter { h -> h.id !in executingIds }
             }
+        }
+    }
+
+    /**
+     * Manual approval mode: every tool call is shown to the user as an
+     * approval card and the loop waits for their decision. Approved calls run
+     * through the normal parallel path; rejected ones get a synthetic tool
+     * result so the model can react to the refusal.
+     */
+    private suspend fun executeWithApproval(
+        toolCalls: List<Triple<String, String, String>>,
+    ): List<Triple<String, String, String>> = coroutineScope {
+        val decisions = toolCalls.map { (callId, name, arguments) ->
+            async {
+                val approved = ToolApprovalController.awaitApproval(
+                    ToolApprovalRequest(
+                        callId = callId,
+                        toolName = name,
+                        displayName = toolExecutor.getToolDisplayName(name),
+                        argsJson = arguments,
+                    ),
+                )
+                Triple(callId, name, arguments) to approved
+            }
+        }.awaitAll()
+        val (approved, denied) = decisions.partition { it.second }
+        val executed = if (approved.isNotEmpty()) {
+            executeToolCallsInParallel(approved.map { it.first })
+        } else {
+            emptyList()
+        }
+        executed + denied.map { (call, _) ->
+            Triple(call.first, call.second, "The user rejected this tool execution.")
         }
     }
 

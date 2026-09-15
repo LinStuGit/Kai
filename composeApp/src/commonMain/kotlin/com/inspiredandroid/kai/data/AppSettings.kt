@@ -285,6 +285,18 @@ class AppSettings(internal val settings: Settings) {
         settings.putBoolean(KEY_AGENT_OVERLAY_ENABLED, enabled)
     }
 
+    // Tool approval mode: when manual, every tool call waits for an explicit
+    // user decision in the chat before it executes.
+    private val _toolApprovalManualFlow = MutableStateFlow(settings.getBoolean(KEY_TOOL_APPROVAL_MANUAL, false))
+    val toolApprovalManualFlow: StateFlow<Boolean> = _toolApprovalManualFlow
+
+    fun isToolApprovalManual(): Boolean = _toolApprovalManualFlow.value
+
+    fun setToolApprovalManual(enabled: Boolean) {
+        settings.putBoolean(KEY_TOOL_APPROVAL_MANUAL, enabled)
+        _toolApprovalManualFlow.value = enabled
+    }
+
     // Dynamic UI
     fun isDynamicUiEnabled(): Boolean = settings.getBoolean(KEY_DYNAMIC_UI_ENABLED, true)
 
@@ -576,6 +588,7 @@ class AppSettings(internal val settings: Settings) {
         const val KEY_SCHEDULED_TASKS = "scheduled_tasks"
         const val KEY_SCHEDULING_ENABLED = "scheduling_enabled"
         const val KEY_AGENT_OVERLAY_ENABLED = "agent_overlay_enabled"
+        const val KEY_TOOL_APPROVAL_MANUAL = "tool_approval_manual"
         const val KEY_DYNAMIC_UI_ENABLED = "dynamic_ui_enabled"
         const val KEY_OLED_MODE_ENABLED = "oled_mode_enabled"
         const val KEY_THEME_MODE = "theme_mode"

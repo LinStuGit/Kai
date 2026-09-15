@@ -59,6 +59,7 @@ import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.data.RemoteDataRepository
 import com.inspiredandroid.kai.data.ThemeMode
 import com.inspiredandroid.kai.tools.AgentOverlayController
+import com.inspiredandroid.kai.tools.ToolApprovalController
 import com.inspiredandroid.kai.ui.DarkColorScheme
 import com.inspiredandroid.kai.ui.LightColorScheme
 import com.inspiredandroid.kai.ui.Theme
@@ -287,6 +288,7 @@ private fun OverlayContent(
 ) {
     val executing = history.filter { it.role == History.Role.TOOL_EXECUTING }
     val latestThinking = history.lastOrNull { it.isThinking && it.content.isNotBlank() }?.content.orEmpty()
+    val pendingApprovals by ToolApprovalController.pending.collectAsState()
     var expanded by remember { mutableStateOf(true) }
 
     Surface(
@@ -329,7 +331,15 @@ private fun OverlayContent(
 
             if (expanded) {
                 Spacer(Modifier.size(8.dp))
-                if (executing.isNotEmpty()) {
+                if (pendingApprovals.isNotEmpty()) {
+                    Text(
+                        text = "等待审批：" + pendingApprovals.joinToString("、") { it.displayName },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else if (executing.isNotEmpty()) {
                     executing.forEach { row ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),

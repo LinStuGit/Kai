@@ -90,6 +90,7 @@ import com.inspiredandroid.kai.ui.chat.composables.HeartbeatBanner
 import com.inspiredandroid.kai.ui.chat.composables.PendingSmsBanners
 import com.inspiredandroid.kai.ui.chat.composables.QuestionInput
 import com.inspiredandroid.kai.ui.chat.composables.ServiceSelector
+import com.inspiredandroid.kai.ui.chat.composables.ToolApprovalBar
 import com.inspiredandroid.kai.ui.chat.composables.TopBar
 import com.inspiredandroid.kai.ui.chat.composables.TrailingIcon
 import com.inspiredandroid.kai.ui.chat.composables.UserMessage
@@ -946,6 +947,7 @@ private fun ChatModeScreen(
             }
 
             if (!isSandboxOpen) {
+                ToolApprovalBar()
                 QuestionInput(
                     files = uiState.files,
                     addFile = uiState.actions.addFile,
