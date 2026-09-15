@@ -18,7 +18,7 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Kai Build's Debian seen as a file tree. Everything the user can browse is an
+ * Kami Build's Debian seen as a file tree. Everything the user can browse is an
  * ordinary host file — the rootfs is app-private storage and project folders are
  * an external-files directory — so this needs no proot round-trip.
  */

@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Karibu kwenye Kai 9000</string>
+    <string name="welcome_message">Karibu kwenye Kami</string>
     <string name="prompt_ask_question">Uliza swali</string>
     <string name="error_invalid_api_key">Ufunguo wa API si sahihi. Tafadhali angalia mipangilio yako.</string>
     <string name="error_rate_limit_exceeded">Kikomo cha kiwango kimezidishwa. Tafadhali jaribu tena baadaye.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Tengeneza upya</string>
     <string name="error_empty_response">Hakuna jibu lililopokelewa. Jaribu kuanza mazungumzo mapya au kufupisha ujumbe wako.</string>
     <string name="settings_daemon_mode">Hali ya Daemon</string>
-    <string name="settings_daemon_mode_description">Weka Kai 9000 iendelee kufanya kazi chinichini ili kazi zilizopangwa zitekelezwe hata wakati programu haiko mbele.</string>
+    <string name="settings_daemon_mode_description">Weka Kami iendelee kufanya kazi chinichini ili kazi zilizopangwa zitekelezwe hata wakati programu haiko mbele.</string>
     <string name="settings_scheduled_tasks">Kazi Zilizopangwa</string>
     <string name="settings_scheduled_tasks_description">Kazi zilizopangwa na AI kwa utekelezaji wa baadaye. Mwambie AI akukumbushe au atekeleze kitu baadaye ili kuunda kazi zilizopangwa.</string>
     <string name="settings_scheduled_tasks_cancel">Ghairi kazi</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Niko tayari kabisa kufanya kazi.</string>
     <string name="interactive_welcome_subtitle">Niambie ungependa kufanya nini.</string>
     <string name="interactive_back_content_description">Rudi</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Ondoka hali ya mwingiliano</string>
     <string name="interactive_ui_parsing_failed">Uchambuzi wa UI umeshindwa, inajaribu tena…</string>
     <string name="settings_sponsors">Wadhamini</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Tafuta arifa</string>
     <string name="tool_search_notifications_description">Tafuta arifa kwa programu au maandishi</string>
     <string name="settings_notifications_label">Soma arifa</string>
-    <string name="settings_notifications_description">Arifa zinazoingia hukusanywa nyuma kwenye historia na huchukuliwa na heartbeat. Chagua programu zipi Kai inaweza kusoma katika mipangilio ya ufikiaji wa arifa za mfumo.</string>
-    <string name="settings_notifications_access_required">Ufikiaji wa arifa haujatolewa. Gusa hapa chini ili kuwezesha Kai katika mipangilio ya mfumo.</string>
+    <string name="settings_notifications_description">Arifa zinazoingia hukusanywa nyuma kwenye historia na huchukuliwa na heartbeat. Chagua programu zipi Kami inaweza kusoma katika mipangilio ya ufikiaji wa arifa za mfumo.</string>
+    <string name="settings_notifications_access_required">Ufikiaji wa arifa haujatolewa. Gusa hapa chini ili kuwezesha Kami katika mipangilio ya mfumo.</string>
     <string name="settings_notifications_access_button">Fungua ufikiaji wa arifa</string>
     <string name="settings_notifications_manage_apps">Simamia programu</string>
     <string name="settings_notifications_listener_bound">Msikilizaji yuko hai</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Ingiza faili</string>
     <string name="sandbox_files_import_success">Faili imeenezwa</string>
     <string name="sandbox_files_import_failed">Uingizaji umeshindikana</string>
-    <string name="kai_build_open">Fungua Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Toka Kai Build</string>
+    <string name="kai_build_open">Fungua Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Toka Kami Build</string>
     <string name="kai_build_back_content_description">Rudi kwenye miradi</string>
     <string name="kai_build_setup_title">Sanidi Linux (Beta)</string>
-    <string name="kai_build_setup_description">Kai Build iko kwenye beta. Debian Bookworm inaendesha chini ya proot ndani ya programu hii, pamoja na curl, git, wget, python3 na zana nyingine muhimu. Usakinishaji wa kwanza unapakua takriban MB 100 na unahitaji mtandao.</string>
+    <string name="kai_build_setup_description">Kami Build iko kwenye beta. Debian Bookworm inaendesha chini ya proot ndani ya programu hii, pamoja na curl, git, wget, python3 na zana nyingine muhimu. Usakinishaji wa kwanza unapakua takriban MB 100 na unahitaji mtandao.</string>
     <string name="kai_build_setup_agents_title">Mawakala wa usimbaji</string>
     <string name="kai_build_setup_agents_description">Chagua CLI za kusakinisha kwenye mfumo mpya. Unaweza kuongeza zingine baadaye.</string>
     <string name="kai_build_setup_install">Sakinisha Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Si lazima. Zana za utafutaji zinahitaji ufunguo wa bure kutoka jina.ai; zana nyingine hufanya kazi bila ufunguo.</string>
     <string name="settings_sandbox_distro_title">Aina</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Inapendekezwa · ~150 MB · inashirikiwa na Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Imesakinishwa · inashirikiwa na Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Inapendekezwa · ~150 MB · inashirikiwa na Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Imesakinishwa · inashirikiwa na Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Ndogo zaidi · ~4 MB · Kai Build husakinisha Debian yake</string>
-    <string name="settings_sandbox_distro_alpine_installed">Imesakinishwa · Kai Build husakinisha Debian yake</string>
+    <string name="settings_sandbox_distro_alpine_detail">Ndogo zaidi · ~4 MB · Kami Build husakinisha Debian yake</string>
+    <string name="settings_sandbox_distro_alpine_installed">Imesakinishwa · Kami Build husakinisha Debian yake</string>
     <string name="settings_sandbox_migrate_title">Leta faili zako kutoka %1$s</string>
     <string name="settings_sandbox_migrate_detail">Faili %1$d · %2$s katika folda yake ya nyumbani bado hazipo hapa. Kunakili huhifadhi kila kitu ambacho tayari kipo hapa na huacha mfumo mwingine bila kuguswa, hivyo unaweza kuuondoa baadaye.</string>
     <string name="settings_sandbox_migrate_action">Nakili Faili</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Data zote katika sandbox ya Linux zitapotea, na Kai Build pia itapoteza Linux yake — inatumia ile ile. Miradi yako itahifadhiwa. Una uhakika unataka kuondoa?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Data zote katika sandbox ya Linux zitapotea, na Kami Build pia itapoteza Linux yake — inatumia ile ile. Miradi yako itahifadhiwa. Una uhakika unataka kuondoa?</string>
     <string name="sandbox_status_not_installed">Haijasakinishwa</string>
     <string name="sandbox_status_downloading">Inapakua rootfs…</string>
     <string name="sandbox_status_extracting">Inachambua…</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Maligayang pagdating sa Kai 9000</string>
+    <string name="welcome_message">Maligayang pagdating sa Kami</string>
     <string name="prompt_ask_question">Magtanong</string>
     <string name="error_invalid_api_key">Hindi wastong API Key. Suriin ang iyong mga setting.</string>
     <string name="error_rate_limit_exceeded">Nalampasan na ang limitasyon ng request. Subukan muli mamaya.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Muling buuin</string>
     <string name="error_empty_response">Walang natanggap na sagot. Subukang magsimula ng bagong chat o paikliin ang iyong mensahe.</string>
     <string name="settings_daemon_mode">Daemon Mode</string>
-    <string name="settings_daemon_mode_description">Panatilihing tumatakbo ang Kai 9000 sa background para maisagawa ang mga naka-schedule na gawain kahit wala sa harapan ang app.</string>
+    <string name="settings_daemon_mode_description">Panatilihing tumatakbo ang Kami sa background para maisagawa ang mga naka-schedule na gawain kahit wala sa harapan ang app.</string>
     <string name="settings_scheduled_tasks">Mga Naka-schedule na Gawain</string>
     <string name="settings_scheduled_tasks_description">Mga gawain na naka-schedule ng AI para sa hinaharap na pagsasagawa. Hilingin sa AI na ipaalala sa iyo o magpatakbo ng isang bagay sa ibang pagkakataon upang lumikha ng mga naka-schedule na gawain.</string>
     <string name="settings_scheduled_tasks_cancel">Kanselahin ang gawain</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Ganap akong gumagana.</string>
     <string name="interactive_welcome_subtitle">Sabihin mo sa akin kung ano ang gusto mong gawin.</string>
     <string name="interactive_back_content_description">Bumalik</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Lumabas sa interactive mode</string>
     <string name="interactive_ui_parsing_failed">Nabigo ang pag-parse ng UI, sinusubukan muli…</string>
     <string name="settings_sponsors">Mga sponsor</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Maghanap ng mga notification</string>
     <string name="tool_search_notifications_description">Maghanap ng mga notification ayon sa app o teksto</string>
     <string name="settings_notifications_label">Basahin ang mga notification</string>
-    <string name="settings_notifications_description">Ang mga papasok na notification ay nakukuha sa background at kinukuha ng heartbeat. Pumili sa system na Notification access settings kung aling mga app ang maaaring basahin ng Kai.</string>
-    <string name="settings_notifications_access_required">Hindi pa naipagkakaloob ang access sa notification. I-tap sa ibaba upang paganahin ang Kai sa system settings.</string>
+    <string name="settings_notifications_description">Ang mga papasok na notification ay nakukuha sa background at kinukuha ng heartbeat. Pumili sa system na Notification access settings kung aling mga app ang maaaring basahin ng Kami.</string>
+    <string name="settings_notifications_access_required">Hindi pa naipagkakaloob ang access sa notification. I-tap sa ibaba upang paganahin ang Kami sa system settings.</string>
     <string name="settings_notifications_access_button">Buksan ang notification access</string>
     <string name="settings_notifications_manage_apps">Pamahalaan ang mga app</string>
     <string name="settings_notifications_listener_bound">Aktibo ang listener</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Mag-import ng file</string>
     <string name="sandbox_files_import_success">Na-import ang file</string>
     <string name="sandbox_files_import_failed">Hindi na-import</string>
-    <string name="kai_build_open">Buksan ang Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Lumabas sa Kai Build</string>
+    <string name="kai_build_open">Buksan ang Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Lumabas sa Kami Build</string>
     <string name="kai_build_back_content_description">Bumalik sa mga proyekto</string>
     <string name="kai_build_setup_title">I-set up ang Linux (Beta)</string>
-    <string name="kai_build_setup_description">Nasa beta ang Kai Build. Tumatakbo ang Debian Bookworm sa ilalim ng proot sa app na ito, kasama ang curl, git, wget, python3, at iba pang essentials. Ang unang install ay nagda-download ng humigit-kumulang 100 MB at kailangan ng network.</string>
+    <string name="kai_build_setup_description">Nasa beta ang Kami Build. Tumatakbo ang Debian Bookworm sa ilalim ng proot sa app na ito, kasama ang curl, git, wget, python3, at iba pang essentials. Ang unang install ay nagda-download ng humigit-kumulang 100 MB at kailangan ng network.</string>
     <string name="kai_build_setup_agents_title">Mga coding agent</string>
     <string name="kai_build_setup_agents_description">Piliin ang mga CLI na i-install sa bagong system. Maaari mong idagdag ang iba mamaya.</string>
     <string name="kai_build_setup_install">I-install ang Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Opsyonal. Kailangan ng mga search tool ng libreng key mula sa jina.ai; gumagana ang ibang tool nang walang key.</string>
     <string name="settings_sandbox_distro_title">Distribusyon</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Inirerekomenda · ~150 MB · shared sa Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Naka-install · shared sa Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Inirerekomenda · ~150 MB · shared sa Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Naka-install · shared sa Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Mas maliit · ~4 MB · nag-iinstall ang Kai Build ng sarili nitong Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Naka-install · nag-iinstall ang Kai Build ng sarili nitong Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Mas maliit · ~4 MB · nag-iinstall ang Kami Build ng sarili nitong Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Naka-install · nag-iinstall ang Kami Build ng sarili nitong Debian</string>
     <string name="settings_sandbox_migrate_title">Ilipat ang iyong mga file mula sa %1$s</string>
     <string name="settings_sandbox_migrate_detail">May %1$d file · %2$s sa home folder nito na wala pa rito. Ang pagkopya ay hindi nag-aalis ng anumang narito na at hindi nakakaapekto sa ibang sistema, kaya puwede mo itong i-uninstall pagkatapos.</string>
     <string name="settings_sandbox_migrate_action">Kopyahin ang mga file</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Mawawala ang lahat ng data sa Linux sandbox, at mawawalan din ng Linux ang Kai Build — dahil parehong ginagamit ang iisang Linux. Mananatili ang iyong mga proyekto. Sigurado ka bang gusto mong i-uninstall?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Mawawala ang lahat ng data sa Linux sandbox, at mawawalan din ng Linux ang Kami Build — dahil parehong ginagamit ang iisang Linux. Mananatili ang iyong mga proyekto. Sigurado ka bang gusto mong i-uninstall?</string>
     <string name="sandbox_status_not_installed">Hindi naka-install</string>
     <string name="sandbox_status_downloading">Dina-download ang rootfs…</string>
     <string name="sandbox_status_extracting">Ini-extract…</string>

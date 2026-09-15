@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Siyakwamukela ku-Kai 9000</string>
+    <string name="welcome_message">Siyakwamukela ku-Kami</string>
     <string name="prompt_ask_question">Buza umbuzo</string>
     <string name="error_invalid_api_key">Ukhiye we-API ongavumelekile. Sicela uhlole izilungiselelo zakho.</string>
     <string name="error_rate_limit_exceeded">Umkhawulo wezicelo udluliwe. Sicela uzame futhi kamuva.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Phinda wenze</string>
     <string name="error_empty_response">Akukho mpendulo etholakele. Zama ukuqala ingxoxo entsha noma ufinyeze umyalezo wakho.</string>
     <string name="settings_daemon_mode">Imodi ye-Daemon</string>
-    <string name="settings_daemon_mode_description">Gcina i-Kai 9000 isebenza ngemuva ukuze imisebenzi ehleliwe isebenze ngisho noma i-app ingekho phambili.</string>
+    <string name="settings_daemon_mode_description">Gcina i-Kami isebenza ngemuva ukuze imisebenzi ehleliwe isebenze ngisho noma i-app ingekho phambili.</string>
     <string name="settings_scheduled_tasks">Imisebenzi Ehleliwe</string>
     <string name="settings_scheduled_tasks_description">Imisebenzi ehlelwe i-AI ukuze yenziwe esikhathini esizayo. Cela i-AI ukukhumbuza noma isebenzise into kamuva ukuze udale imisebenzi ehleliwe.</string>
     <string name="settings_scheduled_tasks_cancel">Khansela umsebenzi</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Ngisebenza ngokuphelele.</string>
     <string name="interactive_welcome_subtitle">Ngitshele ukuthi ufuna ukwenzani.</string>
     <string name="interactive_back_content_description">Emuva</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Phuma kumodi yokuxhumana</string>
     <string name="interactive_ui_parsing_failed">Ukuhlaziya kwe-UI kuhlulekile, kuzanywa futhi…</string>
     <string name="settings_sponsors">Abaxhasi</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Sesha izaziso</string>
     <string name="tool_search_notifications_description">Sesha izaziso ngohlelo lokusebenza noma ngombhalo</string>
     <string name="settings_notifications_label">Funda izaziso</string>
-    <string name="settings_notifications_description">Izaziso ezingenayo ziqoqwa ngemuva futhi zithathwa i-heartbeat. Khetha izinhlelo zokusebenza okukhona u-Kai angazifunda kuzilungiselelo zokufinyelela kwezaziso zesistimu.</string>
-    <string name="settings_notifications_access_required">Ukufinyelela kwezaziso akukanikezwa. Thepha ngezansi ukuze unike u-Kai amandla kuzilungiselelo zesistimu.</string>
+    <string name="settings_notifications_description">Izaziso ezingenayo ziqoqwa ngemuva futhi zithathwa i-heartbeat. Khetha izinhlelo zokusebenza okukhona u-Kami angazifunda kuzilungiselelo zokufinyelela kwezaziso zesistimu.</string>
+    <string name="settings_notifications_access_required">Ukufinyelela kwezaziso akukanikezwa. Thepha ngezansi ukuze unike u-Kami amandla kuzilungiselelo zesistimu.</string>
     <string name="settings_notifications_access_button">Vula ukufinyelela kwezaziso</string>
     <string name="settings_notifications_manage_apps">Phatha izinhlelo zokusebenza</string>
     <string name="settings_notifications_listener_bound">Umlaleli usebenza</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Ngenisa ifayela</string>
     <string name="sandbox_files_import_success">Ifayela lingenisiwe</string>
     <string name="sandbox_files_import_failed">Ukungenisa kuhlulekile</string>
-    <string name="kai_build_open">Vula i-Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Phuma ku-Kai Build</string>
+    <string name="kai_build_open">Vula i-Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Phuma ku-Kami Build</string>
     <string name="kai_build_back_content_description">Buyela kumaphrojekthi</string>
     <string name="kai_build_setup_title">Setha i-Linux (Beta)</string>
-    <string name="kai_build_setup_description">I-Kai Build iseku-beta. I-Debian Bookworm isebenza ngaphansi kwe-proot kule app, ne-curl, git, wget, python3 namanye amathuluzi abalulekile. Ukufaka kokuqala kuthwebula cishe u-100 MB futhi kudinga inethiwekhi.</string>
+    <string name="kai_build_setup_description">I-Kami Build iseku-beta. I-Debian Bookworm isebenza ngaphansi kwe-proot kule app, ne-curl, git, wget, python3 namanye amathuluzi abalulekile. Ukufaka kokuqala kuthwebula cishe u-100 MB futhi kudinga inethiwekhi.</string>
     <string name="kai_build_setup_agents_title">Ama-ejenti ekhodi</string>
     <string name="kai_build_setup_agents_description">Khetha ama-CLI azofakwa kusistimu entsha. Ungangeza amanye kamuva.</string>
     <string name="kai_build_setup_install">Faka i-Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Akudingekile. Amathuluzi okusesha adinga ukhiye wamahhala ovela ku-jina.ai; amanye amathuluzi asebenza ngaphandle kwawo.</string>
     <string name="settings_sandbox_distro_title">Uhlobo</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Inconyiwe · ~150 MB · okwabelwana ne-Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Kufakiwe · okwabelwana ne-Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Inconyiwe · ~150 MB · okwabelwana ne-Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Kufakiwe · okwabelwana ne-Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Encane · ~4 MB · I-Kai Build ifaka i-Debian yayo</string>
-    <string name="settings_sandbox_distro_alpine_installed">Kufakiwe · I-Kai Build ifaka i-Debian yayo</string>
+    <string name="settings_sandbox_distro_alpine_detail">Encane · ~4 MB · I-Kami Build ifaka i-Debian yayo</string>
+    <string name="settings_sandbox_distro_alpine_installed">Kufakiwe · I-Kami Build ifaka i-Debian yayo</string>
     <string name="settings_sandbox_migrate_title">Letha amafayela akho avela ku-%1$s</string>
     <string name="settings_sandbox_migrate_detail">Amafayela angu-%1$d · %2$s kufolda yayo yasekhaya awakabi khona lapha. Ukukopisha kugcina konke okuvele kukhona lapha futhi kushiya enye isistimu ingaguqukanga, ngakho ungayikhipha kamuva.</string>
     <string name="settings_sandbox_migrate_action">Kopisha Amafayela</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Yonke idatha ku-Linux sandbox izolahleka, futhi i-Kai Build nayo izolahlekelwa yi-Linux yayo — isebenzisa eyodwa efanayo. Amaphrojekthi akho ayagcinwa. Uqinisekile ukuthi ufuna ukukhipha?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Yonke idatha ku-Linux sandbox izolahleka, futhi i-Kami Build nayo izolahlekelwa yi-Linux yayo — isebenzisa eyodwa efanayo. Amaphrojekthi akho ayagcinwa. Uqinisekile ukuthi ufuna ukukhipha?</string>
     <string name="sandbox_status_not_installed">Ayifakiwe</string>
     <string name="sandbox_status_downloading">Ilanda i-rootfs…</string>
     <string name="sandbox_status_extracting">Iyakhipha…</string>

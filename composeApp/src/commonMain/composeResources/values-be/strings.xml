@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Вітаем у Kai 9000</string>
+    <string name="welcome_message">Вітаем у Kami</string>
     <string name="prompt_ask_question">Задайце пытанне</string>
     <string name="error_invalid_api_key">Несапраўдны ключ API. Калі ласка, праверце свае налады.</string>
     <string name="error_rate_limit_exceeded">Ліміт запытаў перавышаны. Калі ласка, паспрабуйце пазней.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Перагенераваць</string>
     <string name="error_empty_response">Адказ не атрыманы. Паспрабуйце пачаць новы чат або скараціць паведамленне.</string>
     <string name="settings_daemon_mode">Рэжым дэмана</string>
-    <string name="settings_daemon_mode_description">Трымайце Kai 9000 запушчаным у фонавым рэжыме, каб запланаваныя задачы выконваліся нават калі праграма не на пярэднім плане.</string>
+    <string name="settings_daemon_mode_description">Трымайце Kami запушчаным у фонавым рэжыме, каб запланаваныя задачы выконваліся нават калі праграма не на пярэднім плане.</string>
     <string name="settings_scheduled_tasks">Запланаваныя задачы</string>
     <string name="settings_scheduled_tasks_description">Задачы, запланаваныя AI для будучага выканання. Папрасіце AI нагадаць вам або выканаць нешта пазней, каб стварыць запланаваныя задачы.</string>
     <string name="settings_scheduled_tasks_cancel">Скасаваць задачу</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Я цалкам працаздольны.</string>
     <string name="interactive_welcome_subtitle">Скажыце, што вы хочаце зрабіць.</string>
     <string name="interactive_back_content_description">Назад</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Выйсці з інтэрактыўнага рэжыму</string>
     <string name="interactive_ui_parsing_failed">Не ўдалося разабраць UI, паўторная спроба…</string>
     <string name="settings_sponsors">Спонсары</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">Пошук апавяшчэнняў</string>
     <string name="tool_search_notifications_description">Пошук апавяшчэнняў па дадатку або тэксце</string>
     <string name="settings_notifications_label">Чытанне апавяшчэнняў</string>
-    <string name="settings_notifications_description">Уваходныя апавяшчэнні збіраюцца ў фоне і апрацоўваюцца heartbeat. Абярыце прыкладанні, якія можа чытаць Kai, у сістэмных наладах доступу да апавяшчэнняў.</string>
-    <string name="settings_notifications_access_required">Доступ да апавяшчэнняў не нададзены. Націсніце ніжэй, каб уключыць Kai у сістэмных наладах.</string>
+    <string name="settings_notifications_description">Уваходныя апавяшчэнні збіраюцца ў фоне і апрацоўваюцца heartbeat. Абярыце прыкладанні, якія можа чытаць Kami, у сістэмных наладах доступу да апавяшчэнняў.</string>
+    <string name="settings_notifications_access_required">Доступ да апавяшчэнняў не нададзены. Націсніце ніжэй, каб уключыць Kami у сістэмных наладах.</string>
     <string name="settings_notifications_access_button">Адкрыць доступ да апавяшчэнняў</string>
     <string name="settings_notifications_manage_apps">Кіраванне прыкладаннямі</string>
     <string name="settings_notifications_listener_bound">Слухач актыўны</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">Імпартаваць файл</string>
     <string name="sandbox_files_import_success">Файл імпартаваны</string>
     <string name="sandbox_files_import_failed">Імпарт не ўдаўся</string>
-    <string name="kai_build_open">Адкрыць Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Выйсці з Kai Build</string>
+    <string name="kai_build_open">Адкрыць Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Выйсці з Kami Build</string>
     <string name="kai_build_back_content_description">Назад да праектаў</string>
     <string name="kai_build_setup_title">Наладзіць Linux (бэта)</string>
-    <string name="kai_build_setup_description">Kai Build у бэта-версіі. Debian Bookworm працуе пад proot у гэтай праграме, з curl, git, wget, python3 і іншымі базавымі інструментамі. Першая ўсталёўка спампоўвае каля 100 МБ і патрабуе сетку.</string>
+    <string name="kai_build_setup_description">Kami Build у бэта-версіі. Debian Bookworm працуе пад proot у гэтай праграме, з curl, git, wget, python3 і іншымі базавымі інструментамі. Першая ўсталёўка спампоўвае каля 100 МБ і патрабуе сетку.</string>
     <string name="kai_build_setup_agents_title">Агенты для кода</string>
     <string name="kai_build_setup_agents_description">Выберыце CLI для ўсталёўкі на чыстую сістэму. Астатнія можна дадаць пазней.</string>
     <string name="kai_build_setup_install">Усталяваць Debian</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">Неабавязкова. Для інструментаў пошуку патрэбны бясплатны ключ з jina.ai; іншыя інструменты працуюць без яго.</string>
     <string name="settings_sandbox_distro_title">Дыстрыбутыў</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Рэкамендавана · ~150 МБ · агульны з Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Усталявана · агульны з Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Рэкамендавана · ~150 МБ · агульны з Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Усталявана · агульны з Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Меншы · ~4 МБ · Kai Build усталёўвае свой уласны Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Усталявана · Kai Build усталёўвае свой уласны Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Меншы · ~4 МБ · Kami Build усталёўвае свой уласны Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Усталявана · Kami Build усталёўвае свой уласны Debian</string>
     <string name="settings_sandbox_migrate_title">Перанесці свае файлы з %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d файлаў · %2$s у яго хатняй папцы яшчэ няма тут. Капіяванне захоўвае ўсё, што ўжо ёсць тут, і не закранае іншую сістэму, таму пазней яе можна будзе выдаліць.</string>
     <string name="settings_sandbox_migrate_action">Капіяваць файлы</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Усе даныя ў пясочніцы Linux будуць страчаны, а Kai Build страціць свой Linux — ён выкарыстоўвае той жа самы. Вашы праекты будуць захаваны. Вы ўпэўнены, што жадаеце выдаліць?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Усе даныя ў пясочніцы Linux будуць страчаны, а Kami Build страціць свой Linux — ён выкарыстоўвае той жа самы. Вашы праекты будуць захаваны. Вы ўпэўнены, што жадаеце выдаліць?</string>
     <string name="sandbox_status_not_installed">Не ўстаноўлена</string>
     <string name="sandbox_status_downloading">Спампоўванне rootfs…</string>
     <string name="sandbox_status_extracting">Распакоўка…</string>

@@ -42,7 +42,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
-/** Picks the file browser bound to Kai Build's Debian rather than the chat sandbox. */
+/** Picks the file browser bound to Kami Build's Debian rather than the chat sandbox. */
 val KAI_BUILD_FILES = named("kaiBuildFiles")
 
 /** Qualifier for the [PermissionController] singleton handling [permission]. */
@@ -161,7 +161,7 @@ val appModule = module {
     viewModel { SandboxPackagesViewModel(get<SandboxController>()) }
     viewModel { SandboxSessionViewModel(get<SandboxController>(), get<DataRepository>()) }
     viewModel { KaiBuildViewModel(get<KaiBuildController>(), get<DataRepository>()) }
-    // Same browser, second environment: Kai Build's Debian instead of the chat sandbox.
+    // Same browser, second environment: Kami Build's Debian instead of the chat sandbox.
     viewModel(KAI_BUILD_FILES) { SandboxFileBrowserViewModel(get<KaiBuildController>().files) }
     viewModel { SplinterlandsViewModel(get<DataRepository>(), get(), get(), get<SplinterlandsApi>()) }
     viewModel { ChatViewModel(get<DataRepository>(), get<TaskScheduler>(), localNetworkPermissionController = get(permissionQualifier(AppPermission.LOCAL_NETWORK))) }

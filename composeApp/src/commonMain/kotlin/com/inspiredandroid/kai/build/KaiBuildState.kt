@@ -7,7 +7,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 
-/** Ordered steps of a Kai Build install, shown as progress on the setup screen. */
+/** Ordered steps of a Kami Build install, shown as progress on the setup screen. */
 enum class BuildStep {
     Download,
     Extract,
@@ -59,7 +59,7 @@ data class BuildSystemInfo(
     val freeBytes: Long,
 )
 
-/** Everything the Kai Build screen renders, in one snapshot. */
+/** Everything the Kami Build screen renders, in one snapshot. */
 @Immutable
 data class KaiBuildState(
     val environment: BuildEnvironmentState = BuildEnvironmentState.NotInstalled,

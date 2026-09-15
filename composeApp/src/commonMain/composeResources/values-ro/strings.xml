@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Bine ați venit în Kai 9000</string>
+    <string name="welcome_message">Bine ați venit în Kami</string>
     <string name="prompt_ask_question">Pune o întrebare</string>
     <string name="error_invalid_api_key">Cheie API invalidă. Vă rugăm să verificați setările.</string>
     <string name="error_rate_limit_exceeded">Limita de solicitări a fost depășită. Vă rugăm să încercați din nou mai târziu.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Regenerează</string>
     <string name="error_empty_response">Nu s-a primit niciun răspuns. Încercați să începeți o conversație nouă sau să scurtați mesajul.</string>
     <string name="settings_daemon_mode">Mod Daemon</string>
-    <string name="settings_daemon_mode_description">Mențineți Kai 9000 rulând în fundal astfel încât sarcinile programate să se execute chiar și când aplicația nu este în prim-plan.</string>
+    <string name="settings_daemon_mode_description">Mențineți Kami rulând în fundal astfel încât sarcinile programate să se execute chiar și când aplicația nu este în prim-plan.</string>
     <string name="settings_scheduled_tasks">Sarcini programate</string>
     <string name="settings_scheduled_tasks_description">Sarcini programate de IA pentru execuție viitoare. Cereți-i IA să vă amintească sau să ruleze ceva mai târziu pentru a crea sarcini programate.</string>
     <string name="settings_scheduled_tasks_cancel">Anulează sarcina</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Sunt complet operațional.</string>
     <string name="interactive_welcome_subtitle">Spune-mi ce ai vrea să faci.</string>
     <string name="interactive_back_content_description">Înapoi</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Ieșire din modul interactiv</string>
     <string name="interactive_ui_parsing_failed">Analiza UI a eșuat, se încearcă din nou…</string>
     <string name="settings_sponsors">Sponsori</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Caută notificări</string>
     <string name="tool_search_notifications_description">Caută notificări după aplicație sau text</string>
     <string name="settings_notifications_label">Citește notificările</string>
-    <string name="settings_notifications_description">Notificările primite sunt colectate în fundal și preluate de heartbeat. Alege ce aplicații poate citi Kai din setările de acces la notificări ale sistemului.</string>
-    <string name="settings_notifications_access_required">Accesul la notificări nu a fost acordat. Atinge mai jos pentru a activa Kai din setările sistemului.</string>
+    <string name="settings_notifications_description">Notificările primite sunt colectate în fundal și preluate de heartbeat. Alege ce aplicații poate citi Kami din setările de acces la notificări ale sistemului.</string>
+    <string name="settings_notifications_access_required">Accesul la notificări nu a fost acordat. Atinge mai jos pentru a activa Kami din setările sistemului.</string>
     <string name="settings_notifications_access_button">Deschide accesul la notificări</string>
     <string name="settings_notifications_manage_apps">Gestionează aplicațiile</string>
     <string name="settings_notifications_listener_bound">Ascultător activ</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Importă fișier</string>
     <string name="sandbox_files_import_success">Fișier importat</string>
     <string name="sandbox_files_import_failed">Import eșuat</string>
-    <string name="kai_build_open">Deschide Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Ieși din Kai Build</string>
+    <string name="kai_build_open">Deschide Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Ieși din Kami Build</string>
     <string name="kai_build_back_content_description">Înapoi la proiecte</string>
     <string name="kai_build_setup_title">Configurează Linux (Beta)</string>
-    <string name="kai_build_setup_description">Kai Build este în beta. Debian Bookworm rulează sub proot în această aplicație, cu curl, git, wget, python3 și alte instrumente esențiale. Prima instalare descarcă aproximativ 100 MB și necesită rețea.</string>
+    <string name="kai_build_setup_description">Kami Build este în beta. Debian Bookworm rulează sub proot în această aplicație, cu curl, git, wget, python3 și alte instrumente esențiale. Prima instalare descarcă aproximativ 100 MB și necesită rețea.</string>
     <string name="kai_build_setup_agents_title">Agenți de cod</string>
     <string name="kai_build_setup_agents_description">Alege CLI-urile de instalat pe sistemul nou. Pe celelalte le poți adăuga mai târziu.</string>
     <string name="kai_build_setup_install">Instalează Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Opțional. Instrumentele de căutare necesită o cheie gratuită de la jina.ai; celelalte instrumente funcționează fără ea.</string>
     <string name="settings_sandbox_distro_title">Distribuție</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Recomandat · ~150 MB · partajat cu Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Instalat · partajat cu Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Recomandat · ~150 MB · partajat cu Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Instalat · partajat cu Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Mai mic · ~4 MB · Kai Build își instalează propriul Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Instalat · Kai Build își instalează propriul Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Mai mic · ~4 MB · Kami Build își instalează propriul Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Instalat · Kami Build își instalează propriul Debian</string>
     <string name="settings_sandbox_migrate_title">Aduceți-vă fișierele din %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d fișiere · %2$s din folderul său principal nu sunt încă aici. Copierea păstrează tot ce este deja aici și lasă celălalt sistem neatins, așa că îl puteți dezinstala ulterior.</string>
     <string name="settings_sandbox_migrate_action">Copiază fișierele</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Toate datele din sandbox-ul Linux vor fi pierdute, iar Kai Build își pierde și el Linux-ul — folosește același sistem. Proiectele dvs. sunt păstrate. Sigur doriți să dezinstalați?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Toate datele din sandbox-ul Linux vor fi pierdute, iar Kami Build își pierde și el Linux-ul — folosește același sistem. Proiectele dvs. sunt păstrate. Sigur doriți să dezinstalați?</string>
     <string name="sandbox_status_not_installed">Neinstalat</string>
     <string name="sandbox_status_downloading">Se descarcă rootfs…</string>
     <string name="sandbox_status_extracting">Se extrage…</string>

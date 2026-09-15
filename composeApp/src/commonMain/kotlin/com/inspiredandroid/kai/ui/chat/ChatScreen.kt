@@ -162,11 +162,11 @@ fun ChatScreenContent(
     previewSandboxState: SandboxUiState? = null,
     previewSandboxLines: ImmutableList<TerminalLine> = persistentListOf(),
 ) {
-    // Kai Build is a transient surface, not a conversation — unlike interactive
+    // Kami Build is a transient surface, not a conversation — unlike interactive
     // mode it needs no persistence beyond surviving configuration changes.
     var isKaiBuildOpen by rememberSaveable { mutableStateOf(false) }
 
-    // Shared text opens a new chat; leave Kai Build so the composer is visible.
+    // Shared text opens a new chat; leave Kami Build so the composer is visible.
     LaunchedEffect(uiState.composerPrefill) {
         if (uiState.composerPrefill != null && isKaiBuildOpen) {
             isKaiBuildOpen = false

@@ -191,7 +191,7 @@ private fun visibleTextForUrlScan(snap: TerminalSnapshot): String =
 
 /**
  * Owns the Debian rootfs, agent installs, and the project terminal sessions for
- * Kai Build. Process-scoped: held by the Koin-managed AndroidKaiBuildController.
+ * Kami Build. Process-scoped: held by the Koin-managed AndroidKaiBuildController.
  */
 class BuildEnvironmentManager(
     /**
@@ -207,7 +207,7 @@ class BuildEnvironmentManager(
     /**
      * Fired whenever this install appears or disappears. Set when the rootfs is
      * shared with the chat sandbox, which otherwise has no way to learn that
-     * Kai Build just gave it a Linux (or took one away).
+     * Kami Build just gave it a Linux (or took one away).
      */
     @Volatile
     var onEnvironmentChanged: (() -> Unit)? = null
@@ -603,7 +603,7 @@ class BuildEnvironmentManager(
         )
         val result = executor.execute(agent.installCommand, timeoutSeconds = 900)
         // Vendor scripts may leave the binary only in their private dir and only
-        // update shell rc files — which Kai Build never sources. Link into PATH
+        // update shell rc files — which Kami Build never sources. Link into PATH
         // and re-probe so a successful download still counts as installed.
         val installed = executor.ensureAgentBinary(agent.binary)
         if (!installed) {
@@ -748,7 +748,7 @@ class BuildEnvironmentManager(
         dir.mkdirs()
         File(dir, "kai-build-path.sh").writeText(
             """
-            |# Managed by Kai Build — keep coding-agent CLIs on PATH for login shells.
+            |# Managed by Kami Build — keep coding-agent CLIs on PATH for login shells.
             |export PATH="/root/.local/bin:/root/.grok/bin:/root/.opencode/bin${'$'}{PATH:+:${'$'}PATH}"
             |
             """.trimMargin(),
@@ -781,7 +781,7 @@ class BuildEnvironmentManager(
         script.writeText(
             """
             |#!/bin/sh
-            |# Kai Build: capture browser-open URLs for the in-app link bar.
+            |# Kami Build: capture browser-open URLs for the in-app link bar.
             |url="${'$'}1"
             |target="${'$'}{KAI_OPEN_URL_FILE:-/tmp/kai-open-url}"
             |if [ -n "${'$'}url" ]; then
@@ -879,7 +879,7 @@ class BuildEnvironmentManager(
      * which is what made the setup screen flash on every open.
      */
     private fun sync(error: String? = null) {
-        // Debian only: an Alpine chat sandbox cannot host the agents, and Kai Build
+        // Debian only: an Alpine chat sandbox cannot host the agents, and Kami Build
         // then installs its own Debian somewhere else.
         val ready = paths.readMarker()?.distro == LinuxDistro.DEBIAN && File(paths.prootPath).canExecute()
         _state.update {

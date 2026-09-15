@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">مرحبًا بك في Kai 9000</string>
+    <string name="welcome_message">مرحبًا بك في Kami</string>
     <string name="prompt_ask_question">اطرح سؤالًا</string>
     <string name="error_invalid_api_key">مفتاح API غير صالح. يرجى التحقق من إعداداتك.</string>
     <string name="error_rate_limit_exceeded">تم تجاوز حد المعدل. يرجى المحاولة لاحقًا.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">إعادة التوليد</string>
     <string name="error_empty_response">لم يتم تلقي أي رد. حاول بدء محادثة جديدة أو تقصير رسالتك.</string>
     <string name="settings_daemon_mode">وضع الخلفية</string>
-    <string name="settings_daemon_mode_description">أبقِ Kai 9000 يعمل في الخلفية حتى تُنفَّذ المهام المجدولة حتى عندما لا يكون التطبيق في المقدمة.</string>
+    <string name="settings_daemon_mode_description">أبقِ Kami يعمل في الخلفية حتى تُنفَّذ المهام المجدولة حتى عندما لا يكون التطبيق في المقدمة.</string>
     <string name="settings_scheduled_tasks">المهام المجدولة</string>
     <string name="settings_scheduled_tasks_description">مهام جدولها الذكاء الاصطناعي للتنفيذ المستقبلي. اطلب من الذكاء الاصطناعي تذكيرك أو تشغيل شيء لاحقاً لإنشاء مهام مجدولة.</string>
     <string name="settings_scheduled_tasks_cancel">إلغاء المهمة</string>
@@ -235,7 +235,7 @@
     <string name="interactive_welcome_title">أنا جاهز للعمل بالكامل.</string>
     <string name="interactive_welcome_subtitle">أخبرني بما تريد فعله.</string>
     <string name="interactive_back_content_description">رجوع</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">الخروج من الوضع التفاعلي</string>
     <string name="interactive_ui_parsing_failed">فشل تحليل واجهة المستخدم، جارٍ إعادة المحاولة…</string>
     <string name="settings_sponsors">الرعاة</string>
@@ -361,8 +361,8 @@
     <string name="tool_search_notifications_name">البحث في الإشعارات</string>
     <string name="tool_search_notifications_description">البحث في الإشعارات حسب التطبيق أو النص</string>
     <string name="settings_notifications_label">قراءة الإشعارات</string>
-    <string name="settings_notifications_description">تُجمع الإشعارات الواردة في الخلفية ويلتقطها heartbeat. اختر التطبيقات التي يمكن لـ Kai قراءتها من إعدادات وصول الإشعارات في النظام.</string>
-    <string name="settings_notifications_access_required">لم يتم منح الوصول إلى الإشعارات. اضغط أدناه لتفعيل Kai من إعدادات النظام.</string>
+    <string name="settings_notifications_description">تُجمع الإشعارات الواردة في الخلفية ويلتقطها heartbeat. اختر التطبيقات التي يمكن لـ Kami قراءتها من إعدادات وصول الإشعارات في النظام.</string>
+    <string name="settings_notifications_access_required">لم يتم منح الوصول إلى الإشعارات. اضغط أدناه لتفعيل Kami من إعدادات النظام.</string>
     <string name="settings_notifications_access_button">فتح وصول الإشعارات</string>
     <string name="settings_notifications_manage_apps">إدارة التطبيقات</string>
     <string name="settings_notifications_listener_bound">المستمع نشط</string>
@@ -434,12 +434,12 @@
     <string name="sandbox_files_action_import">استيراد ملف</string>
     <string name="sandbox_files_import_success">تم استيراد الملف</string>
     <string name="sandbox_files_import_failed">فشل الاستيراد</string>
-    <string name="kai_build_open">فتح Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">الخروج من Kai Build</string>
+    <string name="kai_build_open">فتح Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">الخروج من Kami Build</string>
     <string name="kai_build_back_content_description">العودة إلى المشاريع</string>
     <string name="kai_build_setup_title">إعداد Linux (تجريبي)</string>
-    <string name="kai_build_setup_description">Kai Build في مرحلة تجريبية. يعمل Debian Bookworm عبر proot داخل هذا التطبيق، مع curl وgit وwget وpython3 وأساسيات أخرى. التثبيت الأول يحمّل حوالي 100 ميجابايت ويحتاج إلى شبكة.</string>
+    <string name="kai_build_setup_description">Kami Build في مرحلة تجريبية. يعمل Debian Bookworm عبر proot داخل هذا التطبيق، مع curl وgit وwget وpython3 وأساسيات أخرى. التثبيت الأول يحمّل حوالي 100 ميجابايت ويحتاج إلى شبكة.</string>
     <string name="kai_build_setup_agents_title">وكلاء البرمجة</string>
     <string name="kai_build_setup_agents_description">اختر واجهات سطر الأوامر لتثبيتها على النظام الجديد. يمكنك إضافة الباقي لاحقًا.</string>
     <string name="kai_build_setup_install">تثبيت Debian</string>
@@ -484,15 +484,15 @@
     <string name="settings_mcp_api_key_help">اختياري. تحتاج أدوات البحث إلى مفتاح مجاني من jina.ai؛ الأدوات الأخرى تعمل بدونه.</string>
     <string name="settings_sandbox_distro_title">التوزيعة</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">موصى به · ~150 MB · مشترك مع Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">مثبّت · مشترك مع Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">موصى به · ~150 MB · مشترك مع Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">مثبّت · مشترك مع Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">أصغر حجمًا · ~4 MB · يثبّت Kai Build نسخته الخاصة من Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">مثبّت · يثبّت Kai Build نسخته الخاصة من Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">أصغر حجمًا · ~4 MB · يثبّت Kami Build نسخته الخاصة من Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">مثبّت · يثبّت Kami Build نسخته الخاصة من Debian</string>
     <string name="settings_sandbox_migrate_title">انقل ملفاتك من %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d ملف · %2$s في مجلدها الرئيسي ليست هنا بعد. النسخ يحافظ على كل ما هو موجود هنا بالفعل ويترك النظام الآخر دون تغيير، لذا يمكنك إزالة تثبيته لاحقًا.</string>
     <string name="settings_sandbox_migrate_action">نسخ الملفات</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">ستُفقد جميع البيانات في بيئة Linux المحمية، وسيفقد Kai Build نظام Linux الخاص به أيضًا — لأنه يستخدم النظام نفسه. تُحفظ مشاريعك. هل أنت متأكد من رغبتك في إزالة التثبيت؟</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">ستُفقد جميع البيانات في بيئة Linux المحمية، وسيفقد Kami Build نظام Linux الخاص به أيضًا — لأنه يستخدم النظام نفسه. تُحفظ مشاريعك. هل أنت متأكد من رغبتك في إزالة التثبيت؟</string>
     <string name="sandbox_status_not_installed">غير مثبت</string>
     <string name="sandbox_status_downloading">جارٍ تنزيل rootfs…</string>
     <string name="sandbox_status_extracting">جارٍ الاستخراج…</string>

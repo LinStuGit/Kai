@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Vitajte v Kai 9000</string>
+    <string name="welcome_message">Vitajte v Kami</string>
     <string name="prompt_ask_question">Položte otázku</string>
     <string name="error_invalid_api_key">Neplatný API kľúč. Skontrolujte si nastavenia.</string>
     <string name="error_rate_limit_exceeded">Limit požiadaviek bol prekročený. Skúste to neskôr.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Vygenerovať znova</string>
     <string name="error_empty_response">Nebola prijatá žiadna odpoveď. Skúste začať nový chat alebo skrátiť správu.</string>
     <string name="settings_daemon_mode">Režim démona</string>
-    <string name="settings_daemon_mode_description">Ponechať Kai 9000 bežať na pozadí, aby sa naplánované úlohy vykonávali aj keď aplikácia nie je v popredí.</string>
+    <string name="settings_daemon_mode_description">Ponechať Kami bežať na pozadí, aby sa naplánované úlohy vykonávali aj keď aplikácia nie je v popredí.</string>
     <string name="settings_scheduled_tasks">Naplánované úlohy</string>
     <string name="settings_scheduled_tasks_description">Úlohy naplánované AI na budúce vykonanie. Požiadajte AI, aby vám pripomenulo alebo niečo spustilo neskôr na vytvorenie naplánovaných úloh.</string>
     <string name="settings_scheduled_tasks_cancel">Zrušiť úlohu</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Som plne funkčný.</string>
     <string name="interactive_welcome_subtitle">Povedzte mi, čo chcete urobiť.</string>
     <string name="interactive_back_content_description">Späť</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Ukončiť interaktívny režim</string>
     <string name="interactive_ui_parsing_failed">Analýza používateľského rozhrania zlyhala, skúšam znova…</string>
     <string name="settings_sponsors">Sponzori</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Hľadať v upozorneniach</string>
     <string name="tool_search_notifications_description">Hľadať upozornenia podľa aplikácie alebo textu</string>
     <string name="settings_notifications_label">Čítať upozornenia</string>
-    <string name="settings_notifications_description">Prichádzajúce upozornenia sa zhromažďujú na pozadí a zachytáva ich heartbeat. V systémových nastaveniach prístupu k upozorneniam vyber, ktoré aplikácie môže Kai čítať.</string>
-    <string name="settings_notifications_access_required">Prístup k upozorneniam nebol udelený. Klepnutím nižšie povoľ Kai v nastaveniach systému.</string>
+    <string name="settings_notifications_description">Prichádzajúce upozornenia sa zhromažďujú na pozadí a zachytáva ich heartbeat. V systémových nastaveniach prístupu k upozorneniam vyber, ktoré aplikácie môže Kami čítať.</string>
+    <string name="settings_notifications_access_required">Prístup k upozorneniam nebol udelený. Klepnutím nižšie povoľ Kami v nastaveniach systému.</string>
     <string name="settings_notifications_access_button">Otvoriť prístup k upozorneniam</string>
     <string name="settings_notifications_manage_apps">Spravovať aplikácie</string>
     <string name="settings_notifications_listener_bound">Poslucháč aktívny</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Importovať súbor</string>
     <string name="sandbox_files_import_success">Súbor importovaný</string>
     <string name="sandbox_files_import_failed">Import zlyhal</string>
-    <string name="kai_build_open">Otvoriť Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Ukončiť Kai Build</string>
+    <string name="kai_build_open">Otvoriť Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Ukončiť Kami Build</string>
     <string name="kai_build_back_content_description">Späť na projekty</string>
     <string name="kai_build_setup_title">Nastaviť Linux (beta)</string>
-    <string name="kai_build_setup_description">Kai Build je v bete. Debian Bookworm beží pod proot v tejto aplikácii, vrátane curl, git, wget, python3 a ďalších základov. Prvá inštalácia stiahne asi 100 MB a vyžaduje sieť.</string>
+    <string name="kai_build_setup_description">Kami Build je v bete. Debian Bookworm beží pod proot v tejto aplikácii, vrátane curl, git, wget, python3 a ďalších základov. Prvá inštalácia stiahne asi 100 MB a vyžaduje sieť.</string>
     <string name="kai_build_setup_agents_title">Kódovacie agenty</string>
     <string name="kai_build_setup_agents_description">Vyberte CLI na inštaláciu na čistý systém. Ostatné môžete pridať neskôr.</string>
     <string name="kai_build_setup_install">Nainštalovať Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Voliteľné. Vyhľadávacie nástroje potrebujú bezplatný kľúč z jina.ai, ostatné nástroje fungujú aj bez neho.</string>
     <string name="settings_sandbox_distro_title">Distribúcia</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Odporúčané · ~150 MB · zdieľané s Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Nainštalované · zdieľané s Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Odporúčané · ~150 MB · zdieľané s Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Nainštalované · zdieľané s Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Menšie · ~4 MB · Kai Build si nainštaluje vlastný Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Nainštalované · Kai Build si nainštaluje vlastný Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Menšie · ~4 MB · Kami Build si nainštaluje vlastný Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Nainštalované · Kami Build si nainštaluje vlastný Debian</string>
     <string name="settings_sandbox_migrate_title">Preniesť svoje súbory z %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d súborov · %2$s v jeho domovskom priečinku tu ešte nie je. Kopírovanie zachová všetko, čo je už tu, a druhý systém nijako nezmení, takže ho neskôr môžete odinštalovať.</string>
     <string name="settings_sandbox_migrate_action">Kopírovať súbory</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Všetky údaje v sandboxe Linuxu budú stratené a Kai Build príde o svoj Linux — používa ten istý. Vaše projekty zostanú zachované. Naozaj chcete odinštalovať?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Všetky údaje v sandboxe Linuxu budú stratené a Kami Build príde o svoj Linux — používa ten istý. Vaše projekty zostanú zachované. Naozaj chcete odinštalovať?</string>
     <string name="sandbox_status_not_installed">Nenainštalované</string>
     <string name="sandbox_status_downloading">Sťahovanie rootfs…</string>
     <string name="sandbox_status_extracting">Rozbaľovanie…</string>

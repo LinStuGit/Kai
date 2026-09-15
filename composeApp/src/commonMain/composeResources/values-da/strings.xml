@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Velkommen til Kai 9000</string>
+    <string name="welcome_message">Velkommen til Kami</string>
     <string name="prompt_ask_question">Stil et spørgsmål</string>
     <string name="error_invalid_api_key">Ugyldig API-nøgle. Tjek venligst dine indstillinger.</string>
     <string name="error_rate_limit_exceeded">Hastighedsgrænse overskredet. Prøv venligst igen senere.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Generer igen</string>
     <string name="error_empty_response">Intet svar modtaget. Prøv at starte en ny chat eller forkorte din besked.</string>
     <string name="settings_daemon_mode">Dæmon-tilstand</string>
-    <string name="settings_daemon_mode_description">Hold Kai 9000 kørende i baggrunden, så planlagte opgaver udføres, selv når appen ikke er i forgrunden.</string>
+    <string name="settings_daemon_mode_description">Hold Kami kørende i baggrunden, så planlagte opgaver udføres, selv når appen ikke er i forgrunden.</string>
     <string name="settings_scheduled_tasks">Planlagte opgaver</string>
     <string name="settings_scheduled_tasks_description">Opgaver planlagt af AI til fremtidig udførelse. Bed AI om at minde dig eller køre noget senere for at oprette planlagte opgaver.</string>
     <string name="settings_scheduled_tasks_cancel">Annuller opgave</string>
@@ -235,7 +235,7 @@ Hvis noget kræver opmærksomhed (forældede erindringer, forfaldne opgaver, bru
     <string name="interactive_welcome_title">Jeg er fuldt operationel.</string>
     <string name="interactive_welcome_subtitle">Fortæl mig, hvad du gerne vil gøre.</string>
     <string name="interactive_back_content_description">Tilbage</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Forlad interaktiv tilstand</string>
     <string name="interactive_ui_parsing_failed">UI-analyse mislykkedes, prøver igen…</string>
     <string name="settings_sponsors">Sponsorer</string>
@@ -361,8 +361,8 @@ Hvis noget kræver opmærksomhed (forældede erindringer, forfaldne opgaver, bru
     <string name="tool_search_notifications_name">Søg i notifikationer</string>
     <string name="tool_search_notifications_description">Søg i notifikationer efter app eller tekst</string>
     <string name="settings_notifications_label">Læs notifikationer</string>
-    <string name="settings_notifications_description">Indgående notifikationer indsamles i baggrunden og opsamles af hjerteslaget. Vælg hvilke apps Kai må læse i systemets notifikationsadgangsindstillinger.</string>
-    <string name="settings_notifications_access_required">Notifikationsadgang er ikke givet. Tryk nedenfor for at aktivere Kai i systemets indstillinger.</string>
+    <string name="settings_notifications_description">Indgående notifikationer indsamles i baggrunden og opsamles af hjerteslaget. Vælg hvilke apps Kami må læse i systemets notifikationsadgangsindstillinger.</string>
+    <string name="settings_notifications_access_required">Notifikationsadgang er ikke givet. Tryk nedenfor for at aktivere Kami i systemets indstillinger.</string>
     <string name="settings_notifications_access_button">Åbn notifikationsadgang</string>
     <string name="settings_notifications_manage_apps">Administrer apps</string>
     <string name="settings_notifications_listener_bound">Lytter aktiv</string>
@@ -434,12 +434,12 @@ Hvis noget kræver opmærksomhed (forældede erindringer, forfaldne opgaver, bru
     <string name="sandbox_files_action_import">Importér fil</string>
     <string name="sandbox_files_import_success">Fil importeret</string>
     <string name="sandbox_files_import_failed">Import mislykkedes</string>
-    <string name="kai_build_open">Åbn Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Afslut Kai Build</string>
+    <string name="kai_build_open">Åbn Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Afslut Kami Build</string>
     <string name="kai_build_back_content_description">Tilbage til projekter</string>
     <string name="kai_build_setup_title">Konfigurer Linux (beta)</string>
-    <string name="kai_build_setup_description">Kai Build er i beta. Debian Bookworm kører under proot i denne app med curl, git, wget, python3 og andre basale værktøjer. Første installation downloader ca. 100 MB og kræver netværk.</string>
+    <string name="kai_build_setup_description">Kami Build er i beta. Debian Bookworm kører under proot i denne app med curl, git, wget, python3 og andre basale værktøjer. Første installation downloader ca. 100 MB og kræver netværk.</string>
     <string name="kai_build_setup_agents_title">Kodeagenter</string>
     <string name="kai_build_setup_agents_description">Vælg de CLI\'er, der skal installeres på det friske system. Du kan tilføje de andre senere.</string>
     <string name="kai_build_setup_install">Installér Debian</string>
@@ -484,15 +484,15 @@ Hvis noget kræver opmærksomhed (forældede erindringer, forfaldne opgaver, bru
     <string name="settings_mcp_api_key_help">Valgfrit. Søgeværktøjer kræver en gratis nøgle fra jina.ai; andre værktøjer fungerer uden.</string>
     <string name="settings_sandbox_distro_title">Distribution</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Anbefalet · ~150 MB · delt med Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Installeret · delt med Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Anbefalet · ~150 MB · delt med Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Installeret · delt med Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Mindre · ~4 MB · Kai Build installerer sin egen Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Installeret · Kai Build installerer sin egen Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Mindre · ~4 MB · Kami Build installerer sin egen Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Installeret · Kami Build installerer sin egen Debian</string>
     <string name="settings_sandbox_migrate_title">Overfør dine filer fra %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d filer · %2$s i dens hjemmemappe er endnu ikke her. Kopiering bevarer alt, hvad der allerede er her, og lader det andet system være urørt, så du kan afinstallere det bagefter.</string>
     <string name="settings_sandbox_migrate_action">Kopiér filer</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Alle data i Linux-sandkassen vil gå tabt, og Kai Build mister også sit Linux — de bruger den samme. Dine projekter bevares. Er du sikker på, at du vil afinstallere?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Alle data i Linux-sandkassen vil gå tabt, og Kami Build mister også sit Linux — de bruger den samme. Dine projekter bevares. Er du sikker på, at du vil afinstallere?</string>
     <string name="sandbox_status_not_installed">Ikke installeret</string>
     <string name="sandbox_status_downloading">Downloader rootfs…</string>
     <string name="sandbox_status_extracting">Udpakker…</string>

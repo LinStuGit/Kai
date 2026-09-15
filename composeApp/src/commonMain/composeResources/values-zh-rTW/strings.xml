@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">歡迎使用 Kai 9000</string>
+    <string name="welcome_message">歡迎使用 Kami</string>
     <string name="prompt_ask_question">提問</string>
     <string name="error_invalid_api_key">API 金鑰無效。請檢查您的設定。</string>
     <string name="error_rate_limit_exceeded">超出速率限制。請稍後重試。</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">重新產生</string>
     <string name="error_empty_response">未收到回覆。請嘗試開始新對話或縮短您的訊息。</string>
     <string name="settings_daemon_mode">背景模式</string>
-    <string name="settings_daemon_mode_description">讓 Kai 9000 在背景持續執行，以便即使應用程式不在前景時排程任務也能執行。</string>
+    <string name="settings_daemon_mode_description">讓 Kami 在背景持續執行，以便即使應用程式不在前景時排程任務也能執行。</string>
     <string name="settings_scheduled_tasks">排程任務</string>
     <string name="settings_scheduled_tasks_description">AI 排程的未來執行任務。請 AI 提醒您或稍後執行某些操作來建立排程任務。</string>
     <string name="settings_scheduled_tasks_cancel">取消任務</string>
@@ -235,7 +235,7 @@
     <string name="interactive_welcome_title">我已完全就緒。</string>
     <string name="interactive_welcome_subtitle">告訴我你想做什麼。</string>
     <string name="interactive_back_content_description">返回</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">退出互動模式</string>
     <string name="interactive_ui_parsing_failed">UI 解析失敗，正在重試…</string>
     <string name="settings_sponsors">贊助者</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">搜尋通知</string>
     <string name="tool_search_notifications_description">依應用程式或文字搜尋通知</string>
     <string name="settings_notifications_label">閱讀通知</string>
-    <string name="settings_notifications_description">傳入的通知會在背景收集並由心跳處理。請在系統的通知存取權限設定中選擇 Kai 可以讀取哪些應用程式的通知。</string>
-    <string name="settings_notifications_access_required">尚未授予通知存取權限。點選下方在系統設定中啟用 Kai。</string>
+    <string name="settings_notifications_description">傳入的通知會在背景收集並由心跳處理。請在系統的通知存取權限設定中選擇 Kami 可以讀取哪些應用程式的通知。</string>
+    <string name="settings_notifications_access_required">尚未授予通知存取權限。點選下方在系統設定中啟用 Kami。</string>
     <string name="settings_notifications_access_button">開啟通知存取權限</string>
     <string name="settings_notifications_manage_apps">管理應用程式</string>
     <string name="settings_notifications_listener_bound">監聽器已啟用</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">匯入檔案</string>
     <string name="sandbox_files_import_success">檔案已匯入</string>
     <string name="sandbox_files_import_failed">匯入失敗</string>
-    <string name="kai_build_open">開啟 Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">結束 Kai Build</string>
+    <string name="kai_build_open">開啟 Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">結束 Kami Build</string>
     <string name="kai_build_back_content_description">返回專案</string>
     <string name="kai_build_setup_title">設定 Linux（測試版）</string>
-    <string name="kai_build_setup_description">Kai Build 目前為測試版。Debian Bookworm 透過 proot 在本應用程式中執行，並包含 curl、git、wget、python3 等基本工具。首次安裝約下載 100 MB，需要網路連線。</string>
+    <string name="kai_build_setup_description">Kami Build 目前為測試版。Debian Bookworm 透過 proot 在本應用程式中執行，並包含 curl、git、wget、python3 等基本工具。首次安裝約下載 100 MB，需要網路連線。</string>
     <string name="kai_build_setup_agents_title">程式代理</string>
     <string name="kai_build_setup_agents_description">選擇要在全新系統上安裝的 CLI。其餘可稍後再新增。</string>
     <string name="kai_build_setup_install">安裝 Debian</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">可選。搜尋工具需要從 jina.ai 取得免費金鑰；其他工具無需金鑰即可使用。</string>
     <string name="settings_sandbox_distro_title">發行版</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">推薦 · ~150 MB · 與 Kai Build 共用</string>
-    <string name="settings_sandbox_distro_debian_installed">已安裝 · 與 Kai Build 共用</string>
+    <string name="settings_sandbox_distro_debian_detail">推薦 · ~150 MB · 與 Kami Build 共用</string>
+    <string name="settings_sandbox_distro_debian_installed">已安裝 · 與 Kami Build 共用</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">較小 · ~4 MB · Kai Build 會安裝自己的 Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">已安裝 · Kai Build 會安裝自己的 Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">較小 · ~4 MB · Kami Build 會安裝自己的 Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">已安裝 · Kami Build 會安裝自己的 Debian</string>
     <string name="settings_sandbox_migrate_title">從 %1$s 遷移您的檔案</string>
     <string name="settings_sandbox_migrate_detail">主目錄中還有 %1$d 個檔案 · %2$s 尚未移動到這裡。複製不會刪除任何內容，另一個系統也不受影響，之後您可以將其解除安裝。</string>
     <string name="settings_sandbox_migrate_action">複製檔案</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Linux 沙盒中的所有資料都會遺失，Kai Build 也會失去它的 Linux——因為兩者共用同一個。您的專案會保留。確定要解除安裝嗎？</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Linux 沙盒中的所有資料都會遺失，Kami Build 也會失去它的 Linux——因為兩者共用同一個。您的專案會保留。確定要解除安裝嗎？</string>
     <string name="sandbox_status_not_installed">未安裝</string>
     <string name="sandbox_status_downloading">正在下載 rootfs…</string>
     <string name="sandbox_status_extracting">正在解壓縮…</string>

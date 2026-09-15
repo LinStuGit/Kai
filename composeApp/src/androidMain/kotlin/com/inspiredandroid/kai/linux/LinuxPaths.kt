@@ -6,10 +6,10 @@ import java.io.File
 /** Directory under `filesDir` holding the chat sandbox's Linux. */
 const val SANDBOX_DIR_NAME = "linux-sandbox"
 
-/** Directory under `filesDir` holding Kai Build's own Linux, when it needs one. */
+/** Directory under `filesDir` holding Kami Build's own Linux, when it needs one. */
 const val BUILD_DIR_NAME = "kai-build"
 
-/** Pre-marker Kai Build installs recorded completion in this file. */
+/** Pre-marker Kami Build installs recorded completion in this file. */
 const val LEGACY_READY_FILE = "ready"
 
 /**
@@ -40,9 +40,9 @@ data class InstallMarker(
 )
 
 /**
- * Storage layout for one Linux install. The chat sandbox and Kai Build each
+ * Storage layout for one Linux install. The chat sandbox and Kami Build each
  * point one of these at their own directory — or at the *same* directory, which
- * is how a Debian chat sandbox and Kai Build end up sharing a single rootfs.
+ * is how a Debian chat sandbox and Kami Build end up sharing a single rootfs.
  *
  * Directory names are deliberately unchanged from before the two stacks merged,
  * so existing installs are found rather than orphaned and `file_paths.xml` keeps
@@ -184,7 +184,7 @@ class LinuxPaths(
             legacyEvidence = ALPINE_RELEASE_FILE,
         )
 
-        /** Kai Build's own install, used only when the chat sandbox is not Debian. */
+        /** Kami Build's own install, used only when the chat sandbox is not Debian. */
         fun forBuild(context: Context) = LinuxPaths(
             context = context,
             dirName = BUILD_DIR_NAME,

@@ -5,7 +5,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 /**
- * The coding agents Kai Build can install on a fresh Debian. Each one ships a
+ * The coding agents Kami Build can install on a fresh Debian. Each one ships a
  * self-contained installer, so the base system plus curl is all they need.
  *
  * Install locations (guest paths under `/root`):
@@ -14,7 +14,7 @@ import kotlinx.collections.immutable.persistentListOf
  * - OpenCode → `~/.opencode/bin/opencode`
  *
  * Proot injects all three bin dirs into PATH for probes/installers. Login
- * shells rebuild PATH from profile files, so Kai Build also writes a
+ * shells rebuild PATH from profile files, so Kami Build also writes a
  * profile.d snippet and launches agents by absolute path.
  */
 @Immutable

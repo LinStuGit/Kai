@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Kai 9000 में आपका स्वागत है</string>
+    <string name="welcome_message">Kami में आपका स्वागत है</string>
     <string name="prompt_ask_question">एक सवाल पूछें</string>
     <string name="error_invalid_api_key">अमान्य API कुंजी। कृपया अपनी सेटिंग्स जाँचें।</string>
     <string name="error_rate_limit_exceeded">दर सीमा पार हो गई। कृपया बाद में फिर से प्रयास करें।</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">पुनः उत्पन्न करें</string>
     <string name="error_empty_response">कोई प्रतिक्रिया नहीं मिली। नई चैट शुरू करने या अपना संदेश छोटा करने का प्रयास करें।</string>
     <string name="settings_daemon_mode">डेमन मोड</string>
-    <string name="settings_daemon_mode_description">Kai 9000 को बैकग्राउंड में चालू रखें ताकि शेड्यूल किए गए कार्य ऐप फोरग्राउंड में न होने पर भी चलें।</string>
+    <string name="settings_daemon_mode_description">Kami को बैकग्राउंड में चालू रखें ताकि शेड्यूल किए गए कार्य ऐप फोरग्राउंड में न होने पर भी चलें।</string>
     <string name="settings_scheduled_tasks">शेड्यूल किए गए कार्य</string>
     <string name="settings_scheduled_tasks_description">AI द्वारा भविष्य में निष्पादन के लिए शेड्यूल किए गए कार्य। शेड्यूल किए गए कार्य बनाने के लिए AI से आपको याद दिलाने या बाद में कुछ चलाने को कहें।</string>
     <string name="settings_scheduled_tasks_cancel">कार्य रद्द करें</string>
@@ -235,7 +235,7 @@
     <string name="interactive_welcome_title">मैं पूरी तरह से काम कर रहा हूँ।</string>
     <string name="interactive_welcome_subtitle">मुझे बताइए आप क्या करना चाहेंगे।</string>
     <string name="interactive_back_content_description">वापस</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">इंटरैक्टिव मोड से बाहर निकलें</string>
     <string name="interactive_ui_parsing_failed">UI पार्सिंग विफल, पुनः प्रयास हो रहा है…</string>
     <string name="settings_sponsors">प्रायोजक</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">सूचनाएँ खोजें</string>
     <string name="tool_search_notifications_description">ऐप या पाठ के अनुसार सूचनाएँ खोजें</string>
     <string name="settings_notifications_label">सूचनाएँ पढ़ें</string>
-    <string name="settings_notifications_description">आने वाली सूचनाएँ बैकग्राउंड में एकत्र की जाती हैं और heartbeat द्वारा ली जाती हैं। सिस्टम सूचना एक्सेस सेटिंग्स में चुनें कि Kai कौन-से ऐप पढ़ सकता है।</string>
-    <string name="settings_notifications_access_required">सूचना एक्सेस नहीं दी गई है। सिस्टम सेटिंग्स में Kai सक्रिय करने के लिए नीचे टैप करें।</string>
+    <string name="settings_notifications_description">आने वाली सूचनाएँ बैकग्राउंड में एकत्र की जाती हैं और heartbeat द्वारा ली जाती हैं। सिस्टम सूचना एक्सेस सेटिंग्स में चुनें कि Kami कौन-से ऐप पढ़ सकता है।</string>
+    <string name="settings_notifications_access_required">सूचना एक्सेस नहीं दी गई है। सिस्टम सेटिंग्स में Kami सक्रिय करने के लिए नीचे टैप करें।</string>
     <string name="settings_notifications_access_button">सूचना एक्सेस खोलें</string>
     <string name="settings_notifications_manage_apps">ऐप प्रबंधित करें</string>
     <string name="settings_notifications_listener_bound">लिसनर सक्रिय</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">फ़ाइल आयात करें</string>
     <string name="sandbox_files_import_success">फ़ाइल आयात हुई</string>
     <string name="sandbox_files_import_failed">आयात विफल</string>
-    <string name="kai_build_open">Kai Build खोलें</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Kai Build से बाहर निकलें</string>
+    <string name="kai_build_open">Kami Build खोलें</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Kami Build से बाहर निकलें</string>
     <string name="kai_build_back_content_description">प्रोजेक्ट्स पर वापस</string>
     <string name="kai_build_setup_title">Linux सेट अप करें (बीटा)</string>
-    <string name="kai_build_setup_description">Kai Build बीटा में है। Debian Bookworm इस ऐप में proot के तहत चलता है, जिसमें curl, git, wget, python3 और अन्य आवश्यक चीज़ें शामिल हैं। पहली स्थापना लगभग 100 MB डाउनलोड करती है और नेटवर्क की ज़रूरत होती है।</string>
+    <string name="kai_build_setup_description">Kami Build बीटा में है। Debian Bookworm इस ऐप में proot के तहत चलता है, जिसमें curl, git, wget, python3 और अन्य आवश्यक चीज़ें शामिल हैं। पहली स्थापना लगभग 100 MB डाउनलोड करती है और नेटवर्क की ज़रूरत होती है।</string>
     <string name="kai_build_setup_agents_title">कोडिंग एजेंट</string>
     <string name="kai_build_setup_agents_description">नए सिस्टम पर इंस्टॉल करने के लिए CLI चुनें। बाकी बाद में जोड़ सकते हैं।</string>
     <string name="kai_build_setup_install">Debian इंस्टॉल करें</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">वैकल्पिक। खोज टूल के लिए jina.ai से मुफ़्त कुंजी चाहिए; अन्य टूल बिना कुंजी के काम करते हैं।</string>
     <string name="settings_sandbox_distro_title">वितरण</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">अनुशंसित · ~150 MB · Kai Build के साथ साझा</string>
-    <string name="settings_sandbox_distro_debian_installed">इंस्टॉल · Kai Build के साथ साझा</string>
+    <string name="settings_sandbox_distro_debian_detail">अनुशंसित · ~150 MB · Kami Build के साथ साझा</string>
+    <string name="settings_sandbox_distro_debian_installed">इंस्टॉल · Kami Build के साथ साझा</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">छोटा · ~4 MB · Kai Build अपना खुद का Debian इंस्टॉल करता है</string>
-    <string name="settings_sandbox_distro_alpine_installed">इंस्टॉल · Kai Build अपना खुद का Debian इंस्टॉल करता है</string>
+    <string name="settings_sandbox_distro_alpine_detail">छोटा · ~4 MB · Kami Build अपना खुद का Debian इंस्टॉल करता है</string>
+    <string name="settings_sandbox_distro_alpine_installed">इंस्टॉल · Kami Build अपना खुद का Debian इंस्टॉल करता है</string>
     <string name="settings_sandbox_migrate_title">%1$s से अपनी फ़ाइलें लाएं</string>
     <string name="settings_sandbox_migrate_detail">%1$d फ़ाइलें · %2$s उसके होम फ़ोल्डर में अभी यहां नहीं हैं। कॉपी करने से यहां पहले से मौजूद सब कुछ सुरक्षित रहता है और दूसरा सिस्टम अनछुआ रहता है, इसलिए आप बाद में उसे अनइंस्टॉल कर सकते हैं।</string>
     <string name="settings_sandbox_migrate_action">फ़ाइलें कॉपी करें</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Linux सैंडबॉक्स का सारा डेटा खो जाएगा, और Kai Build का Linux भी चला जाएगा — यह वही इस्तेमाल करता है। आपके प्रोजेक्ट सुरक्षित रहेंगे। क्या आप वाकई अनइंस्टॉल करना चाहते हैं?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Linux सैंडबॉक्स का सारा डेटा खो जाएगा, और Kami Build का Linux भी चला जाएगा — यह वही इस्तेमाल करता है। आपके प्रोजेक्ट सुरक्षित रहेंगे। क्या आप वाकई अनइंस्टॉल करना चाहते हैं?</string>
     <string name="sandbox_status_not_installed">इंस्टॉल नहीं है</string>
     <string name="sandbox_status_downloading">rootfs डाउनलोड हो रहा है…</string>
     <string name="sandbox_status_extracting">निकाला जा रहा है…</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">እንኳን ወደ Kai 9000 በደህና መጡ</string>
+    <string name="welcome_message">እንኳን ወደ Kami በደህና መጡ</string>
     <string name="prompt_ask_question">ጥያቄ ይጠይቁ</string>
     <string name="error_invalid_api_key">ልክ ያልሆነ API ቁልፍ። እባክዎ ቅንብሮችዎን ያረጋግጡ።</string>
     <string name="error_rate_limit_exceeded">የተጠቀሙበት ገደብ አልፏል። እባክዎ ቆይተው ይሞክሩ።</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">እንደገና አፍርት</string>
     <string name="error_empty_response">ምላሽ አልተቀበለም። አዲስ ውይይት ለመጀመር ወይም መልዕክትዎን ለማሳጠር ይሞክሩ።</string>
     <string name="settings_daemon_mode">የዳይሞን ሁነታ</string>
-    <string name="settings_daemon_mode_description">Kai 9000 ከበስተጀርባ እንዲሰራ ያቆዩ ስለዚህ የተያዙ ተግባራት ምንም እንኳን መተግበሪያው በፊት ላይ ባይሆንም ይፈጸማሉ።</string>
+    <string name="settings_daemon_mode_description">Kami ከበስተጀርባ እንዲሰራ ያቆዩ ስለዚህ የተያዙ ተግባራት ምንም እንኳን መተግበሪያው በፊት ላይ ባይሆንም ይፈጸማሉ።</string>
     <string name="settings_scheduled_tasks">የተያዙ ተግባራት</string>
     <string name="settings_scheduled_tasks_description">ለወደፊት ማስፈጸሚያ በ AI የተያዙ ተግባራት። የተያዙ ተግባራትን ለመፍጠር AI ን ያስታውሱኝ ወይም ነገር በኋላ ያሂዱ ይበሉት።</string>
     <string name="settings_scheduled_tasks_cancel">ተግባር ሰርዝ</string>
@@ -235,7 +235,7 @@
     <string name="interactive_welcome_title">ሙሉ በሙሉ ስራዬን እየሰራሁ ነው።</string>
     <string name="interactive_welcome_subtitle">ምን ማድረግ እንደሚፈልጉ ይንገሩኝ።</string>
     <string name="interactive_back_content_description">ተመለስ</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">መስተጋብር ሁነታን ውጣ</string>
     <string name="interactive_ui_parsing_failed">UI ትንተና አልተሳካም፣ እንደገና በመሞከር ላይ…</string>
     <string name="settings_sponsors">ስፖንሰሮች</string>
@@ -361,8 +361,8 @@
     <string name="tool_search_notifications_name">ማሳወቂያዎችን ፈልግ</string>
     <string name="tool_search_notifications_description">ማሳወቂያዎችን በመተግበሪያ ወይም በጽሑፍ ፈልግ</string>
     <string name="settings_notifications_label">ማሳወቂያዎችን አንብብ</string>
-    <string name="settings_notifications_description">የሚገቡ ማሳወቂያዎች በከባቢ ይነሱና በheartbeat ይጨበጣሉ። Kai ሊያነበው የሚችለውን መተግበሪያ በስርዓት ቅንብሮች ይምረጡ።</string>
-    <string name="settings_notifications_access_required">የማሳወቂያ ድርሻ አልተሰጠም። Kaiን በስርዓት ቅንብሮች ለማንቃት ከታች ይንኩ።</string>
+    <string name="settings_notifications_description">የሚገቡ ማሳወቂያዎች በከባቢ ይነሱና በheartbeat ይጨበጣሉ። Kami ሊያነበው የሚችለውን መተግበሪያ በስርዓት ቅንብሮች ይምረጡ።</string>
+    <string name="settings_notifications_access_required">የማሳወቂያ ድርሻ አልተሰጠም። Kamiን በስርዓት ቅንብሮች ለማንቃት ከታች ይንኩ።</string>
     <string name="settings_notifications_access_button">የማሳወቂያ ድርሻ ክፈት</string>
     <string name="settings_notifications_manage_apps">መተግበሪያዎችን ያስተዳድሩ</string>
     <string name="settings_notifications_listener_bound">አድማጭ ንቁ ነው</string>
@@ -434,12 +434,12 @@
     <string name="sandbox_files_action_import">ፋይል አስመጣ</string>
     <string name="sandbox_files_import_success">ፋይል ገብቷል</string>
     <string name="sandbox_files_import_failed">ማስመጣት አልተሳካም</string>
-    <string name="kai_build_open">Kai Build ክፈት</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">ከKai Build ውጣ</string>
+    <string name="kai_build_open">Kami Build ክፈት</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">ከKami Build ውጣ</string>
     <string name="kai_build_back_content_description">ወደ ፕሮጀክቶች ተመለስ</string>
     <string name="kai_build_setup_title">Linux አዘጋጅ (ቤታ)</string>
-    <string name="kai_build_setup_description">Kai Build በቤታ ላይ ነው። Debian Bookworm በዚህ መተግበሪያ ውስጥ በproot ስር ይሄዳል፣ curl፣ git፣ wget፣ python3 እና ሌሎች መሰረታዊ መሳሪያዎች ጋር። የመጀመሪያው ጭነት ወደ 100 ሜባ ያውርዳል እና ኔትወርክ ያስፈልገዋል።</string>
+    <string name="kai_build_setup_description">Kami Build በቤታ ላይ ነው። Debian Bookworm በዚህ መተግበሪያ ውስጥ በproot ስር ይሄዳል፣ curl፣ git፣ wget፣ python3 እና ሌሎች መሰረታዊ መሳሪያዎች ጋር። የመጀመሪያው ጭነት ወደ 100 ሜባ ያውርዳል እና ኔትወርክ ያስፈልገዋል።</string>
     <string name="kai_build_setup_agents_title">የኮድ ወኪሎች</string>
     <string name="kai_build_setup_agents_description">በአዲሱ ስርዓት ላይ የሚጫኑ CLIዎችን ይምረጡ። ሌሎቹን በኋላ ማከል ይችላሉ።</string>
     <string name="kai_build_setup_install">Debian ጫን</string>
@@ -484,15 +484,15 @@
     <string name="settings_mcp_api_key_help">አማራጭ። የፍለጋ መሳሪያዎች ከjina.ai ነጻ ቁልፍ ያስፈልጋቸዋል፤ ሌሎች መሳሪያዎች ያለሱ ይሰራሉ።</string>
     <string name="settings_sandbox_distro_title">አይነት</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">የተመከረ · ~150 MB · ከKai Build ጋር የተጋራ</string>
-    <string name="settings_sandbox_distro_debian_installed">ተጭኗል · ከKai Build ጋር የተጋራ</string>
+    <string name="settings_sandbox_distro_debian_detail">የተመከረ · ~150 MB · ከKami Build ጋር የተጋራ</string>
+    <string name="settings_sandbox_distro_debian_installed">ተጭኗል · ከKami Build ጋር የተጋራ</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">ትንሽ · ~4 MB · Kai Build የራሱን Debian ይጭናል</string>
-    <string name="settings_sandbox_distro_alpine_installed">ተጭኗል · Kai Build የራሱን Debian ይጭናል</string>
+    <string name="settings_sandbox_distro_alpine_detail">ትንሽ · ~4 MB · Kami Build የራሱን Debian ይጭናል</string>
+    <string name="settings_sandbox_distro_alpine_installed">ተጭኗል · Kami Build የራሱን Debian ይጭናል</string>
     <string name="settings_sandbox_migrate_title">ፋይሎችዎን ከ%1$s ያምጡ</string>
     <string name="settings_sandbox_migrate_detail">%1$d ፋይሎች · %2$s በቤት አቃፊው ውስጥ እስካሁን እዚህ የሉም። መገልበጥ አሁን ያለውን ሁሉ ይይዛል እና ሌላውን ስርዓት ሳይነካ ይተዋል፣ ስለዚህ በኋላ ማራገፍ ይችላሉ።</string>
     <string name="settings_sandbox_migrate_action">ፋይሎችን ቅዳ</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">በLinux sandbox ውስጥ ያለው ሁሉም ውሂብ ይጠፋል፣ እና Kai Build እንዲሁ የራሱን Linux ያጣል — ተመሳሳዩን ይጠቀማል። ፕሮጀክቶችዎ ይቆያሉ። እርግጠኛ ነዎት ማራገፍ ይፈልጋሉ?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">በLinux sandbox ውስጥ ያለው ሁሉም ውሂብ ይጠፋል፣ እና Kami Build እንዲሁ የራሱን Linux ያጣል — ተመሳሳዩን ይጠቀማል። ፕሮጀክቶችዎ ይቆያሉ። እርግጠኛ ነዎት ማራገፍ ይፈልጋሉ?</string>
     <string name="sandbox_status_not_installed">አልተጫነም</string>
     <string name="sandbox_status_downloading">rootfs በማውረድ ላይ…</string>
     <string name="sandbox_status_extracting">በማውጣት ላይ…</string>

@@ -133,9 +133,9 @@ interface DataRepository {
     fun getSandboxDistro(): LinuxDistro
     fun setSandboxDistro(distro: LinuxDistro)
 
-    // Kai Build
+    // Kami Build
 
-    /** Agent a freshly opened Kai Build project starts with; null is a plain shell. */
+    /** Agent a freshly opened Kami Build project starts with; null is a plain shell. */
     fun getKaiBuildLaunchAgent(): String?
     fun setKaiBuildLaunchAgent(agentId: String?)
 

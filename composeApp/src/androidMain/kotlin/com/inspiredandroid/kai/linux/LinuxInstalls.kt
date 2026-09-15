@@ -7,12 +7,12 @@ import java.io.File
  * The Linux installs a device can hold — at most one per distribution — and which
  * directory each of them lives in.
  *
- * There are two directories, both named before the chat sandbox and Kai Build
+ * There are two directories, both named before the chat sandbox and Kami Build
  * shared anything, and neither belongs to a feature any more. A distribution
  * claims whichever one already holds it, which is what lets the chat sandbox be
  * pointed from one distribution to the other and back without either install
  * being downloaded again — and what puts a Debian chat sandbox in the same
- * directory Kai Build works in, making them one install.
+ * directory Kami Build works in, making them one install.
  */
 class LinuxInstalls(context: Context) {
 
@@ -21,7 +21,7 @@ class LinuxInstalls(context: Context) {
 
     /**
      * Where [distro] is installed, or where it would be installed. Debian prefers
-     * Kai Build's directory and Alpine the chat sandbox's, so a device that ends
+     * Kami Build's directory and Alpine the chat sandbox's, so a device that ends
      * up with both keeps each where its legacy detection expects to find it.
      */
     fun pathsFor(distro: LinuxDistro): LinuxPaths {

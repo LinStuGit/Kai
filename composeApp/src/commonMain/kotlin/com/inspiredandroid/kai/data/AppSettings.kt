@@ -342,7 +342,7 @@ class AppSettings(internal val settings: Settings) {
     }
 
     /**
-     * Kai Build's "Open with" choice — the agent a freshly opened project starts,
+     * Kami Build's "Open with" choice — the agent a freshly opened project starts,
      * or null for a plain shell. Stored as an empty string so "never picked" and
      * "picked the shell" both come back as null.
      */

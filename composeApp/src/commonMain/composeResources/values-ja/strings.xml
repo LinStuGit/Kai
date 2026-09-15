@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Kai 9000へようこそ</string>
+    <string name="welcome_message">Kamiへようこそ</string>
     <string name="prompt_ask_question">質問する</string>
     <string name="error_invalid_api_key">無効なAPIキーです。設定をご確認ください。</string>
     <string name="error_rate_limit_exceeded">レート制限を超えました。後でもう一度お試しください。</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">再生成</string>
     <string name="error_empty_response">応答がありませんでした。新しいチャットを開始するか、メッセージを短くしてみてください。</string>
     <string name="settings_daemon_mode">デーモンモード</string>
-    <string name="settings_daemon_mode_description">Kai 9000をバックグラウンドで実行し続け、アプリがフォアグラウンドにない場合でもスケジュールされたタスクが実行されるようにします。</string>
+    <string name="settings_daemon_mode_description">Kamiをバックグラウンドで実行し続け、アプリがフォアグラウンドにない場合でもスケジュールされたタスクが実行されるようにします。</string>
     <string name="settings_scheduled_tasks">スケジュールされたタスク</string>
     <string name="settings_scheduled_tasks_description">AIが将来の実行のためにスケジュールしたタスクです。スケジュールされたタスクを作成するには、AIにリマインドまたは後で何かを実行するよう依頼してください。</string>
     <string name="settings_scheduled_tasks_cancel">タスクをキャンセル</string>
@@ -235,7 +235,7 @@
     <string name="interactive_welcome_title">完全に稼働中です。</string>
     <string name="interactive_welcome_subtitle">何をしたいか教えてください。</string>
     <string name="interactive_back_content_description">戻る</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">インタラクティブモードを終了</string>
     <string name="interactive_ui_parsing_failed">UIの解析に失敗しました。再試行中…</string>
     <string name="settings_sponsors">スポンサー</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">通知を検索</string>
     <string name="tool_search_notifications_description">アプリまたはテキストで通知を検索</string>
     <string name="settings_notifications_label">通知を読む</string>
-    <string name="settings_notifications_description">受信通知はバックグラウンドで収集され、ハートビートで処理されます。Kaiがどのアプリの通知を読めるかは、システムの通知アクセス設定で選択してください。</string>
-    <string name="settings_notifications_access_required">通知アクセスが許可されていません。下をタップしてシステム設定でKaiを有効にしてください。</string>
+    <string name="settings_notifications_description">受信通知はバックグラウンドで収集され、ハートビートで処理されます。Kamiがどのアプリの通知を読めるかは、システムの通知アクセス設定で選択してください。</string>
+    <string name="settings_notifications_access_required">通知アクセスが許可されていません。下をタップしてシステム設定でKamiを有効にしてください。</string>
     <string name="settings_notifications_access_button">通知アクセスを開く</string>
     <string name="settings_notifications_manage_apps">アプリを管理</string>
     <string name="settings_notifications_listener_bound">リスナー有効</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">ファイルをインポート</string>
     <string name="sandbox_files_import_success">ファイルをインポートしました</string>
     <string name="sandbox_files_import_failed">インポートに失敗しました</string>
-    <string name="kai_build_open">Kai Build を開く</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Kai Build を終了</string>
+    <string name="kai_build_open">Kami Build を開く</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Kami Build を終了</string>
     <string name="kai_build_back_content_description">プロジェクトに戻る</string>
     <string name="kai_build_setup_title">Linux をセットアップ（ベータ）</string>
-    <string name="kai_build_setup_description">Kai Build はベータ版です。Debian Bookworm は proot でこのアプリ内で動作し、curl、git、wget、python3 などの基本ツールが含まれます。初回インストールは約 100 MB をダウンロードし、ネットワーク接続が必要です。</string>
+    <string name="kai_build_setup_description">Kami Build はベータ版です。Debian Bookworm は proot でこのアプリ内で動作し、curl、git、wget、python3 などの基本ツールが含まれます。初回インストールは約 100 MB をダウンロードし、ネットワーク接続が必要です。</string>
     <string name="kai_build_setup_agents_title">コーディングエージェント</string>
     <string name="kai_build_setup_agents_description">新しいシステムにインストールする CLI を選んでください。他は後から追加できます。</string>
     <string name="kai_build_setup_install">Debian をインストール</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">任意です。検索ツールにはjina.aiの無料キーが必要です。その他のツールはキーなしで動作します。</string>
     <string name="settings_sandbox_distro_title">ディストリビューション</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">推奨 · ~150 MB · Kai Build と共有</string>
-    <string name="settings_sandbox_distro_debian_installed">インストール済み · Kai Build と共有</string>
+    <string name="settings_sandbox_distro_debian_detail">推奨 · ~150 MB · Kami Build と共有</string>
+    <string name="settings_sandbox_distro_debian_installed">インストール済み · Kami Build と共有</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">より小さい · ~4 MB · Kai Build は独自の Debian をインストール</string>
-    <string name="settings_sandbox_distro_alpine_installed">インストール済み · Kai Build は独自の Debian をインストール</string>
+    <string name="settings_sandbox_distro_alpine_detail">より小さい · ~4 MB · Kami Build は独自の Debian をインストール</string>
+    <string name="settings_sandbox_distro_alpine_installed">インストール済み · Kami Build は独自の Debian をインストール</string>
     <string name="settings_sandbox_migrate_title">%1$s からファイルを移行</string>
     <string name="settings_sandbox_migrate_detail">ホームフォルダにある %1$d ファイル · %2$s がまだここにありません。コピーしても既存のファイルはそのまま残り、もう一方のシステムには影響しないため、後でアンインストールできます。</string>
     <string name="settings_sandbox_migrate_action">ファイルをコピー</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Linuxサンドボックス内のすべてのデータが失われます。Kai Buildも同じLinuxを使用しているため、そのLinuxも失われます。プロジェクトは保持されます。本当にアンインストールしますか？</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Linuxサンドボックス内のすべてのデータが失われます。Kami Buildも同じLinuxを使用しているため、そのLinuxも失われます。プロジェクトは保持されます。本当にアンインストールしますか？</string>
     <string name="sandbox_status_not_installed">未インストール</string>
     <string name="sandbox_status_downloading">rootfs をダウンロード中…</string>
     <string name="sandbox_status_extracting">展開中…</string>

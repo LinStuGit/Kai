@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Bienvenue sur Kai 9000</string>
+    <string name="welcome_message">Bienvenue sur Kami</string>
     <string name="prompt_ask_question">Poser une question</string>
     <string name="error_invalid_api_key">Clé API invalide. Veuillez vérifier vos paramètres.</string>
     <string name="error_rate_limit_exceeded">Limite de taux dépassée. Veuillez réessayer plus tard.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Régénérer</string>
     <string name="error_empty_response">Aucune réponse reçue. Essayez de démarrer une nouvelle conversation ou de raccourcir votre message.</string>
     <string name="settings_daemon_mode">Mode démon</string>
-    <string name="settings_daemon_mode_description">Gardez Kai 9000 en fonctionnement en arrière-plan afin que les tâches planifiées s'exécutent même lorsque l'application n'est pas au premier plan.</string>
+    <string name="settings_daemon_mode_description">Gardez Kami en fonctionnement en arrière-plan afin que les tâches planifiées s'exécutent même lorsque l'application n'est pas au premier plan.</string>
     <string name="settings_scheduled_tasks">Tâches planifiées</string>
     <string name="settings_scheduled_tasks_description">Tâches planifiées par l'IA pour une exécution future. Demandez à l'IA de vous rappeler ou d'exécuter quelque chose plus tard pour créer des tâches planifiées.</string>
     <string name="settings_scheduled_tasks_cancel">Annuler la tâche</string>
@@ -235,7 +235,7 @@ Si quelque chose nécessite de l'attention (souvenirs obsolètes, tâches échue
     <string name="interactive_welcome_title">Je suis pleinement opérationnel.</string>
     <string name="interactive_welcome_subtitle">Dites-moi ce que vous aimeriez faire.</string>
     <string name="interactive_back_content_description">Retour</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Quitter le mode interactif</string>
     <string name="interactive_ui_parsing_failed">Échec de l'analyse de l'interface, nouvel essai…</string>
     <string name="settings_sponsors">Sponsors</string>
@@ -360,8 +360,8 @@ Si quelque chose nécessite de l'attention (souvenirs obsolètes, tâches échue
     <string name="tool_search_notifications_name">Rechercher des notifications</string>
     <string name="tool_search_notifications_description">Rechercher des notifications par application ou texte</string>
     <string name="settings_notifications_label">Lire les notifications</string>
-    <string name="settings_notifications_description">Les notifications entrantes sont récupérées en arrière-plan et prises en charge par le heartbeat. Choisissez les applications que Kai peut lire dans les paramètres système d\'accès aux notifications.</string>
-    <string name="settings_notifications_access_required">L\'accès aux notifications n\'a pas été accordé. Appuyez ci-dessous pour activer Kai dans les paramètres système.</string>
+    <string name="settings_notifications_description">Les notifications entrantes sont récupérées en arrière-plan et prises en charge par le heartbeat. Choisissez les applications que Kami peut lire dans les paramètres système d\'accès aux notifications.</string>
+    <string name="settings_notifications_access_required">L\'accès aux notifications n\'a pas été accordé. Appuyez ci-dessous pour activer Kami dans les paramètres système.</string>
     <string name="settings_notifications_access_button">Ouvrir l\'accès aux notifications</string>
     <string name="settings_notifications_manage_apps">Gérer les applications</string>
     <string name="settings_notifications_listener_bound">Écouteur actif</string>
@@ -433,12 +433,12 @@ Si quelque chose nécessite de l'attention (souvenirs obsolètes, tâches échue
     <string name="sandbox_files_action_import">Importer un fichier</string>
     <string name="sandbox_files_import_success">Fichier importé</string>
     <string name="sandbox_files_import_failed">Échec de l\'importation</string>
-    <string name="kai_build_open">Ouvrir Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Quitter Kai Build</string>
+    <string name="kai_build_open">Ouvrir Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Quitter Kami Build</string>
     <string name="kai_build_back_content_description">Retour aux projets</string>
     <string name="kai_build_setup_title">Configurer Linux (Bêta)</string>
-    <string name="kai_build_setup_description">Kai Build est en bêta. Debian Bookworm s\'exécute sous proot dans cette application, avec curl, git, wget, python3 et d\'autres outils essentiels. La première installation télécharge environ 100 Mo et nécessite un accès réseau.</string>
+    <string name="kai_build_setup_description">Kami Build est en bêta. Debian Bookworm s\'exécute sous proot dans cette application, avec curl, git, wget, python3 et d\'autres outils essentiels. La première installation télécharge environ 100 Mo et nécessite un accès réseau.</string>
     <string name="kai_build_setup_agents_title">Agents de codage</string>
     <string name="kai_build_setup_agents_description">Choisissez les CLI à installer sur le système neuf. Vous pourrez ajouter les autres plus tard.</string>
     <string name="kai_build_setup_install">Installer Debian</string>
@@ -483,15 +483,15 @@ Si quelque chose nécessite de l'attention (souvenirs obsolètes, tâches échue
     <string name="settings_mcp_api_key_help">Optionnel. Les outils de recherche nécessitent une clé gratuite de jina.ai ; les autres outils fonctionnent sans.</string>
     <string name="settings_sandbox_distro_title">Distribution</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Recommandé · ~150 Mo · partagé avec Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Installé · partagé avec Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Recommandé · ~150 Mo · partagé avec Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Installé · partagé avec Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Plus léger · ~4 Mo · Kai Build installe son propre Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Installé · Kai Build installe son propre Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Plus léger · ~4 Mo · Kami Build installe son propre Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Installé · Kami Build installe son propre Debian</string>
     <string name="settings_sandbox_migrate_title">Récupérez vos fichiers depuis %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d fichiers · %2$s dans son dossier personnel ne sont pas encore ici. La copie conserve tout ce qui est déjà ici et laisse l'autre système intact, vous pourrez donc le désinstaller ensuite.</string>
     <string name="settings_sandbox_migrate_action">Copier les fichiers</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Toutes les données du bac à sable Linux seront perdues, et Kai Build perd aussi son Linux — il utilise le même. Vos projets sont conservés. Êtes-vous sûr de vouloir désinstaller ?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Toutes les données du bac à sable Linux seront perdues, et Kami Build perd aussi son Linux — il utilise le même. Vos projets sont conservés. Êtes-vous sûr de vouloir désinstaller ?</string>
     <string name="sandbox_status_not_installed">Non installé</string>
     <string name="sandbox_status_downloading">Téléchargement du rootfs…</string>
     <string name="sandbox_status_extracting">Extraction…</string>

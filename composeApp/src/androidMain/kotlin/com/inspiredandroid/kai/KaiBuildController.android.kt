@@ -21,7 +21,7 @@ class AndroidKaiBuildController : KaiBuildController {
     private val installs by lazy { LinuxInstalls(context) }
 
     /**
-     * Kai Build is always Debian: its coding agents are vendor scripts that
+     * Kami Build is always Debian: its coding agents are vendor scripts that
      * expect glibc and apt. Debian has one directory on the device, so this is
      * the same install the chat sandbox uses whenever the shell integration is
      * pointed at Debian — a Linux set up from either surface is immediately
@@ -40,7 +40,7 @@ class AndroidKaiBuildController : KaiBuildController {
                 // descriptors into it have to go first.
                 if (sandboxManager.rootDir == paths.root) built.onEnvironmentRemoved()
             }
-            // And the other direction: installing Debian from Kai Build's setup
+            // And the other direction: installing Debian from Kami Build's setup
             // screen is what gives a Debian-pointed chat sandbox its Linux.
             built.onEnvironmentChanged = { sandboxManager.refreshInstallState() }
         }

@@ -116,7 +116,7 @@ class SandboxFileBrowserViewModel(
      * instead of serving the cache.
      *
      * Where the user browsed to is kept across that: only the first open, or a
-     * caller that moved its starting point (Kai Build opening another project),
+     * caller that moved its starting point (Kami Build opening another project),
      * jumps to [initialPath]. Coming back from a terminal tab used to land on the
      * starting directory again, which made anywhere else in the tree a place the
      * browser would not stay.

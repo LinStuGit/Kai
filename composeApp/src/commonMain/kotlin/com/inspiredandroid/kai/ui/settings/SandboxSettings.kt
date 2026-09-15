@@ -183,8 +183,8 @@ internal fun SandboxSettingsCard(
             onDismissRequest = { showResetDialog = false },
             title = { Text(stringResource(Res.string.settings_sandbox_uninstall)) },
             text = {
-                // A Debian sandbox is the same install Kai Build works in, so
-                // uninstalling here takes Kai Build's Linux with it.
+                // A Debian sandbox is the same install Kami Build works in, so
+                // uninstalling here takes Kami Build's Linux with it.
                 val confirm = if (sandboxState.distro == LinuxDistro.DEBIAN) {
                     Res.string.settings_sandbox_uninstall_confirm_shared
                 } else {

@@ -29,14 +29,14 @@ object HomeMigration {
      * path relative to the home directory:
      *
      * - `projects` is a bind mount both installs already share, so copying it
-     *   would duplicate Kai Build's project folders into themselves.
+     *   would duplicate Kami Build's project folders into themselves.
      * - Shell startup files ship with every rootfs and are written for that
      *   distribution's own layout; Debian's would send an Alpine shell looking
      *   for tools that are not there.
      * - `.cache` is regenerable and can be larger than everything that matters.
      * - The coding-agent dirs hold binaries compiled against the source
      *   distribution's libc, which cannot run on the target, and the state those
-     *   binaries keep. Kai Build only ever runs in Debian and installs them per
+     *   binaries keep. Kami Build only ever runs in Debian and installs them per
      *   environment, so there is nothing here another distribution can use.
      */
     val EXCLUDED = setOf(

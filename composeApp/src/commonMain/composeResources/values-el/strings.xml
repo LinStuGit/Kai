@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Καλώς ήρθατε στο Kai 9000</string>
+    <string name="welcome_message">Καλώς ήρθατε στο Kami</string>
     <string name="prompt_ask_question">Κάντε μια ερώτηση</string>
     <string name="error_invalid_api_key">Μη έγκυρο κλειδί API. Ελέγξτε τις ρυθμίσεις σας.</string>
     <string name="error_rate_limit_exceeded">Υπέρβαση ορίου αιτημάτων. Δοκιμάστε ξανά αργότερα.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Αναδημιουργία</string>
     <string name="error_empty_response">Δεν ελήφθη απάντηση. Δοκιμάστε να ξεκινήσετε μια νέα συνομιλία ή να συντομεύσετε το μήνυμά σας.</string>
     <string name="settings_daemon_mode">Λειτουργία Daemon</string>
-    <string name="settings_daemon_mode_description">Διατηρήστε το Kai 9000 σε λειτουργία στο παρασκήνιο ώστε οι προγραμματισμένες εργασίες να εκτελούνται ακόμα και όταν η εφαρμογή δεν είναι στο προσκήνιο.</string>
+    <string name="settings_daemon_mode_description">Διατηρήστε το Kami σε λειτουργία στο παρασκήνιο ώστε οι προγραμματισμένες εργασίες να εκτελούνται ακόμα και όταν η εφαρμογή δεν είναι στο προσκήνιο.</string>
     <string name="settings_scheduled_tasks">Προγραμματισμένες Εργασίες</string>
     <string name="settings_scheduled_tasks_description">Εργασίες προγραμματισμένες από την τεχνητή νοημοσύνη για μελλοντική εκτέλεση. Ζητήστε από την τεχνητή νοημοσύνη να σας υπενθυμίσει ή να εκτελέσει κάτι αργότερα για να δημιουργήσετε προγραμματισμένες εργασίες.</string>
     <string name="settings_scheduled_tasks_cancel">Ακύρωση εργασίας</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Είμαι πλήρως λειτουργικός.</string>
     <string name="interactive_welcome_subtitle">Πείτε μου τι θέλετε να κάνετε.</string>
     <string name="interactive_back_content_description">Πίσω</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Έξοδος από τη διαδραστική λειτουργία</string>
     <string name="interactive_ui_parsing_failed">Η ανάλυση UI απέτυχε, νέα προσπάθεια…</string>
     <string name="settings_sponsors">Χορηγοί</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">Αναζήτηση ειδοποιήσεων</string>
     <string name="tool_search_notifications_description">Αναζήτηση ειδοποιήσεων με βάση εφαρμογή ή κείμενο</string>
     <string name="settings_notifications_label">Ανάγνωση ειδοποιήσεων</string>
-    <string name="settings_notifications_description">Οι εισερχόμενες ειδοποιήσεις συλλέγονται στο παρασκήνιο και λαμβάνονται από τον παλμό. Επιλέξτε ποιες εφαρμογές μπορεί να διαβάζει το Kai από τις ρυθμίσεις πρόσβασης σε ειδοποιήσεις του συστήματος.</string>
-    <string name="settings_notifications_access_required">Δεν έχει δοθεί πρόσβαση στις ειδοποιήσεις. Πατήστε παρακάτω για ενεργοποίηση του Kai στις ρυθμίσεις συστήματος.</string>
+    <string name="settings_notifications_description">Οι εισερχόμενες ειδοποιήσεις συλλέγονται στο παρασκήνιο και λαμβάνονται από τον παλμό. Επιλέξτε ποιες εφαρμογές μπορεί να διαβάζει το Kami από τις ρυθμίσεις πρόσβασης σε ειδοποιήσεις του συστήματος.</string>
+    <string name="settings_notifications_access_required">Δεν έχει δοθεί πρόσβαση στις ειδοποιήσεις. Πατήστε παρακάτω για ενεργοποίηση του Kami στις ρυθμίσεις συστήματος.</string>
     <string name="settings_notifications_access_button">Άνοιγμα πρόσβασης ειδοποιήσεων</string>
     <string name="settings_notifications_manage_apps">Διαχείριση εφαρμογών</string>
     <string name="settings_notifications_listener_bound">Ακροατής ενεργός</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">Εισαγωγή αρχείου</string>
     <string name="sandbox_files_import_success">Το αρχείο εισήχθη</string>
     <string name="sandbox_files_import_failed">Η εισαγωγή απέτυχε</string>
-    <string name="kai_build_open">Άνοιγμα Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Έξοδος από Kai Build</string>
+    <string name="kai_build_open">Άνοιγμα Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Έξοδος από Kami Build</string>
     <string name="kai_build_back_content_description">Πίσω στα έργα</string>
     <string name="kai_build_setup_title">Ρύθμιση Linux (Beta)</string>
-    <string name="kai_build_setup_description">Το Kai Build είναι σε beta. Το Debian Bookworm τρέχει υπό proot σε αυτή την εφαρμογή, με curl, git, wget, python3 και άλλα βασικά. Η πρώτη εγκατάσταση κατεβάζει περίπου 100 MB και χρειάζεται δίκτυο.</string>
+    <string name="kai_build_setup_description">Το Kami Build είναι σε beta. Το Debian Bookworm τρέχει υπό proot σε αυτή την εφαρμογή, με curl, git, wget, python3 και άλλα βασικά. Η πρώτη εγκατάσταση κατεβάζει περίπου 100 MB και χρειάζεται δίκτυο.</string>
     <string name="kai_build_setup_agents_title">Πράκτορες κώδικα</string>
     <string name="kai_build_setup_agents_description">Επιλέξτε τα CLI για εγκατάσταση στο φρέσκο σύστημα. Τα υπόλοιπα μπορείτε να τα προσθέσετε αργότερα.</string>
     <string name="kai_build_setup_install">Εγκατάσταση Debian</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">Προαιρετικό. Τα εργαλεία αναζήτησης χρειάζονται ένα δωρεάν κλειδί από το jina.ai· τα υπόλοιπα εργαλεία λειτουργούν χωρίς αυτό.</string>
     <string name="settings_sandbox_distro_title">Διανομή</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Προτείνεται · ~150 MB · κοινόχρηστο με το Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Εγκατεστημένο · κοινόχρηστο με το Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Προτείνεται · ~150 MB · κοινόχρηστο με το Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Εγκατεστημένο · κοινόχρηστο με το Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Μικρότερο · ~4 MB · το Kai Build εγκαθιστά το δικό του Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Εγκατεστημένο · το Kai Build εγκαθιστά το δικό του Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Μικρότερο · ~4 MB · το Kami Build εγκαθιστά το δικό του Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Εγκατεστημένο · το Kami Build εγκαθιστά το δικό του Debian</string>
     <string name="settings_sandbox_migrate_title">Μεταφέρετε τα αρχεία σας από το %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d αρχεία · %2$s στον αρχικό του φάκελο δεν είναι ακόμη εδώ. Η αντιγραφή διατηρεί όλα όσα υπάρχουν ήδη εδώ και αφήνει το άλλο σύστημα ανέπαφο, ώστε να μπορείτε να το απεγκαταστήσετε αργότερα.</string>
     <string name="settings_sandbox_migrate_action">Αντιγραφή αρχείων</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Όλα τα δεδομένα στο sandbox Linux θα χαθούν, και το Kai Build χάνει και αυτό το Linux του — χρησιμοποιεί το ίδιο. Τα έργα σας διατηρούνται. Είστε βέβαιοι ότι θέλετε να απεγκαταστήσετε;</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Όλα τα δεδομένα στο sandbox Linux θα χαθούν, και το Kami Build χάνει και αυτό το Linux του — χρησιμοποιεί το ίδιο. Τα έργα σας διατηρούνται. Είστε βέβαιοι ότι θέλετε να απεγκαταστήσετε;</string>
     <string name="sandbox_status_not_installed">Δεν έχει εγκατασταθεί</string>
     <string name="sandbox_status_downloading">Λήψη rootfs…</string>
     <string name="sandbox_status_extracting">Εξαγωγή…</string>

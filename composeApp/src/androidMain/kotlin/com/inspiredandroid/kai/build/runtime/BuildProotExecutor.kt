@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 private const val MAX_OUTPUT_CHARS = 200_000
 
 /**
- * Kai Build's view of a rootfs: interactive sessions under a real PTY, raw
+ * Kami Build's view of a rootfs: interactive sessions under a real PTY, raw
  * bytes rather than lines.
  *
  * The proot invocation itself — argv, binds, environment — comes from the

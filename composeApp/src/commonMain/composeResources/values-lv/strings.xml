@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Laipni lūdzam Kai 9000</string>
+    <string name="welcome_message">Laipni lūdzam Kami</string>
     <string name="prompt_ask_question">Uzdodiet jautājumu</string>
     <string name="error_invalid_api_key">Nederīga API atslēga. Lūdzu, pārbaudiet iestatījumus.</string>
     <string name="error_rate_limit_exceeded">Pieprasījumu limits pārsniegts. Lūdzu, mēģiniet vēlāk.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Ģenerēt atkārtoti</string>
     <string name="error_empty_response">Netika saņemta atbilde. Mēģiniet sākt jaunu tērzēšanu vai saīsināt savu ziņojumu.</string>
     <string name="settings_daemon_mode">Daemon režīms</string>
-    <string name="settings_daemon_mode_description">Turiet Kai 9000 darbojamies fonā, lai ieplānotie uzdevumi tiktu izpildīti arī tad, kad lietotne nav priekšplānā.</string>
+    <string name="settings_daemon_mode_description">Turiet Kami darbojamies fonā, lai ieplānotie uzdevumi tiktu izpildīti arī tad, kad lietotne nav priekšplānā.</string>
     <string name="settings_scheduled_tasks">Ieplānotie uzdevumi</string>
     <string name="settings_scheduled_tasks_description">AI ieplānotie uzdevumi turpmākai izpildei. Lūdziet AI atgādināt jums vai palaist kaut ko vēlāk, lai izveidotu ieplānotos uzdevumus.</string>
     <string name="settings_scheduled_tasks_cancel">Atcelt uzdevumu</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Esmu pilnībā darbspējīgs.</string>
     <string name="interactive_welcome_subtitle">Pastāstiet man, ko vēlaties darīt.</string>
     <string name="interactive_back_content_description">Atpakaļ</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Iziet no interaktīvā režīma</string>
     <string name="interactive_ui_parsing_failed">UI analīze neizdevās, mēģinu vēlreiz…</string>
     <string name="settings_sponsors">Sponsori</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Meklēt paziņojumus</string>
     <string name="tool_search_notifications_description">Meklēt paziņojumus pēc lietotnes vai teksta</string>
     <string name="settings_notifications_label">Lasīt paziņojumus</string>
-    <string name="settings_notifications_description">Ienākošie paziņojumi tiek vākti fonā, un tos paņem heartbeat. Sistēmas paziņojumu piekļuves iestatījumos izvēlies, kuras lietotnes Kai var lasīt.</string>
-    <string name="settings_notifications_access_required">Piekļuve paziņojumiem nav piešķirta. Pieskaries zemāk, lai aktivizētu Kai sistēmas iestatījumos.</string>
+    <string name="settings_notifications_description">Ienākošie paziņojumi tiek vākti fonā, un tos paņem heartbeat. Sistēmas paziņojumu piekļuves iestatījumos izvēlies, kuras lietotnes Kami var lasīt.</string>
+    <string name="settings_notifications_access_required">Piekļuve paziņojumiem nav piešķirta. Pieskaries zemāk, lai aktivizētu Kami sistēmas iestatījumos.</string>
     <string name="settings_notifications_access_button">Atvērt paziņojumu piekļuvi</string>
     <string name="settings_notifications_manage_apps">Pārvaldīt lietotnes</string>
     <string name="settings_notifications_listener_bound">Klausītājs aktīvs</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Importēt failu</string>
     <string name="sandbox_files_import_success">Fails importēts</string>
     <string name="sandbox_files_import_failed">Imports neizdevās</string>
-    <string name="kai_build_open">Atvērt Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Iziet no Kai Build</string>
+    <string name="kai_build_open">Atvērt Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Iziet no Kami Build</string>
     <string name="kai_build_back_content_description">Atpakaļ pie projektiem</string>
     <string name="kai_build_setup_title">Iestatīt Linux (beta)</string>
-    <string name="kai_build_setup_description">Kai Build ir beta versijā. Debian Bookworm darbojas ar proot šajā lietotnē, ar curl, git, wget, python3 un citiem pamatrīkiem. Pirmā instalācija lejupielādē apmēram 100 MB un nepieciešams tīkls.</string>
+    <string name="kai_build_setup_description">Kami Build ir beta versijā. Debian Bookworm darbojas ar proot šajā lietotnē, ar curl, git, wget, python3 un citiem pamatrīkiem. Pirmā instalācija lejupielādē apmēram 100 MB un nepieciešams tīkls.</string>
     <string name="kai_build_setup_agents_title">Kodēšanas aģenti</string>
     <string name="kai_build_setup_agents_description">Izvēlieties CLI instalēšanai tīrā sistēmā. Pārējos varat pievienot vēlāk.</string>
     <string name="kai_build_setup_install">Instalēt Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Neobligāti. Meklēšanas rīkiem nepieciešama bezmaksas atslēga no jina.ai; citi rīki darbojas arī bez tās.</string>
     <string name="settings_sandbox_distro_title">Distribūcija</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Ieteicama · ~150 MB · koplietota ar Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Instalēta · koplietota ar Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Ieteicama · ~150 MB · koplietota ar Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Instalēta · koplietota ar Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Mazāka · ~4 MB · Kai Build instalē savu Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Instalēta · Kai Build instalē savu Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Mazāka · ~4 MB · Kami Build instalē savu Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Instalēta · Kami Build instalē savu Debian</string>
     <string name="settings_sandbox_migrate_title">Pārnesiet savus failus no %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d faili · %2$s tā mājas mapē vēl nav šeit. Kopēšana saglabā visu, kas jau ir šeit, un atstāj otru sistēmu neskartu, tāpēc varat to vēlāk atinstalēt.</string>
     <string name="settings_sandbox_migrate_action">Kopēt failus</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Visi dati Linux smilškastē tiks zaudēti, un arī Kai Build zaudēs savu Linux — tie izmanto to pašu. Jūsu projekti tiks saglabāti. Vai tiešām vēlaties atinstalēt?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Visi dati Linux smilškastē tiks zaudēti, un arī Kami Build zaudēs savu Linux — tie izmanto to pašu. Jūsu projekti tiks saglabāti. Vai tiešām vēlaties atinstalēt?</string>
     <string name="sandbox_status_not_installed">Nav instalēts</string>
     <string name="sandbox_status_downloading">Lejupielādē rootfs…</string>
     <string name="sandbox_status_extracting">Izpako…</string>

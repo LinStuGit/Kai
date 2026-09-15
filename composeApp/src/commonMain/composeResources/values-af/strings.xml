@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Welkom by Kai 9000</string>
+    <string name="welcome_message">Welkom by Kami</string>
     <string name="prompt_ask_question">Vra 'n vraag</string>
     <string name="error_invalid_api_key">Ongeldige API-sleutel. Kontroleer asseblief jou instellings.</string>
     <string name="error_rate_limit_exceeded">Tarieklimiet oorskry. Probeer asseblief later weer.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Hergenereer</string>
     <string name="error_empty_response">Geen antwoord ontvang nie. Probeer om 'n nuwe klets te begin of jou boodskap korter te maak.</string>
     <string name="settings_daemon_mode">Daemonmodus</string>
-    <string name="settings_daemon_mode_description">Hou Kai 9000 in die agtergrond aan sodat geskeduleerde take uitgevoer word selfs wanneer die toepassing nie op die voorgrond is nie.</string>
+    <string name="settings_daemon_mode_description">Hou Kami in die agtergrond aan sodat geskeduleerde take uitgevoer word selfs wanneer die toepassing nie op die voorgrond is nie.</string>
     <string name="settings_scheduled_tasks">Geskeduleerde Take</string>
     <string name="settings_scheduled_tasks_description">Take wat deur die KI vir toekomstige uitvoering geskeduleer is. Vra die KI om jou te herinner of iets later uit te voer om geskeduleerde take te skep.</string>
     <string name="settings_scheduled_tasks_cancel">Kanselleer taak</string>
@@ -235,7 +235,7 @@ As iets aandag nodig het (verouderde herinneringe, verskuldigde take, gebruiker-
     <string name="interactive_welcome_title">Ek is volledig operasioneel.</string>
     <string name="interactive_welcome_subtitle">Vertel my wat jy wil doen.</string>
     <string name="interactive_back_content_description">Terug</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Verlaat interaktiewe modus</string>
     <string name="interactive_ui_parsing_failed">UI-ontleding het misluk, probeer weer…</string>
     <string name="settings_sponsors">Borge</string>
@@ -361,8 +361,8 @@ As iets aandag nodig het (verouderde herinneringe, verskuldigde take, gebruiker-
     <string name="tool_search_notifications_name">Kennisgewings soek</string>
     <string name="tool_search_notifications_description">Soek kennisgewings volgens program of teks</string>
     <string name="settings_notifications_label">Kennisgewings lees</string>
-    <string name="settings_notifications_description">Inkomende kennisgewings word op die agtergrond ingesamel en deur die heartbeat opgepik. Kies in stelselinstellings watter programme Kai mag lees.</string>
-    <string name="settings_notifications_access_required">Kennisgewingtoegang is nie toegestaan nie. Tik hieronder om Kai onder stelselinstellings te aktiveer.</string>
+    <string name="settings_notifications_description">Inkomende kennisgewings word op die agtergrond ingesamel en deur die heartbeat opgepik. Kies in stelselinstellings watter programme Kami mag lees.</string>
+    <string name="settings_notifications_access_required">Kennisgewingtoegang is nie toegestaan nie. Tik hieronder om Kami onder stelselinstellings te aktiveer.</string>
     <string name="settings_notifications_access_button">Maak kennisgewingtoegang oop</string>
     <string name="settings_notifications_manage_apps">Programme bestuur</string>
     <string name="settings_notifications_listener_bound">Luisteraar aktief</string>
@@ -434,12 +434,12 @@ As iets aandag nodig het (verouderde herinneringe, verskuldigde take, gebruiker-
     <string name="sandbox_files_action_import">Voer lêer in</string>
     <string name="sandbox_files_import_success">Lêer ingevoer</string>
     <string name="sandbox_files_import_failed">Invoer het misluk</string>
-    <string name="kai_build_open">Maak Kai Build oop</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Verlaat Kai Build</string>
+    <string name="kai_build_open">Maak Kami Build oop</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Verlaat Kami Build</string>
     <string name="kai_build_back_content_description">Terug na projekte</string>
     <string name="kai_build_setup_title">Stel Linux op (beta)</string>
-    <string name="kai_build_setup_description">Kai Build is in beta. Debian Bookworm loop onder proot in hierdie app, met curl, git, wget, python3 en ander basiese gereedskap. Die eerste installasie laai ongeveer 100 MB af en benodig netwerk.</string>
+    <string name="kai_build_setup_description">Kami Build is in beta. Debian Bookworm loop onder proot in hierdie app, met curl, git, wget, python3 en ander basiese gereedskap. Die eerste installasie laai ongeveer 100 MB af en benodig netwerk.</string>
     <string name="kai_build_setup_agents_title">Kodeeragente</string>
     <string name="kai_build_setup_agents_description">Kies die CLI\'s om op die vars stelsel te installeer. Jy kan die res later byvoeg.</string>
     <string name="kai_build_setup_install">Installeer Debian</string>
@@ -484,15 +484,15 @@ As iets aandag nodig het (verouderde herinneringe, verskuldigde take, gebruiker-
     <string name="settings_mcp_api_key_help">Opsioneel. Soekgereedskap het 'n gratis sleutel van jina.ai nodig; ander gereedskap werk ook sonder een.</string>
     <string name="settings_sandbox_distro_title">Distribusie</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Aanbeveel · ~150 MB · gedeel met Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Geïnstalleer · gedeel met Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Aanbeveel · ~150 MB · gedeel met Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Geïnstalleer · gedeel met Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Kleiner · ~4 MB · Kai Build installeer sy eie Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Geïnstalleer · Kai Build installeer sy eie Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Kleiner · ~4 MB · Kami Build installeer sy eie Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Geïnstalleer · Kami Build installeer sy eie Debian</string>
     <string name="settings_sandbox_migrate_title">Bring jou lêers oor van %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d lêers · %2$s in sy tuisgids is nog nie hier nie. Kopieer behou alles wat reeds hier is en laat die ander stelsel onaangeraak, sodat jy dit daarna kan deïnstalleer.</string>
     <string name="settings_sandbox_migrate_action">Kopieer Lêers</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Alle data in die Linux-sandbox sal verlore gaan, en Kai Build verloor ook sy Linux — albei gebruik dieselfde een. Jou projekte word behou. Is jy seker jy wil deïnstalleer?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Alle data in die Linux-sandbox sal verlore gaan, en Kami Build verloor ook sy Linux — albei gebruik dieselfde een. Jou projekte word behou. Is jy seker jy wil deïnstalleer?</string>
     <string name="sandbox_status_not_installed">Nie geïnstalleer nie</string>
     <string name="sandbox_status_downloading">Laai rootfs af…</string>
     <string name="sandbox_status_extracting">Pak uit…</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Sveiki atvykę į Kai 9000</string>
+    <string name="welcome_message">Sveiki atvykę į Kami</string>
     <string name="prompt_ask_question">Užduokite klausimą</string>
     <string name="error_invalid_api_key">Neteisingas API raktas. Patikrinkite nustatymus.</string>
     <string name="error_rate_limit_exceeded">Užklausų limitas viršytas. Bandykite vėliau.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Pergeneruoti</string>
     <string name="error_empty_response">Atsakymas negautas. Pabandykite pradėti naują pokalbį arba sutrumpinti savo žinutę.</string>
     <string name="settings_daemon_mode">Daemon režimas</string>
-    <string name="settings_daemon_mode_description">Leiskite Kai 9000 veikti fone, kad suplanuotos užduotys būtų vykdomos net kai programa nėra priekiniame plane.</string>
+    <string name="settings_daemon_mode_description">Leiskite Kami veikti fone, kad suplanuotos užduotys būtų vykdomos net kai programa nėra priekiniame plane.</string>
     <string name="settings_scheduled_tasks">Suplanuotos užduotys</string>
     <string name="settings_scheduled_tasks_description">AI suplanuotos užduotys būsimam vykdymui. Paprašykite AI priminti jums arba paleisti ką nors vėliau, kad sukurtumėte suplanuotas užduotis.</string>
     <string name="settings_scheduled_tasks_cancel">Atšaukti užduotį</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Esu visiškai veikiantis.</string>
     <string name="interactive_welcome_subtitle">Pasakykite, ką norėtumėte daryti.</string>
     <string name="interactive_back_content_description">Atgal</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Išeiti iš interaktyvaus režimo</string>
     <string name="interactive_ui_parsing_failed">UI analizė nepavyko, bandoma iš naujo…</string>
     <string name="settings_sponsors">Rėmėjai</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Ieškoti pranešimų</string>
     <string name="tool_search_notifications_description">Ieškoti pranešimų pagal programą ar tekstą</string>
     <string name="settings_notifications_label">Skaityti pranešimus</string>
-    <string name="settings_notifications_description">Įeinantys pranešimai renkami fone, juos paima heartbeat. Sistemos pranešimų prieigos nustatymuose pasirink, kurias programas Kai gali skaityti.</string>
-    <string name="settings_notifications_access_required">Pranešimų prieiga nesuteikta. Bakstelėk žemiau, kad įjungtum Kai sistemos nustatymuose.</string>
+    <string name="settings_notifications_description">Įeinantys pranešimai renkami fone, juos paima heartbeat. Sistemos pranešimų prieigos nustatymuose pasirink, kurias programas Kami gali skaityti.</string>
+    <string name="settings_notifications_access_required">Pranešimų prieiga nesuteikta. Bakstelėk žemiau, kad įjungtum Kami sistemos nustatymuose.</string>
     <string name="settings_notifications_access_button">Atverti pranešimų prieigą</string>
     <string name="settings_notifications_manage_apps">Tvarkyti programas</string>
     <string name="settings_notifications_listener_bound">Klausytojas aktyvus</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Importuoti failą</string>
     <string name="sandbox_files_import_success">Failas importuotas</string>
     <string name="sandbox_files_import_failed">Importuoti nepavyko</string>
-    <string name="kai_build_open">Atidaryti Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Išeiti iš Kai Build</string>
+    <string name="kai_build_open">Atidaryti Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Išeiti iš Kami Build</string>
     <string name="kai_build_back_content_description">Atgal į projektus</string>
     <string name="kai_build_setup_title">Nustatyti Linux (beta)</string>
-    <string name="kai_build_setup_description">Kai Build yra beta. Debian Bookworm veikia po proot šioje programoje su curl, git, wget, python3 ir kitais pagrindiniais įrankiais. Pirmoji diegimas atsisiunčia apie 100 MB ir reikia tinklo.</string>
+    <string name="kai_build_setup_description">Kami Build yra beta. Debian Bookworm veikia po proot šioje programoje su curl, git, wget, python3 ir kitais pagrindiniais įrankiais. Pirmoji diegimas atsisiunčia apie 100 MB ir reikia tinklo.</string>
     <string name="kai_build_setup_agents_title">Kodavimo agentai</string>
     <string name="kai_build_setup_agents_description">Pasirinkite CLI diegti švarioje sistemoje. Kitus galite pridėti vėliau.</string>
     <string name="kai_build_setup_install">Įdiegti Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Neprivaloma. Paieškos įrankiams reikia nemokamo rakto iš jina.ai; kiti įrankiai veikia ir be jo.</string>
     <string name="settings_sandbox_distro_title">Distribucija</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Rekomenduojama · ~150 MB · bendrai naudojama su Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Įdiegta · bendrai naudojama su Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Rekomenduojama · ~150 MB · bendrai naudojama su Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Įdiegta · bendrai naudojama su Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Mažesnis · ~4 MB · Kai Build įdiegia savo Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Įdiegta · Kai Build įdiegia savo Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Mažesnis · ~4 MB · Kami Build įdiegia savo Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Įdiegta · Kami Build įdiegia savo Debian</string>
     <string name="settings_sandbox_migrate_title">Perkelkite savo failus iš %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d failų · %2$s jos namų aplanke dar nėra čia. Kopijavimas išsaugo viską, kas jau yra čia, ir palieka kitą sistemą nepaliestą, todėl vėliau galėsite ją pašalinti.</string>
     <string name="settings_sandbox_migrate_action">Kopijuoti failus</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Visi duomenys Linux smėlio dėžėje bus prarasti, o Kai Build taip pat praras savo Linux sistemą — jis naudoja tą pačią. Jūsų projektai bus išsaugoti. Ar tikrai norite pašalinti?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Visi duomenys Linux smėlio dėžėje bus prarasti, o Kami Build taip pat praras savo Linux sistemą — jis naudoja tą pačią. Jūsų projektai bus išsaugoti. Ar tikrai norite pašalinti?</string>
     <string name="sandbox_status_not_installed">Neįdiegta</string>
     <string name="sandbox_status_downloading">Atsiunčiamas rootfs…</string>
     <string name="sandbox_status_extracting">Išpakuojama…</string>

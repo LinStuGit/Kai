@@ -45,7 +45,7 @@ import kai.composeapp.generated.resources.welcome_message
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Phosphor green for the Kai Build button, taken from the ANSI palette its own
+ * Phosphor green for the Kami Build button, taken from the ANSI palette its own
  * terminal paints with: the bright green on dark backgrounds, the darker normal
  * green where a light one would wash it out. Colors only — the button keeps the
  * shape and label style it shares with the rest of the empty state.

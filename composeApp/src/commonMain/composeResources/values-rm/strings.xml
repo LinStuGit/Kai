@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Bainvegni tar Kai 9000</string>
+    <string name="welcome_message">Bainvegni tar Kami</string>
     <string name="prompt_ask_question">Fa ina dumonda</string>
     <string name="error_invalid_api_key">Clav API nunvalida. Controlai Voss parameters.</string>
     <string name="error_rate_limit_exceeded">Limit da dumondas surpassà. Empruvai pli tard.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Regenerar</string>
     <string name="error_empty_response">Nagina resposta retschavida. Empruvai da cumenzar in nov chat u da scursanir Voss messadi.</string>
     <string name="settings_daemon_mode">Modus daemon</string>
-    <string name="settings_daemon_mode_description">Laschar Kai 9000 ir en il fund per che incumbensas planisadas vegnan exequidas era sche l'app n'è betg en il prim plan.</string>
+    <string name="settings_daemon_mode_description">Laschar Kami ir en il fund per che incumbensas planisadas vegnan exequidas era sche l'app n'è betg en il prim plan.</string>
     <string name="settings_scheduled_tasks">Incumbensas planisadas</string>
     <string name="settings_scheduled_tasks_description">Incumbensas planisadas da l'AI per l'execuziun futura. Dumandai a l'AI da s'enregurdar u da lantschar insatge pli tard per crear incumbensas planisadas.</string>
     <string name="settings_scheduled_tasks_cancel">Annullar incumbensa</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Jau sun cumplettamain operativ.</string>
     <string name="interactive_welcome_subtitle">Di a mi tge che ti vuls far.</string>
     <string name="interactive_back_content_description">Enavos</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Bandunar il modus interactiv</string>
     <string name="interactive_ui_parsing_failed">L'analisa da l'UI n'è betg reussida, emprova danovamain…</string>
     <string name="settings_sponsors">Sponsurs</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Tschertgar communicaziuns</string>
     <string name="tool_search_notifications_description">Tschertgar communicaziuns tenor app u text</string>
     <string name="settings_notifications_label">Leger las communicaziuns</string>
-    <string name="settings_notifications_description">Las communicaziuns entrantas vegnan rimnadas en il fund e survegnan pussadas dal heartbeat. Tscherna en las configuraziuns dal sistem per l\'access a las communicaziuns las apps che Kai dastga leger.</string>
-    <string name="settings_notifications_access_required">L\'access a las communicaziuns n\'è betg concedì. Tutga sutvart per activar Kai en las configuraziuns dal sistem.</string>
+    <string name="settings_notifications_description">Las communicaziuns entrantas vegnan rimnadas en il fund e survegnan pussadas dal heartbeat. Tscherna en las configuraziuns dal sistem per l\'access a las communicaziuns las apps che Kami dastga leger.</string>
+    <string name="settings_notifications_access_required">L\'access a las communicaziuns n\'è betg concedì. Tutga sutvart per activar Kami en las configuraziuns dal sistem.</string>
     <string name="settings_notifications_access_button">Avrir l\'access a las communicaziuns</string>
     <string name="settings_notifications_manage_apps">Administrar las apps</string>
     <string name="settings_notifications_listener_bound">Listener activ</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Importar datoteca</string>
     <string name="sandbox_files_import_success">Datoteca importada</string>
     <string name="sandbox_files_import_failed">Importaziun fallida</string>
-    <string name="kai_build_open">Avrir Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Bandunar Kai Build</string>
+    <string name="kai_build_open">Avrir Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Bandunar Kami Build</string>
     <string name="kai_build_back_content_description">Enavos tar projects</string>
     <string name="kai_build_setup_title">Configurar Linux (Beta)</string>
-    <string name="kai_build_setup_description">Kai Build è en beta. Debian Bookworm gira sut proot en questa app, cun curl, git, wget, python3 ed auters utensils essentials. L\'emprima installaziun telechargia circa 100 MB e basegna rait.</string>
+    <string name="kai_build_setup_description">Kami Build è en beta. Debian Bookworm gira sut proot en questa app, cun curl, git, wget, python3 ed auters utensils essentials. L\'emprima installaziun telechargia circa 100 MB e basegna rait.</string>
     <string name="kai_build_setup_agents_title">Agents da coding</string>
     <string name="kai_build_setup_agents_description">Tscherna las CLIs da installar sin il sistem frestg. Ti pos agiuntar las autras pli tard.</string>
     <string name="kai_build_setup_install">Installar Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Opziunal. Ils utensils da tschertga basegnan ina clav gratuita da jina.ai; ils auters utensils funcziunan senza quella.</string>
     <string name="settings_sandbox_distro_title">Distribuziun</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Recumandà · ~150 MB · duvrà er da Kai Build</string>
-    <string name="settings_sandbox_distro_debian_installed">Installà · duvrà er da Kai Build</string>
+    <string name="settings_sandbox_distro_debian_detail">Recumandà · ~150 MB · duvrà er da Kami Build</string>
+    <string name="settings_sandbox_distro_debian_installed">Installà · duvrà er da Kami Build</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Pli pitschen · ~4 MB · Kai Build installa ses agen Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Installà · Kai Build installa ses agen Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Pli pitschen · ~4 MB · Kami Build installa ses agen Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Installà · Kami Build installa ses agen Debian</string>
     <string name="settings_sandbox_migrate_title">Transferir Voss datotecas da %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d datotecas · %2$s en ses ordinatur da chasa n'èn anc betg qua. Copiar tegna tut quai ch'è gia qua e na tutga betg l'auter sistem, uschia che Vus pudais deinstallar el pli tard.</string>
     <string name="settings_sandbox_migrate_action">Copiar datotecas</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Tut las datas en il sandbox da Linux van a ir a perder, e Kai Build perda er ses Linux — el duvra il medem. Voss projects restan. Essas Vus segirs che Vus vulais deinstallar?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Tut las datas en il sandbox da Linux van a ir a perder, e Kami Build perda er ses Linux — el duvra il medem. Voss projects restan. Essas Vus segirs che Vus vulais deinstallar?</string>
     <string name="sandbox_status_not_installed">Betg installà</string>
     <string name="sandbox_status_downloading">Telechargiar il rootfs…</string>
     <string name="sandbox_status_extracting">Extrair…</string>

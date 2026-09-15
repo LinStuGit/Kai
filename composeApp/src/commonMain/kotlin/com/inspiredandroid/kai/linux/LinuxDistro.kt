@@ -3,7 +3,7 @@ package com.inspiredandroid.kai.linux
 /**
  * The Linux distributions Kai can run under proot.
  *
- * Kai Build is always [DEBIAN] — its coding agents are vendor scripts that expect
+ * Kami Build is always [DEBIAN] — its coding agents are vendor scripts that expect
  * glibc and apt. The chat sandbox lets the user pick, and when it is also Debian
  * the two share a single rootfs instead of installing one each.
  */
@@ -21,7 +21,7 @@ enum class LinuxDistro(
     val packageManager: PackageManagerSpec,
 ) {
     /**
-     * Base set is Kai Build's proven list: `tar` because OpenCode's installer
+     * Base set is Kami Build's proven list: `tar` because OpenCode's installer
      * extracts a `.tar.gz`, `coreutils` because Claude's checks a `sha256sum`.
      */
     DEBIAN(
@@ -68,7 +68,7 @@ enum class LinuxDistro(
     companion object {
         /**
          * What a fresh install becomes unless the user picks otherwise, and what
-         * Kai Build always uses.
+         * Kami Build always uses.
          */
         val DEFAULT = DEBIAN
 

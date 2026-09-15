@@ -16,7 +16,7 @@ private const val MAX_TIMEOUT_SECONDS = 180L
  * results shaped as the map the shell tool and background jobs already consume.
  *
  * Everything about starting the process — argv, binds, environment — lives in
- * the shared [ProotLauncher], which Kai Build's PTY executor uses too.
+ * the shared [ProotLauncher], which Kami Build's PTY executor uses too.
  */
 class ProotExecutor(private val launcher: ProotLauncher) {
 

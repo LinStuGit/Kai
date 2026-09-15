@@ -5,7 +5,7 @@ import androidx.compose.ui.Modifier
 import com.inspiredandroid.kai.build.terminal.TerminalKey
 import com.inspiredandroid.kai.build.terminal.TerminalModifiers
 
-/** Kai Build is Android-only; there is no environment to type into here. */
+/** Kami Build is Android-only; there is no environment to type into here. */
 actual val supportsRawTerminalInput: Boolean = false
 
 @Composable

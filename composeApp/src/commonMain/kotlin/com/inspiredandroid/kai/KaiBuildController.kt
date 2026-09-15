@@ -5,14 +5,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Kai Build's Debian-under-proot environment. Separate from [SandboxController]
+ * Kami Build's Debian-under-proot environment. Separate from [SandboxController]
  * on purpose: different rootfs, different home, and resetting one must never
  * touch the other.
  */
 interface KaiBuildController {
     val state: StateFlow<KaiBuildState>
 
-    /** The Debian file tree, for the Files tab. Empty on platforms without Kai Build. */
+    /** The Debian file tree, for the Files tab. Empty on platforms without Kami Build. */
     val files: FileBrowserSource
 
     /** Installs Debian if needed, then the given agents. Safe to call when already installed. */
@@ -77,7 +77,7 @@ interface KaiBuildController {
     fun resizeTerminal(columns: Int, rows: Int)
 }
 
-/** Kai Build is Android-only; every other target gets this. */
+/** Kami Build is Android-only; every other target gets this. */
 class NoOpKaiBuildController : KaiBuildController {
     override val state = MutableStateFlow(KaiBuildState())
     override val files: FileBrowserSource = NoOpFileBrowserSource

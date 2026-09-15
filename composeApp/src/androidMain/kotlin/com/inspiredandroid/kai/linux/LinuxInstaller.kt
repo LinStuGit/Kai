@@ -21,7 +21,7 @@ private const val UPDATE_TIMEOUT_SECONDS = 300L
 private const val PACKAGE_TIMEOUT_SECONDS = 900L
 
 /**
- * Downloads, extracts and bootstraps a rootfs. The chat sandbox and Kai Build
+ * Downloads, extracts and bootstraps a rootfs. The chat sandbox and Kami Build
  * both drive this; whoever gets there first produces the install the other one
  * then finds already present.
  */
@@ -156,7 +156,7 @@ class LinuxInstaller(private val paths: LinuxPaths) {
     companion object {
         /**
          * Serializes package work across features. A shared rootfs means the chat
-         * sandbox's "Install Packages" and a Kai Build agent install can otherwise
+         * sandbox's "Install Packages" and a Kami Build agent install can otherwise
          * hit the dpkg lock at the same time and both fail.
          */
         val packageLock = Mutex()

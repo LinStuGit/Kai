@@ -11,7 +11,7 @@ data class PackageEntry(
 
 /**
  * Everything that differs between `apk` and `apt` when the Packages tab, the
- * sandbox installer and the Kai Build installer drive a package manager: the
+ * sandbox installer and the Kami Build installer drive a package manager: the
  * commands to run and how to read what they printed.
  *
  * Exit codes are deliberately not part of this contract — under proot both

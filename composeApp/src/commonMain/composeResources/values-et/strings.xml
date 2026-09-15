@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Tere tulemast Kai 9000'sse</string>
+    <string name="welcome_message">Tere tulemast Kami'sse</string>
     <string name="prompt_ask_question">Esita küsimus</string>
     <string name="error_invalid_api_key">Kehtetu API võti. Kontrollige oma seadeid.</string>
     <string name="error_rate_limit_exceeded">Päringute limiit ületatud. Proovige hiljem uuesti.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Genereeri uuesti</string>
     <string name="error_empty_response">Vastust ei saadud. Proovige alustada uut vestlust või lühendada oma sõnumit.</string>
     <string name="settings_daemon_mode">Taustarežiim</string>
-    <string name="settings_daemon_mode_description">Hoidke Kai 9000 taustal töötamas, et ajastatud ülesanded täidetaks isegi siis, kui rakendus pole esiplaanil.</string>
+    <string name="settings_daemon_mode_description">Hoidke Kami taustal töötamas, et ajastatud ülesanded täidetaks isegi siis, kui rakendus pole esiplaanil.</string>
     <string name="settings_scheduled_tasks">Ajastatud ülesanded</string>
     <string name="settings_scheduled_tasks_description">AI poolt tulevikus täitmiseks ajastatud ülesanded. Paluge AI-l teid meelde tuletada või midagi hiljem käivitada, et luua ajastatud ülesandeid.</string>
     <string name="settings_scheduled_tasks_cancel">Tühista ülesanne</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Olen täielikult töökorras.</string>
     <string name="interactive_welcome_subtitle">Ütle mulle, mida soovid teha.</string>
     <string name="interactive_back_content_description">Tagasi</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Välju interaktiivsest režiimist</string>
     <string name="interactive_ui_parsing_failed">UI analüüs ebaõnnestus, proovin uuesti…</string>
     <string name="settings_sponsors">Sponsorid</string>
@@ -360,8 +360,8 @@
     <string name="tool_search_notifications_name">Otsi teavitusi</string>
     <string name="tool_search_notifications_description">Otsi teavitusi rakenduse või teksti järgi</string>
     <string name="settings_notifications_label">Loe teavitusi</string>
-    <string name="settings_notifications_description">Sissetulevaid teavitusi kogutakse taustal ja need kogub heartbeat. Vali süsteemi teavituste juurdepääsu seadetes, milliseid rakendusi Kai lugeda võib.</string>
-    <string name="settings_notifications_access_required">Teavituste juurdepääsu pole antud. Puuduta allpool, et lubada Kai süsteemi seadetes.</string>
+    <string name="settings_notifications_description">Sissetulevaid teavitusi kogutakse taustal ja need kogub heartbeat. Vali süsteemi teavituste juurdepääsu seadetes, milliseid rakendusi Kami lugeda võib.</string>
+    <string name="settings_notifications_access_required">Teavituste juurdepääsu pole antud. Puuduta allpool, et lubada Kami süsteemi seadetes.</string>
     <string name="settings_notifications_access_button">Ava teavituste juurdepääs</string>
     <string name="settings_notifications_manage_apps">Halda rakendusi</string>
     <string name="settings_notifications_listener_bound">Kuulaja aktiivne</string>
@@ -433,12 +433,12 @@
     <string name="sandbox_files_action_import">Impordi fail</string>
     <string name="sandbox_files_import_success">Fail imporditud</string>
     <string name="sandbox_files_import_failed">Import ebaõnnestus</string>
-    <string name="kai_build_open">Ava Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Välju Kai Buildist</string>
+    <string name="kai_build_open">Ava Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Välju Kami Buildist</string>
     <string name="kai_build_back_content_description">Tagasi projektide juurde</string>
     <string name="kai_build_setup_title">Seadista Linux (beeta)</string>
-    <string name="kai_build_setup_description">Kai Build on beetas. Debian Bookworm töötab selles rakenduses prooti all koos curl, git, wget, python3 ja muude põhiriistadega. Esimene paigaldus laadib umbes 100 MB ja vajab võrku.</string>
+    <string name="kai_build_setup_description">Kami Build on beetas. Debian Bookworm töötab selles rakenduses prooti all koos curl, git, wget, python3 ja muude põhiriistadega. Esimene paigaldus laadib umbes 100 MB ja vajab võrku.</string>
     <string name="kai_build_setup_agents_title">Kodeerimisagendid</string>
     <string name="kai_build_setup_agents_description">Vali CLI-d, mis paigaldatakse puhtale süsteemile. Ülejäänud saad lisada hiljem.</string>
     <string name="kai_build_setup_install">Paigalda Debian</string>
@@ -483,15 +483,15 @@
     <string name="settings_mcp_api_key_help">Valikuline. Otsingutööriistad vajavad tasuta võtit saidilt jina.ai; teised tööriistad töötavad ka ilma selleta.</string>
     <string name="settings_sandbox_distro_title">Distributsioon</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Soovitatud · ~150 MB · jagatud Kai Buildiga</string>
-    <string name="settings_sandbox_distro_debian_installed">Paigaldatud · jagatud Kai Buildiga</string>
+    <string name="settings_sandbox_distro_debian_detail">Soovitatud · ~150 MB · jagatud Kami Buildiga</string>
+    <string name="settings_sandbox_distro_debian_installed">Paigaldatud · jagatud Kami Buildiga</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Väiksem · ~4 MB · Kai Build paigaldab oma Debiani</string>
-    <string name="settings_sandbox_distro_alpine_installed">Paigaldatud · Kai Build paigaldab oma Debiani</string>
+    <string name="settings_sandbox_distro_alpine_detail">Väiksem · ~4 MB · Kami Build paigaldab oma Debiani</string>
+    <string name="settings_sandbox_distro_alpine_installed">Paigaldatud · Kami Build paigaldab oma Debiani</string>
     <string name="settings_sandbox_migrate_title">Too oma failid üle süsteemist %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d faili · %2$s selle kodukaustas pole veel siin. Kopeerimine säilitab kõik, mis on juba siin, ja jätab teise süsteemi puutumata, nii et saad selle hiljem eemaldada.</string>
     <string name="settings_sandbox_migrate_action">Kopeeri failid</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Kõik andmed Linuxi liivakastis lähevad kaotsi ja ka Kai Build kaotab oma Linuxi — need kasutavad sama süsteemi. Sinu projektid säilivad. Kas soovite kindlasti eemaldada?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Kõik andmed Linuxi liivakastis lähevad kaotsi ja ka Kami Build kaotab oma Linuxi — need kasutavad sama süsteemi. Sinu projektid säilivad. Kas soovite kindlasti eemaldada?</string>
     <string name="sandbox_status_not_installed">Pole installitud</string>
     <string name="sandbox_status_downloading">Rootfs-i allalaadimine…</string>
     <string name="sandbox_status_extracting">Lahtipakkimine…</string>

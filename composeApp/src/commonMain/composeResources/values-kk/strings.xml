@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Kai 9000-ға қош келдіңіз</string>
+    <string name="welcome_message">Kami-ға қош келдіңіз</string>
     <string name="prompt_ask_question">Сұрақ қойыңыз</string>
     <string name="error_invalid_api_key">Жарамсыз API кілті. Параметрлерді тексеріңіз.</string>
     <string name="error_rate_limit_exceeded">Сұрау лимитінен асып кетті. Кейінірек қайталаңыз.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Қайта жасау</string>
     <string name="error_empty_response">Жауап алынбады. Жаңа чат бастаңыз немесе хабарламаңызды қысқартыңыз.</string>
     <string name="settings_daemon_mode">Daemon режимі</string>
-    <string name="settings_daemon_mode_description">Қолданба алдыңғы жақта болмаса да, жоспарланған тапсырмалар орындалуы үшін Kai 9000-ды фонда жұмыс істетіп ұстаңыз.</string>
+    <string name="settings_daemon_mode_description">Қолданба алдыңғы жақта болмаса да, жоспарланған тапсырмалар орындалуы үшін Kami-ды фонда жұмыс істетіп ұстаңыз.</string>
     <string name="settings_scheduled_tasks">Жоспарланған тапсырмалар</string>
     <string name="settings_scheduled_tasks_description">AI болашақта орындау үшін жоспарлаған тапсырмалар. Жоспарланған тапсырмалар жасау үшін AI-дан есіңізге салуды немесе кейінірек бірдеңе орындауды сұраңыз.</string>
     <string name="settings_scheduled_tasks_cancel">Тапсырманы болдырмау</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Мен толығымен жұмыс істеп тұрмын.</string>
     <string name="interactive_welcome_subtitle">Не істегіңіз келетінін айтыңыз.</string>
     <string name="interactive_back_content_description">Артқа</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Интерактивті режимнен шығу</string>
     <string name="interactive_ui_parsing_failed">UI талдауы сәтсіз аяқталды, қайта әрекет жасалуда…</string>
     <string name="settings_sponsors">Демеушілер</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Хабарландыруларды іздеу</string>
     <string name="tool_search_notifications_description">Қолданба немесе мәтін бойынша хабарландыруларды іздеу</string>
     <string name="settings_notifications_label">Хабарландыруларды оқу</string>
-    <string name="settings_notifications_description">Кіріс хабарландырулар фонда жиналып, heartbeat арқылы өңделеді. Kai оқи алатын қолданбаларды жүйенің хабарландыру қол жеткізу параметрлерінен таңдаңыз.</string>
-    <string name="settings_notifications_access_required">Хабарландыру қол жеткізуі берілмеген. Kai-ды жүйелік параметрлерден қосу үшін төмендегіні түртіңіз.</string>
+    <string name="settings_notifications_description">Кіріс хабарландырулар фонда жиналып, heartbeat арқылы өңделеді. Kami оқи алатын қолданбаларды жүйенің хабарландыру қол жеткізу параметрлерінен таңдаңыз.</string>
+    <string name="settings_notifications_access_required">Хабарландыру қол жеткізуі берілмеген. Kami-ды жүйелік параметрлерден қосу үшін төмендегіні түртіңіз.</string>
     <string name="settings_notifications_access_button">Хабарландыру қол жеткізуін ашу</string>
     <string name="settings_notifications_manage_apps">Қолданбаларды басқару</string>
     <string name="settings_notifications_listener_bound">Тыңдағыш белсенді</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Файлды импорттау</string>
     <string name="sandbox_files_import_success">Файл импортталды</string>
     <string name="sandbox_files_import_failed">Импорт сәтсіз</string>
-    <string name="kai_build_open">Kai Build ашу</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Kai Build-тан шығу</string>
+    <string name="kai_build_open">Kami Build ашу</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Kami Build-тан шығу</string>
     <string name="kai_build_back_content_description">Жобаларға қайту</string>
     <string name="kai_build_setup_title">Linux орнату (бета)</string>
-    <string name="kai_build_setup_description">Kai Build бетада. Debian Bookworm осы қолданбада proot астында жұмыс істейді, curl, git, wget, python3 және басқа негізгі құралдармен. Алғашқы орнату шамамен 100 МБ жүктейді және желі қажет.</string>
+    <string name="kai_build_setup_description">Kami Build бетада. Debian Bookworm осы қолданбада proot астында жұмыс істейді, curl, git, wget, python3 және басқа негізгі құралдармен. Алғашқы орнату шамамен 100 МБ жүктейді және желі қажет.</string>
     <string name="kai_build_setup_agents_title">Кодтау агенттері</string>
     <string name="kai_build_setup_agents_description">Жаңа жүйеге орнатылатын CLI-ларды таңдаңыз. Қалғандарын кейін қосуға болады.</string>
     <string name="kai_build_setup_install">Debian орнату</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Міндетті емес. Іздеу құралдарына jina.ai сайтынан тегін кілт қажет; басқа құралдар онсыз да жұмыс істейді.</string>
     <string name="settings_sandbox_distro_title">Дистрибутив</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Ұсынылады · ~150 МБ · Kai Build-пен ортақ</string>
-    <string name="settings_sandbox_distro_debian_installed">Орнатылған · Kai Build-пен ортақ</string>
+    <string name="settings_sandbox_distro_debian_detail">Ұсынылады · ~150 МБ · Kami Build-пен ортақ</string>
+    <string name="settings_sandbox_distro_debian_installed">Орнатылған · Kami Build-пен ортақ</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Кішірек · ~4 МБ · Kai Build өзінің Debian-ын орнатады</string>
-    <string name="settings_sandbox_distro_alpine_installed">Орнатылған · Kai Build өзінің Debian-ын орнатады</string>
+    <string name="settings_sandbox_distro_alpine_detail">Кішірек · ~4 МБ · Kami Build өзінің Debian-ын орнатады</string>
+    <string name="settings_sandbox_distro_alpine_installed">Орнатылған · Kami Build өзінің Debian-ын орнатады</string>
     <string name="settings_sandbox_migrate_title">%1$s жүйесінен файлдарыңызды әкеліңіз</string>
     <string name="settings_sandbox_migrate_detail">Оның үй қалтасындағы %1$d файл · %2$s әлі осында жоқ. Көшіру осында бар нәрсенің барлығын сақтайды және басқа жүйені өзгеріссіз қалдырады, сондықтан оны кейінірек жоюға болады.</string>
     <string name="settings_sandbox_migrate_action">Файлдарды көшіру</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Linux құм жәшігіндегі барлық деректер жоғалады, әрі Kai Build те өзінің Linux жүйесінен айырылады — ол дәл сол жүйені пайдаланады. Жобаларыңыз сақталады. Жоюды қалайтыныңызға сенімдісіз бе?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Linux құм жәшігіндегі барлық деректер жоғалады, әрі Kami Build те өзінің Linux жүйесінен айырылады — ол дәл сол жүйені пайдаланады. Жобаларыңыз сақталады. Жоюды қалайтыныңызға сенімдісіз бе?</string>
     <string name="sandbox_status_not_installed">Орнатылмаған</string>
     <string name="sandbox_status_downloading">rootfs жүктелуде…</string>
     <string name="sandbox_status_extracting">Тарқатылуда…</string>

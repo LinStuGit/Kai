@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Kai 9000'ye Hoş Geldiniz</string>
+    <string name="welcome_message">Kami'ye Hoş Geldiniz</string>
     <string name="prompt_ask_question">Soru sorun</string>
     <string name="error_invalid_api_key">Geçersiz API Anahtarı. Lütfen ayarlarınızı kontrol edin.</string>
     <string name="error_rate_limit_exceeded">İstek limiti aşıldı. Lütfen daha sonra tekrar deneyin.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Yeniden oluştur</string>
     <string name="error_empty_response">Yanıt alınamadı. Yeni bir sohbet başlatmayı veya mesajınızı kısaltmayı deneyin.</string>
     <string name="settings_daemon_mode">Arka Plan Modu</string>
-    <string name="settings_daemon_mode_description">Uygulama ön planda olmasa bile zamanlanmış görevlerin çalışması için Kai 9000'yi arka planda çalışır durumda tutun.</string>
+    <string name="settings_daemon_mode_description">Uygulama ön planda olmasa bile zamanlanmış görevlerin çalışması için Kami'yi arka planda çalışır durumda tutun.</string>
     <string name="settings_scheduled_tasks">Zamanlanmış Görevler</string>
     <string name="settings_scheduled_tasks_description">AI tarafından gelecekte çalıştırılmak üzere zamanlanan görevler. Zamanlanmış görevler oluşturmak için AI'dan size hatırlatmasını veya daha sonra bir şey çalıştırmasını isteyin.</string>
     <string name="settings_scheduled_tasks_cancel">Görevi iptal et</string>
@@ -235,7 +235,7 @@ Bir şey dikkat gerektiriyorsa (eski anılar, vadesi geçmiş görevler, kullan�
     <string name="interactive_welcome_title">Tamamen operasyonelim.</string>
     <string name="interactive_welcome_subtitle">Ne yapmak istediğinizi söyleyin.</string>
     <string name="interactive_back_content_description">Geri</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Etkileşimli moddan çık</string>
     <string name="interactive_ui_parsing_failed">UI ayrıştırma başarısız oldu, tekrar deneniyor…</string>
     <string name="settings_sponsors">Sponsorlar</string>
@@ -360,8 +360,8 @@ Bir şey dikkat gerektiriyorsa (eski anılar, vadesi geçmiş görevler, kullan�
     <string name="tool_search_notifications_name">Bildirimlerde ara</string>
     <string name="tool_search_notifications_description">Bildirimleri uygulamaya veya metne göre ara</string>
     <string name="settings_notifications_label">Bildirimleri oku</string>
-    <string name="settings_notifications_description">Gelen bildirimler arka planda toplanır ve heartbeat tarafından alınır. Sistem bildirim erişimi ayarlarında Kai\'nin hangi uygulamaları okuyabileceğini seçin.</string>
-    <string name="settings_notifications_access_required">Bildirim erişimi verilmedi. Kai\'yi sistem ayarlarında etkinleştirmek için aşağıya dokunun.</string>
+    <string name="settings_notifications_description">Gelen bildirimler arka planda toplanır ve heartbeat tarafından alınır. Sistem bildirim erişimi ayarlarında Kami\'nin hangi uygulamaları okuyabileceğini seçin.</string>
+    <string name="settings_notifications_access_required">Bildirim erişimi verilmedi. Kami\'yi sistem ayarlarında etkinleştirmek için aşağıya dokunun.</string>
     <string name="settings_notifications_access_button">Bildirim erişimini aç</string>
     <string name="settings_notifications_manage_apps">Uygulamaları yönet</string>
     <string name="settings_notifications_listener_bound">Dinleyici aktif</string>
@@ -433,12 +433,12 @@ Bir şey dikkat gerektiriyorsa (eski anılar, vadesi geçmiş görevler, kullan�
     <string name="sandbox_files_action_import">Dosya içe aktar</string>
     <string name="sandbox_files_import_success">Dosya içe aktarıldı</string>
     <string name="sandbox_files_import_failed">İçe aktarma başarısız</string>
-    <string name="kai_build_open">Kai Build\'i aç</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Kai Build\'den çık</string>
+    <string name="kai_build_open">Kami Build\'i aç</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Kami Build\'den çık</string>
     <string name="kai_build_back_content_description">Projelere dön</string>
     <string name="kai_build_setup_title">Linux\'u kur (Beta)</string>
-    <string name="kai_build_setup_description">Kai Build beta aşamasında. Debian Bookworm bu uygulamada proot altında çalışır; curl, git, wget, python3 ve diğer temel araçlar dahildir. İlk kurulum yaklaşık 100 MB indirir ve ağ erişimi gerekir.</string>
+    <string name="kai_build_setup_description">Kami Build beta aşamasında. Debian Bookworm bu uygulamada proot altında çalışır; curl, git, wget, python3 ve diğer temel araçlar dahildir. İlk kurulum yaklaşık 100 MB indirir ve ağ erişimi gerekir.</string>
     <string name="kai_build_setup_agents_title">Kodlama aracıları</string>
     <string name="kai_build_setup_agents_description">Yeni sisteme kurulacak CLI\'ları seçin. Diğerlerini daha sonra ekleyebilirsiniz.</string>
     <string name="kai_build_setup_install">Debian\'ı kur</string>
@@ -483,15 +483,15 @@ Bir şey dikkat gerektiriyorsa (eski anılar, vadesi geçmiş görevler, kullan�
     <string name="settings_mcp_api_key_help">İsteğe bağlı. Arama araçları jina.ai'den ücretsiz bir anahtar gerektirir; diğer araçlar anahtar olmadan çalışır.</string>
     <string name="settings_sandbox_distro_title">Dağıtım</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Önerilen · ~150 MB · Kai Build ile paylaşılıyor</string>
-    <string name="settings_sandbox_distro_debian_installed">Yüklü · Kai Build ile paylaşılıyor</string>
+    <string name="settings_sandbox_distro_debian_detail">Önerilen · ~150 MB · Kami Build ile paylaşılıyor</string>
+    <string name="settings_sandbox_distro_debian_installed">Yüklü · Kami Build ile paylaşılıyor</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Daha küçük · ~4 MB · Kai Build kendi Debian'ını kurar</string>
-    <string name="settings_sandbox_distro_alpine_installed">Yüklü · Kai Build kendi Debian'ını kurar</string>
+    <string name="settings_sandbox_distro_alpine_detail">Daha küçük · ~4 MB · Kami Build kendi Debian'ını kurar</string>
+    <string name="settings_sandbox_distro_alpine_installed">Yüklü · Kami Build kendi Debian'ını kurar</string>
     <string name="settings_sandbox_migrate_title">Dosyalarınızı %1$s'den getirin</string>
     <string name="settings_sandbox_migrate_detail">%1$d dosya · %2$s onun ana klasöründe henüz burada değil. Kopyalama burada olan her şeyi korur ve diğer sistemi olduğu gibi bırakır, böylece daha sonra onu kaldırabilirsiniz.</string>
     <string name="settings_sandbox_migrate_action">Dosyaları Kopyala</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Linux sandbox'taki tüm veriler kaybolacak ve Kai Build de kendi Linux'unu kaybedecek — aynısını kullanıyor. Projeleriniz korunur. Kaldırmak istediğinizden emin misiniz?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Linux sandbox'taki tüm veriler kaybolacak ve Kami Build de kendi Linux'unu kaybedecek — aynısını kullanıyor. Projeleriniz korunur. Kaldırmak istediğinizden emin misiniz?</string>
     <string name="sandbox_status_not_installed">Kurulu değil</string>
     <string name="sandbox_status_downloading">Rootfs indiriliyor…</string>
     <string name="sandbox_status_extracting">Çıkarılıyor…</string>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Kai 9000-ba</string>
+    <string name="welcome_message">Kami-ba</string>
     <string name="prompt_ask_question">Tegyel fel egy k\u00e9rd\u00e9st</string>
     <string name="error_invalid_api_key">Érvénytelen API kulcs. Kérlek, ellenőrizd a beállításaidat.</string>
     <string name="error_rate_limit_exceeded">Kérési limit túllépve. Kérlek, próbáld újra később.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Újragenerálás</string>
     <string name="error_empty_response">Nem érkezett válasz. Próbálj meg új csevegést indítani vagy rövidítsd az üzenetedet.</string>
     <string name="settings_daemon_mode">Daemon mód</string>
-    <string name="settings_daemon_mode_description">Tartsd a Kai 9000-t futva a háttérben, hogy az ütemezett feladatok akkor is végrehajtódjanak, ha az alkalmazás nincs az előtérben.</string>
+    <string name="settings_daemon_mode_description">Tartsd a Kami-t futva a háttérben, hogy az ütemezett feladatok akkor is végrehajtódjanak, ha az alkalmazás nincs az előtérben.</string>
     <string name="settings_scheduled_tasks">Ütemezett feladatok</string>
     <string name="settings_scheduled_tasks_description">A mesterséges intelligencia által jövőbeli végrehajtásra ütemezett feladatok. Kérd a mesterséges intelligenciát, hogy emlékeztessen vagy futtasson valamit később, hogy ütemezett feladatokat hozz létre.</string>
     <string name="settings_scheduled_tasks_cancel">Feladat törlése</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Teljesen működőképes vagyok.</string>
     <string name="interactive_welcome_subtitle">Mondd el, mit szeretnél csinálni.</string>
     <string name="interactive_back_content_description">Vissza</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Kilépés az interaktív módból</string>
     <string name="interactive_ui_parsing_failed">A felhasználói felület elemzése sikertelen, újrapróbálás…</string>
     <string name="settings_sponsors">Szponzorok</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Értesítések keresése</string>
     <string name="tool_search_notifications_description">Értesítések keresése alkalmazás vagy szöveg szerint</string>
     <string name="settings_notifications_label">Értesítések olvasása</string>
-    <string name="settings_notifications_description">A bejövő értesítéseket a háttérben gyűjtjük be, és a heartbeat dolgozza fel. A rendszer értesítéshozzáférési beállításaiban válaszd ki, mely alkalmazásokat olvashatja a Kai.</string>
-    <string name="settings_notifications_access_required">Az értesítéshozzáférés nincs engedélyezve. Koppints alább a Kai engedélyezéséhez a rendszerbeállításokban.</string>
+    <string name="settings_notifications_description">A bejövő értesítéseket a háttérben gyűjtjük be, és a heartbeat dolgozza fel. A rendszer értesítéshozzáférési beállításaiban válaszd ki, mely alkalmazásokat olvashatja a Kami.</string>
+    <string name="settings_notifications_access_required">Az értesítéshozzáférés nincs engedélyezve. Koppints alább a Kami engedélyezéséhez a rendszerbeállításokban.</string>
     <string name="settings_notifications_access_button">Értesítéshozzáférés megnyitása</string>
     <string name="settings_notifications_manage_apps">Alkalmazások kezelése</string>
     <string name="settings_notifications_listener_bound">Figyelő aktív</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Fájl importálása</string>
     <string name="sandbox_files_import_success">Fájl importálva</string>
     <string name="sandbox_files_import_failed">Importálás sikertelen</string>
-    <string name="kai_build_open">Kai Build megnyitása</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Kilépés a Kai Buildből</string>
+    <string name="kai_build_open">Kami Build megnyitása</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Kilépés a Kami Buildből</string>
     <string name="kai_build_back_content_description">Vissza a projektekhez</string>
     <string name="kai_build_setup_title">Linux beállítása (béta)</string>
-    <string name="kai_build_setup_description">A Kai Build béta. A Debian Bookworm proot alatt fut ebben az alkalmazásban, curl, git, wget, python3 és más alapvető eszközökkel. Az első telepítés kb. 100 MB-ot tölt le, és hálózatot igényel.</string>
+    <string name="kai_build_setup_description">A Kami Build béta. A Debian Bookworm proot alatt fut ebben az alkalmazásban, curl, git, wget, python3 és más alapvető eszközökkel. Az első telepítés kb. 100 MB-ot tölt le, és hálózatot igényel.</string>
     <string name="kai_build_setup_agents_title">Kódoló ügynökök</string>
     <string name="kai_build_setup_agents_description">Válaszd ki a friss rendszerre telepítendő CLI-ket. A többit később is hozzáadhatod.</string>
     <string name="kai_build_setup_install">Debian telepítése</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Opcionális. A keresőeszközökhöz ingyenes kulcs szükséges a jina.ai-tól; a többi eszköz enélkül is működik.</string>
     <string name="settings_sandbox_distro_title">Disztribúció</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Ajánlott · ~150 MB · megosztva a Kai Builddal</string>
-    <string name="settings_sandbox_distro_debian_installed">Telepítve · megosztva a Kai Builddal</string>
+    <string name="settings_sandbox_distro_debian_detail">Ajánlott · ~150 MB · megosztva a Kami Builddal</string>
+    <string name="settings_sandbox_distro_debian_installed">Telepítve · megosztva a Kami Builddal</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Kisebb · ~4 MB · a Kai Build a saját Debianját telepíti</string>
-    <string name="settings_sandbox_distro_alpine_installed">Telepítve · a Kai Build a saját Debianját telepíti</string>
+    <string name="settings_sandbox_distro_alpine_detail">Kisebb · ~4 MB · a Kami Build a saját Debianját telepíti</string>
+    <string name="settings_sandbox_distro_alpine_installed">Telepítve · a Kami Build a saját Debianját telepíti</string>
     <string name="settings_sandbox_migrate_title">Hozd át a fájljaidat innen: %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d fájl · %2$s van a kezdőkönyvtárában, ami még nincs itt. A másolás megtart mindent, ami már itt van, és nem nyúl a másik rendszerhez, így azt később eltávolíthatod.</string>
     <string name="settings_sandbox_migrate_action">Fájlok másolása</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">A Linux sandbox összes adata elvész, és a Kai Build is elveszíti a Linuxát – ugyanazt használja. A projektjeid megmaradnak. Biztosan el szeretné távolítani?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">A Linux sandbox összes adata elvész, és a Kami Build is elveszíti a Linuxát – ugyanazt használja. A projektjeid megmaradnak. Biztosan el szeretné távolítani?</string>
     <string name="sandbox_status_not_installed">Nincs telepítve</string>
     <string name="sandbox_status_downloading">Rootfs letöltése…</string>
     <string name="sandbox_status_extracting">Kicsomagolás…</string>

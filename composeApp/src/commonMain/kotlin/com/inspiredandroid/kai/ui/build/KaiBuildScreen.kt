@@ -48,7 +48,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private const val PROJECTS_GUEST_DIR = "/root/projects"
 
 /**
- * Keeps Kai Build's browser out of the chat sandbox's ViewModel slot: same class,
+ * Keeps Kami Build's browser out of the chat sandbox's ViewModel slot: same class,
  * same store owner, so without a distinct key they would share one instance.
  */
 private const val KAI_BUILD_FILES_KEY = "kaiBuildFiles"
@@ -77,7 +77,7 @@ data class KaiBuildActions(
 )
 
 /**
- * Full-screen Kai Build surface. Entered from the empty chat state and left via
+ * Full-screen Kami Build surface. Entered from the empty chat state and left via
  * the top-bar close button or system back — same shape as Interactive UI mode,
  * so it never becomes a navigation destination of its own.
  *

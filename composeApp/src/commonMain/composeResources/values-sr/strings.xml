@@ -1,5 +1,5 @@
 <resources>
-    <string name="welcome_message">Добродошли у Kai 9000</string>
+    <string name="welcome_message">Добродошли у Kami</string>
     <string name="prompt_ask_question">Поставите питање</string>
     <string name="error_invalid_api_key">Неважећи API кључ. Проверите подешавања.</string>
     <string name="error_rate_limit_exceeded">Ограничење захтева је премашено. Покушајте поново касније.</string>
@@ -83,7 +83,7 @@
     <string name="bot_message_regenerate_content_description">Поново генериши</string>
     <string name="error_empty_response">Није примљен одговор. Покушајте да започнете нови разговор или скратите поруку.</string>
     <string name="settings_daemon_mode">Режим демона</string>
-    <string name="settings_daemon_mode_description">Одржавајте Kai 9000 покренутим у позадини тако да се заказани задаци извршавају чак и када апликација није у првом плану.</string>
+    <string name="settings_daemon_mode_description">Одржавајте Kami покренутим у позадини тако да се заказани задаци извршавају чак и када апликација није у првом плану.</string>
     <string name="settings_scheduled_tasks">Заказани задаци</string>
     <string name="settings_scheduled_tasks_description">Задаци које је АИ заказао за будуће извршавање. Замолите АИ да вас подсети или покрене нешто касније да бисте креирали заказане задатке.</string>
     <string name="settings_scheduled_tasks_cancel">Откажи задатак</string>
@@ -234,7 +234,7 @@
     <string name="interactive_welcome_title">Потпуно сам оперативан.</string>
     <string name="interactive_welcome_subtitle">Реците ми шта желите да урадите.</string>
     <string name="interactive_back_content_description">Назад</string>
-    <string name="interactive_title">Kai 9000</string>
+    <string name="interactive_title">Kami</string>
     <string name="interactive_exit_content_description">Изађи из интерактивног режима</string>
     <string name="interactive_ui_parsing_failed">Рашчлањивање корисничког интерфејса није успело, покушавам поново…</string>
     <string name="settings_sponsors">Спонзори</string>
@@ -359,8 +359,8 @@
     <string name="tool_search_notifications_name">Претражи обавештења</string>
     <string name="tool_search_notifications_description">Претражи обавештења по апликацији или тексту</string>
     <string name="settings_notifications_label">Читај обавештења</string>
-    <string name="settings_notifications_description">Долазна обавештења се прикупљају у позадини, а преузима их heartbeat. У системским подешавањима приступа обавештењима изабери које апликације Kai може да чита.</string>
-    <string name="settings_notifications_access_required">Приступ обавештењима није дозвољен. Додирни испод да би омогућио Kai у системским подешавањима.</string>
+    <string name="settings_notifications_description">Долазна обавештења се прикупљају у позадини, а преузима их heartbeat. У системским подешавањима приступа обавештењима изабери које апликације Kami може да чита.</string>
+    <string name="settings_notifications_access_required">Приступ обавештењима није дозвољен. Додирни испод да би омогућио Kami у системским подешавањима.</string>
     <string name="settings_notifications_access_button">Отвори приступ обавештењима</string>
     <string name="settings_notifications_manage_apps">Управљај апликацијама</string>
     <string name="settings_notifications_listener_bound">Слушалац активан</string>
@@ -432,12 +432,12 @@
     <string name="sandbox_files_action_import">Увези датотеку</string>
     <string name="sandbox_files_import_success">Датотека увезена</string>
     <string name="sandbox_files_import_failed">Увоз није успео</string>
-    <string name="kai_build_open">Отвори Kai Build</string>
-    <string name="kai_build_title">Kai Build</string>
-    <string name="kai_build_exit_content_description">Изађи из Kai Build-а</string>
+    <string name="kai_build_open">Отвори Kami Build</string>
+    <string name="kai_build_title">Kami Build</string>
+    <string name="kai_build_exit_content_description">Изађи из Kami Build-а</string>
     <string name="kai_build_back_content_description">Назад на пројекте</string>
     <string name="kai_build_setup_title">Подеси Linux (бета)</string>
-    <string name="kai_build_setup_description">Kai Build је у бети. Debian Bookworm ради под proot-ом у овој апликацији, са curl, git, wget, python3 и другим основама. Прва инсталација преузима око 100 MB и треба мрежу.</string>
+    <string name="kai_build_setup_description">Kami Build је у бети. Debian Bookworm ради под proot-ом у овој апликацији, са curl, git, wget, python3 и другим основама. Прва инсталација преузима око 100 MB и треба мрежу.</string>
     <string name="kai_build_setup_agents_title">Агенти за кодирање</string>
     <string name="kai_build_setup_agents_description">Изаберите CLI-јеве за инсталацију на свеж систем. Остале можете додати касније.</string>
     <string name="kai_build_setup_install">Инсталирај Debian</string>
@@ -482,15 +482,15 @@
     <string name="settings_mcp_api_key_help">Опционо. Алаткама за претрагу потребан је бесплатан кључ са jina.ai; остале алатке раде и без њега.</string>
     <string name="settings_sandbox_distro_title">Дистрибуција</string>
     <string name="settings_sandbox_distro_debian">Debian 12</string>
-    <string name="settings_sandbox_distro_debian_detail">Препоручено · ~150 MB · заједничко са Kai Build-ом</string>
-    <string name="settings_sandbox_distro_debian_installed">Инсталирано · заједничко са Kai Build-ом</string>
+    <string name="settings_sandbox_distro_debian_detail">Препоручено · ~150 MB · заједничко са Kami Build-ом</string>
+    <string name="settings_sandbox_distro_debian_installed">Инсталирано · заједничко са Kami Build-ом</string>
     <string name="settings_sandbox_distro_alpine">Alpine Linux</string>
-    <string name="settings_sandbox_distro_alpine_detail">Мање · ~4 MB · Kai Build инсталира сопствени Debian</string>
-    <string name="settings_sandbox_distro_alpine_installed">Инсталирано · Kai Build инсталира сопствени Debian</string>
+    <string name="settings_sandbox_distro_alpine_detail">Мање · ~4 MB · Kami Build инсталира сопствени Debian</string>
+    <string name="settings_sandbox_distro_alpine_installed">Инсталирано · Kami Build инсталира сопствени Debian</string>
     <string name="settings_sandbox_migrate_title">Пренети своје датотеке из %1$s</string>
     <string name="settings_sandbox_migrate_detail">%1$d датотека · %2$s у његовој домаћој фасцикли још нема овде. Копирање задржава све што је већ овде и не дира други систем, тако да га касније можете деинсталирати.</string>
     <string name="settings_sandbox_migrate_action">Копирај датотеке</string>
-    <string name="settings_sandbox_uninstall_confirm_shared">Сви подаци у Linux sandbox-у биће изгубљени, а Kai Build губи свој Linux — користи исти. Ваши пројекти биће задржани. Да ли сте сигурни да желите да деинсталирате?</string>
+    <string name="settings_sandbox_uninstall_confirm_shared">Сви подаци у Linux sandbox-у биће изгубљени, а Kami Build губи свој Linux — користи исти. Ваши пројекти биће задржани. Да ли сте сигурни да желите да деинсталирате?</string>
     <string name="sandbox_status_not_installed">Није инсталирано</string>
     <string name="sandbox_status_downloading">Преузимање rootfs-а…</string>
     <string name="sandbox_status_extracting">Распакивање…</string>
