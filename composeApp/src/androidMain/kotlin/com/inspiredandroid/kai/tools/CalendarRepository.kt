@@ -369,10 +369,9 @@ class CalendarRepository(
     }
 
     /** Millis → ISO 8601 with zone offset, in the device's timezone. */
-    private fun formatIso(millis: Long): String =
-        DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
-            Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()),
-        )
+    private fun formatIso(millis: Long): String = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+        Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()),
+    )
 
     private fun formatForDisplay(millis: Long): String {
         val formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a")
