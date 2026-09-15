@@ -56,13 +56,13 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.inspiredandroid.kai.data.AppSettings
-import com.inspiredandroid.kai.data.History
 import com.inspiredandroid.kai.data.RemoteDataRepository
 import com.inspiredandroid.kai.data.ThemeMode
 import com.inspiredandroid.kai.tools.AgentOverlayController
 import com.inspiredandroid.kai.ui.DarkColorScheme
 import com.inspiredandroid.kai.ui.LightColorScheme
 import com.inspiredandroid.kai.ui.Theme
+import com.inspiredandroid.kai.ui.chat.History
 import com.inspiredandroid.kai.ui.withBlackBackground
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
