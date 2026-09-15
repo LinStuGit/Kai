@@ -29,5 +29,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Extension interface: agent pushes features via adb broadcast -->
+        <receiver
+            android:name=".ExtensionReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kami.app.ext.ADD" />
+                <action android:name="com.kami.app.ext.REMOVE" />
+                <action android:name="com.kami.app.ext.LIST" />
+                <action android:name="com.kami.app.ext.CLEAR" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
