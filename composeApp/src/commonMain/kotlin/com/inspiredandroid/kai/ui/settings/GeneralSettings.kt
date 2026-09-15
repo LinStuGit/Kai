@@ -13,19 +13,28 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import com.inspiredandroid.kai.Platform
+import com.inspiredandroid.kai.currentPlatform
+import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.data.ThemeMode
+import com.inspiredandroid.kai.tools.isOverlayPermissionGranted
+import com.inspiredandroid.kai.tools.requestOverlayPermission
 import com.inspiredandroid.kai.ui.KaiOutlinedTextField
 import com.inspiredandroid.kai.ui.components.KaiSlider
 import com.inspiredandroid.kai.ui.handCursor
+import org.koin.compose.koinInject
 import kai.composeapp.generated.resources.Res
 import kai.composeapp.generated.resources.ic_arrow_drop_down
 import kai.composeapp.generated.resources.settings_daemon_mode
@@ -55,6 +64,7 @@ internal fun GeneralContent(uiState: SettingsUiState, actions: SettingsActions) 
                     )
                 }
             }
+            OverlaySettingsCard()
             SettingsCard {
                 DynamicUiToggle(
                     isDynamicUiEnabled = uiState.isDynamicUiEnabled,
@@ -86,6 +96,61 @@ internal fun GeneralContent(uiState: SettingsUiState, actions: SettingsActions) 
             }
         },
     )
+}
+
+/**
+ * Floating-window toggle: while the agent executes tools outside the app, a
+ * draggable bubble shows its live thinking and a stop button. Android only;
+ * needs the draw-over-other-apps permission.
+ */
+@Composable
+private fun OverlaySettingsCard() {
+    if (currentPlatform !is Platform.Mobile.Android) return
+    val appSettings = koinInject<AppSettings>()
+    var checked by remember { mutableStateOf(appSettings.isAgentOverlayEnabled()) }
+    var permissionGranted by remember { mutableStateOf(isOverlayPermissionGranted()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Re-check the overlay permission when the user comes back from the
+    // system settings page.
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                permissionGranted = isOverlayPermissionGranted()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    SettingsCard {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            ToggleableHeadline(
+                title = "悬浮窗",
+                description = "离开 Kami 时悬浮显示 agent 的实时思考与执行进度，可随时终止",
+                checked = checked,
+                onCheckedChange = { on ->
+                    if (on && !isOverlayPermissionGranted()) {
+                        requestOverlayPermission()
+                    } else {
+                        appSettings.setAgentOverlayEnabled(on)
+                        checked = on
+                    }
+                },
+            )
+            if (checked && !permissionGranted) {
+                Text(
+                    text = "尚未授予“显示在其他应用上层”权限，点此前往授权",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { requestOverlayPermission() }
+                        .padding(top = 4.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable

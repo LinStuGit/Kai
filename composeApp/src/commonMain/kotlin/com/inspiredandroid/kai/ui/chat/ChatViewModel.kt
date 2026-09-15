@@ -8,6 +8,7 @@ import com.inspiredandroid.kai.data.FreeMode
 import com.inspiredandroid.kai.data.Service
 import com.inspiredandroid.kai.data.ServiceEntry
 import com.inspiredandroid.kai.data.TaskScheduler
+import com.inspiredandroid.kai.tools.AgentOverlayController
 import com.inspiredandroid.kai.data.UiSubmission
 import com.inspiredandroid.kai.getBackgroundDispatcher
 import com.inspiredandroid.kai.network.UiError
@@ -90,6 +91,9 @@ class ChatViewModel(
     )
 
     init {
+        // The overlay's stop button routes to the same cancellation as the in-app one.
+        AgentOverlayController.onCancel = { cancel() }
+
         updateAvailableServices()
 
         // Keep restoreCurrentConversation off the main thread; see issue #197 (large persisted

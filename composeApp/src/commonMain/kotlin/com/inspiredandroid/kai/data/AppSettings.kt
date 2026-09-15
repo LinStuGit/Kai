@@ -276,6 +276,15 @@ class AppSettings(internal val settings: Settings) {
         settings.putBoolean(KEY_SCHEDULING_ENABLED, enabled)
     }
 
+    // Floating overlay that shows live agent progress (and a stop button) while
+    // the user is outside the app. Android-only; effective only with the
+    // draw-over-other-apps permission granted.
+    fun isAgentOverlayEnabled(): Boolean = settings.getBoolean(KEY_AGENT_OVERLAY_ENABLED, true)
+
+    fun setAgentOverlayEnabled(enabled: Boolean) {
+        settings.putBoolean(KEY_AGENT_OVERLAY_ENABLED, enabled)
+    }
+
     // Dynamic UI
     fun isDynamicUiEnabled(): Boolean = settings.getBoolean(KEY_DYNAMIC_UI_ENABLED, true)
 
@@ -566,6 +575,7 @@ class AppSettings(internal val settings: Settings) {
         const val KEY_AGENT_MEMORIES = "agent_memories"
         const val KEY_SCHEDULED_TASKS = "scheduled_tasks"
         const val KEY_SCHEDULING_ENABLED = "scheduling_enabled"
+        const val KEY_AGENT_OVERLAY_ENABLED = "agent_overlay_enabled"
         const val KEY_DYNAMIC_UI_ENABLED = "dynamic_ui_enabled"
         const val KEY_OLED_MODE_ENABLED = "oled_mode_enabled"
         const val KEY_THEME_MODE = "theme_mode"

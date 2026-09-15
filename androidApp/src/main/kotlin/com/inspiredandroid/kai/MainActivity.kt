@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.data.DataRepository
 import com.inspiredandroid.kai.data.ThemeMode
+import com.inspiredandroid.kai.tools.AgentOverlayController
 import com.inspiredandroid.kai.ui.DarkColorScheme
 import com.inspiredandroid.kai.ui.LightColorScheme
 import io.github.vinceglb.filekit.FileKit
@@ -108,6 +109,16 @@ class MainActivity : ComponentActivity() {
         // close and reopen the app for scheduling to resume. `startForegroundService`
         // is idempotent when the service is already up.
         autoStartDaemon()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AgentOverlayController.activityVisible.value = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AgentOverlayController.activityVisible.value = false
     }
 
     private fun autoStartDaemon() {

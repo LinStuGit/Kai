@@ -52,6 +52,7 @@ import com.inspiredandroid.kai.sms.SmsSendResult
 import com.inspiredandroid.kai.sms.SmsSender
 import com.inspiredandroid.kai.tools.NotificationListenerController
 import com.inspiredandroid.kai.tools.PermissionController
+import com.inspiredandroid.kai.tools.notifyAgentRunActive
 import com.inspiredandroid.kai.ui.chat.History
 import com.inspiredandroid.kai.ui.chat.ToolCallInfo
 import com.inspiredandroid.kai.ui.chat.toGeminiMessageDto
@@ -1167,6 +1168,10 @@ class RemoteDataRepository(
     ): AssistantTurn {
         var iteration = 0
         val recentSignatures = mutableListOf<String>()
+        // The overlay tracks actual tool execution: it activates with the first
+        // tool batch and stops in finally (covers bailouts and cancellation).
+        var overlayActive = false
+        try {
         while (true) {
             iteration++
             val visible = history.value.filter { it.role != History.Role.TOOL_EXECUTING }
@@ -1201,6 +1206,10 @@ class RemoteDataRepository(
                 }
             }
 
+            if (!overlayActive) {
+                overlayActive = true
+                notifyAgentRunActive(true)
+            }
             val toolResults = executeToolCallsInParallel(
                 result.toolCalls.map { Triple(it.id, it.name, it.arguments) },
             )
@@ -1225,6 +1234,9 @@ class RemoteDataRepository(
                     ?.let { trimHistoryForContext(merged, systemPrompt?.length ?: 0, it) }
                     ?: merged
             }
+        }
+        } finally {
+            if (overlayActive) notifyAgentRunActive(false)
         }
     }
 
