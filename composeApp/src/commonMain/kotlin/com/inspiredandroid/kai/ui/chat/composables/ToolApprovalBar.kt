@@ -26,23 +26,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.tools.ToolApprovalController
 import com.inspiredandroid.kai.tools.ToolApprovalRequest
 import com.inspiredandroid.kai.ui.handCursor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 
 /**
  * Chat composer add-on: switches between Auto mode (tools run on their own)
  * and Manual mode (every tool call waits for an explicit user decision), and
- * renders the pending approval cards while the agent is waiting.
+ * renders the pending approval cards while the agent is waiting. Takes the
+ * mode via parameters so it stays preview/test-friendly (no Koin needed).
  */
 @Composable
-fun ToolApprovalBar(modifier: Modifier = Modifier) {
-    val appSettings = koinInject<AppSettings>()
-    val manual by appSettings.toolApprovalManualFlow.collectAsState()
+fun ToolApprovalBar(
+    manual: Boolean,
+    onToggleManual: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val pending by ToolApprovalController.pending.collectAsState()
     val scope = rememberCoroutineScope()
 
@@ -51,7 +52,7 @@ fun ToolApprovalBar(modifier: Modifier = Modifier) {
             FilterChip(
                 modifier = Modifier.handCursor(),
                 selected = manual,
-                onClick = { appSettings.setToolApprovalManual(!manual) },
+                onClick = { onToggleManual(!manual) },
                 label = {
                     Text(text = if (manual) "手动审批" else "自动执行")
                 },

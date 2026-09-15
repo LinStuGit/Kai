@@ -2,6 +2,7 @@ package com.inspiredandroid.kai.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.data.Conversation
 import com.inspiredandroid.kai.data.DataRepository
 import com.inspiredandroid.kai.data.FreeMode
@@ -52,6 +53,8 @@ class ChatViewModel(
     private val taskScheduler: TaskScheduler,
     private val backgroundDispatcher: CoroutineContext = getBackgroundDispatcher(),
     private val localNetworkPermissionController: PermissionController = PermissionController(AppPermission.LOCAL_NETWORK),
+    // Only Koin-provided in production; tests hand-construct without it.
+    private val appSettings: AppSettings? = null,
 ) : ViewModel() {
 
     private val actions = ChatActions(
@@ -79,6 +82,7 @@ class ChatViewModel(
         sendSmsDraft = ::sendSmsDraft,
         discardSmsDraft = ::discardSmsDraft,
         consumeComposerPrefill = ::consumeComposerPrefill,
+        toggleToolApprovalManual = ::toggleToolApprovalManual,
     )
     private val freeModeNames: Map<FreeMode, String> = FreeMode.entries.associateWith { "Free ${it.modelId.replaceFirstChar { c -> c.uppercase() }}" }
     private var currentJob: Job? = null
@@ -93,6 +97,13 @@ class ChatViewModel(
     init {
         // The overlay's stop button routes to the same cancellation as the in-app one.
         AgentOverlayController.onCancel = { cancel() }
+
+        // Mirror the persisted tool-approval mode into the UI state.
+        viewModelScope.launch {
+            appSettings?.toolApprovalManualFlow?.collect { manual ->
+                _state.update { it.copy(isToolApprovalManual = manual) }
+            }
+        }
 
         updateAvailableServices()
 
@@ -393,6 +404,11 @@ class ChatViewModel(
         _state.update {
             it.copy(isLoading = false)
         }
+    }
+
+    /** Persists the tool-approval mode; the flow collector updates the UI state. */
+    private fun toggleToolApprovalManual(enabled: Boolean) {
+        appSettings?.setToolApprovalManual(enabled)
     }
 
     private fun selectService(instanceId: String) {

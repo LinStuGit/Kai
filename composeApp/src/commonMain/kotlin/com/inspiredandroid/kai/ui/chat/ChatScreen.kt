@@ -947,7 +947,10 @@ private fun ChatModeScreen(
             }
 
             if (!isSandboxOpen) {
-                ToolApprovalBar()
+                ToolApprovalBar(
+                    manual = uiState.isToolApprovalManual,
+                    onToggleManual = uiState.actions.toggleToolApprovalManual,
+                )
                 QuestionInput(
                     files = uiState.files,
                     addFile = uiState.actions.addFile,
