@@ -31,7 +31,9 @@ import com.inspiredandroid.kai.tools.AppPermission
 import com.inspiredandroid.kai.tools.CalendarRepository
 import com.inspiredandroid.kai.tools.CommonTools
 import com.inspiredandroid.kai.tools.CreateCalendarEventTool
+import com.inspiredandroid.kai.tools.DeleteCalendarEventTool
 import com.inspiredandroid.kai.tools.ExtensionStore
+import com.inspiredandroid.kai.tools.ListCalendarEventsTool
 import com.inspiredandroid.kai.tools.NotificationHelper
 import com.inspiredandroid.kai.tools.NotificationTools
 import com.inspiredandroid.kai.tools.OpenFileTool
@@ -43,6 +45,7 @@ import com.inspiredandroid.kai.tools.ShellCommandTool
 import com.inspiredandroid.kai.tools.ShizukuTools
 import com.inspiredandroid.kai.tools.SmsTools
 import com.inspiredandroid.kai.tools.SshConfigureHostTool
+import com.inspiredandroid.kai.tools.UpdateCalendarEventTool
 import com.inspiredandroid.kai.tools.buildAgentToolSet
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
@@ -174,6 +177,9 @@ actual fun getPlatformToolDefinitions(): List<ToolInfo> = CommonTools.commonTool
     listOf(
         SendNotificationTool.toolInfo,
         CreateCalendarEventTool.toolInfo,
+        ListCalendarEventsTool.toolInfo,
+        UpdateCalendarEventTool.toolInfo,
+        DeleteCalendarEventTool.toolInfo,
         SetAlarmTool.toolInfo,
         OpenFileTool.toolInfo,
         ShellCommandTool.toolInfo,
@@ -207,10 +213,28 @@ actual fun getAvailableTools(): List<Tool> {
             add(SendNotificationTool.create(NotificationHelper(context, notificationPermissionController)))
         }
 
-        if (appSettings.isToolEnabled(CreateCalendarEventTool.ID)) {
+        if (listOf(
+                CreateCalendarEventTool.ID,
+                ListCalendarEventsTool.ID,
+                UpdateCalendarEventTool.ID,
+                DeleteCalendarEventTool.ID,
+            ).any { appSettings.isToolEnabled(it) }
+        ) {
             val calendarPermissionController: PermissionController =
                 KoinJavaComponent.get(PermissionController::class.java, permissionQualifier(AppPermission.CALENDAR))
-            add(CreateCalendarEventTool.create(CalendarRepository(context, calendarPermissionController)))
+            val calendarRepository = CalendarRepository(context, calendarPermissionController)
+            if (appSettings.isToolEnabled(CreateCalendarEventTool.ID)) {
+                add(CreateCalendarEventTool.create(calendarRepository))
+            }
+            if (appSettings.isToolEnabled(ListCalendarEventsTool.ID)) {
+                add(ListCalendarEventsTool.create(calendarRepository))
+            }
+            if (appSettings.isToolEnabled(UpdateCalendarEventTool.ID)) {
+                add(UpdateCalendarEventTool.create(calendarRepository))
+            }
+            if (appSettings.isToolEnabled(DeleteCalendarEventTool.ID)) {
+                add(DeleteCalendarEventTool.create(calendarRepository))
+            }
         }
 
         if (appSettings.isToolEnabled(SetAlarmTool.ID)) {

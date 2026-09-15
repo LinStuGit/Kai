@@ -77,6 +77,12 @@
     <string name="tool_send_notification_description">Send a push notification to the device</string>
     <string name="tool_create_calendar_event_name">Create Calendar Event</string>
     <string name="tool_create_calendar_event_description">Create a calendar event on the user's device</string>
+    <string name="tool_list_calendar_events_name">List Calendar Events</string>
+    <string name="tool_list_calendar_events_description">List the user's upcoming calendar events</string>
+    <string name="tool_update_calendar_event_name">Update Calendar Event</string>
+    <string name="tool_update_calendar_event_description">Edit an existing calendar event</string>
+    <string name="tool_delete_calendar_event_name">Delete Calendar Event</string>
+    <string name="tool_delete_calendar_event_description">Delete a calendar event</string>
     <string name="tool_set_alarm_name">Set Alarm</string>
     <string name="tool_set_alarm_description">Set an alarm or countdown timer on the device</string>
     <string name="tool_open_file_name">Open File</string>
