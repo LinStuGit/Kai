@@ -41,6 +41,8 @@ import com.inspiredandroid.kai.tools.SetAlarmTool
 import com.inspiredandroid.kai.tools.ShellCommandTool
 import com.inspiredandroid.kai.tools.SmsTools
 import com.inspiredandroid.kai.tools.SshConfigureHostTool
+import com.inspiredandroid.kai.tools.ExtensionStore
+import com.inspiredandroid.kai.tools.ShizukuTools
 import com.inspiredandroid.kai.tools.buildAgentToolSet
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
@@ -221,6 +223,28 @@ actual fun getAvailableTools(): List<Tool> {
                 add(ProcessManagerTool)
                 add(SshConfigureHostTool)
             }
+        }
+
+        // Host-device control via Shizuku (shell uid, no root) + a durable
+        // feature registry, ported from the kamiApp console module. The
+        // sandbox tools above run inside the Linux container; these drive
+        // the Android host itself. Extensions must be init'd before use —
+        // this is the only entry point guaranteed to run per session.
+        ExtensionStore.init(context)
+        if (appSettings.isToolEnabled(ShizukuTools.SHELL_ID)) {
+            add(ShizukuTools.shellTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.ADD_EXTENSION_ID)) {
+            add(ShizukuTools.addExtensionTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.LIST_EXTENSIONS_ID)) {
+            add(ShizukuTools.listExtensionsTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.RUN_EXTENSION_ID)) {
+            add(ShizukuTools.runExtensionTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.REMOVE_EXTENSION_ID)) {
+            add(ShizukuTools.removeExtensionTool())
         }
 
         // SMS read tools: triple-gated. `isSmsSupported` is only true on FOSS builds

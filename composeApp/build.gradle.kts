@@ -156,6 +156,9 @@ kotlin {
                 implementation(libs.litert.lm)
                 implementation(libs.sqldelight.android.driver)
                 implementation(libs.xz)
+                implementation(libs.shizuku.api)
+                implementation(libs.shizuku.provider)
+                implementation(libs.shizuku.aidl)
             }
         }
         getByName("desktopMain") {
