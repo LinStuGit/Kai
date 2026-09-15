@@ -149,16 +149,20 @@ object AgentClient {
                 if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权，请用户在主界面授权"
                 ShizukuRunner.run(args.optString("command")).ifEmpty { "(无输出)" }
             }
+
             "add_extension" -> {
                 val n = ExtensionStore.addFromJson(args.toString())
                 "已注册 $n 项拓展（现共 ${ExtensionStore.items.value.size} 项）"
             }
+
             "remove_extension" -> {
                 val before = ExtensionStore.items.value.size
                 ExtensionStore.remove(args.optString("id"))
                 "已删除 ${before - ExtensionStore.items.value.size} 项"
             }
+
             "list_extensions" -> ExtensionStore.toJson()
+
             "device_info" -> {
                 if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
                 ShizukuRunner.run(
@@ -167,6 +171,7 @@ object AgentClient {
                         "getprop service.adb.tls.port",
                 )
             }
+
             else -> "未知工具: $name"
         }
     }

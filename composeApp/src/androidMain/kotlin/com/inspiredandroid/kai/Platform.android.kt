@@ -31,6 +31,7 @@ import com.inspiredandroid.kai.tools.AppPermission
 import com.inspiredandroid.kai.tools.CalendarRepository
 import com.inspiredandroid.kai.tools.CommonTools
 import com.inspiredandroid.kai.tools.CreateCalendarEventTool
+import com.inspiredandroid.kai.tools.ExtensionStore
 import com.inspiredandroid.kai.tools.NotificationHelper
 import com.inspiredandroid.kai.tools.NotificationTools
 import com.inspiredandroid.kai.tools.OpenFileTool
@@ -39,10 +40,9 @@ import com.inspiredandroid.kai.tools.ProcessManagerTool
 import com.inspiredandroid.kai.tools.SendNotificationTool
 import com.inspiredandroid.kai.tools.SetAlarmTool
 import com.inspiredandroid.kai.tools.ShellCommandTool
+import com.inspiredandroid.kai.tools.ShizukuTools
 import com.inspiredandroid.kai.tools.SmsTools
 import com.inspiredandroid.kai.tools.SshConfigureHostTool
-import com.inspiredandroid.kai.tools.ExtensionStore
-import com.inspiredandroid.kai.tools.ShizukuTools
 import com.inspiredandroid.kai.tools.buildAgentToolSet
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings

@@ -26,7 +26,10 @@ object ExtensionStore {
     @Serializable
     private data class Snapshot(val items: List<Extension> = emptyList())
 
-    private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+    }
     private var file: File? = null
 
     @Synchronized

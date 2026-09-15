@@ -20,7 +20,7 @@ object ShizukuRunner {
     /** Run one shell command; returns combined output (error text on failure). */
     fun run(cmd: String): String = try {
         val service = IShizukuService.Stub.asInterface(
-            ShizukuBinderWrapper(Shizuku.getBinder()!!)
+            ShizukuBinderWrapper(Shizuku.getBinder()!!),
         )
         val p = service.newProcess(arrayOf("sh", "-c", cmd), null, null)
         val out = ParcelFileDescriptor.AutoCloseInputStream(p.inputStream)

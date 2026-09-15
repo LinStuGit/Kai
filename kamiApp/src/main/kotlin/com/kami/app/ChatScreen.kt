@@ -92,6 +92,7 @@ internal fun ChatScreen(
                             Text(line.text, modifier = Modifier.padding(10.dp))
                         }
                     }
+
                     "event" -> Text(
                         line.text,
                         modifier = Modifier.fillMaxWidth(),
@@ -99,6 +100,7 @@ internal fun ChatScreen(
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
                     else -> Row(Modifier.fillMaxWidth()) {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant,

@@ -32,8 +32,7 @@ object ShizukuTools {
         "shizuku error: $t"
     }
 
-    private fun requireString(args: Map<String, Any>, key: String): String? =
-        args[key] as? String
+    private fun requireString(args: Map<String, Any>, key: String): String? = args[key] as? String
 
     fun shellTool(): Tool = object : Tool {
         override val schema = ToolSchema(

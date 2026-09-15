@@ -39,17 +39,21 @@ class ExtensionReceiver : BroadcastReceiver() {
                     Log.i(TAG, "ADD ok: $n added, ${ExtensionStore.items.value.size} total")
                 }
             }
+
             ACTION_REMOVE -> {
                 val id = intent.getStringExtra("id") ?: ""
                 val before = ExtensionStore.items.value.size
                 ExtensionStore.remove(id)
                 Log.i(TAG, "REMOVE $id: ${before - ExtensionStore.items.value.size} removed")
             }
+
             ACTION_LIST -> Log.i(TAG, "LIST: ${ExtensionStore.toJson()}")
+
             ACTION_CLEAR -> {
                 ExtensionStore.clear()
                 Log.i(TAG, "CLEAR ok")
             }
+
             else -> Log.w(TAG, "unknown action: ${intent.action}")
         }
     }
