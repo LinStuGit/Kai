@@ -1,0 +1,38 @@
+name: Kami App
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'kamiApp/**'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
+      - '.github/workflows/kami-app.yml'
+  workflow_dispatch:
+
+jobs:
+  apk:
+    name: Build Kami APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Set execution flag for gradlew
+        run: chmod +x gradlew
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android Build Tools
+        run: sdkmanager "build-tools;36.0.0"
+      - name: Build APK
+        run: bash ./gradlew :kamiApp:assembleDebug --stacktrace
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kami-debug-apk
+          path: kamiApp/build/outputs/apk/debug/kamiApp-debug.apk
