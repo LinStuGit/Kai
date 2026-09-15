@@ -36,7 +36,6 @@ import com.inspiredandroid.kai.tools.requestOverlayPermission
 import com.inspiredandroid.kai.ui.KaiOutlinedTextField
 import com.inspiredandroid.kai.ui.components.KaiSlider
 import com.inspiredandroid.kai.ui.handCursor
-import org.koin.compose.koinInject
 import kai.composeapp.generated.resources.Res
 import kai.composeapp.generated.resources.ic_arrow_drop_down
 import kai.composeapp.generated.resources.settings_daemon_mode
@@ -52,6 +51,7 @@ import kai.composeapp.generated.resources.settings_theme_system
 import kai.composeapp.generated.resources.settings_ui_scale
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
+import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 @Composable

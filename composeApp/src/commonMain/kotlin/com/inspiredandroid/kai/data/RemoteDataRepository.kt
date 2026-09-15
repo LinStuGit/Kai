@@ -1172,69 +1172,69 @@ class RemoteDataRepository(
         // tool batch and stops in finally (covers bailouts and cancellation).
         var overlayActive = false
         try {
-        while (true) {
-            iteration++
-            val visible = history.value.filter { it.role != History.Role.TOOL_EXECUTING }
-            if (iteration > MAX_TOOL_ITERATIONS) {
-                return AssistantTurn(strategy.bailout(visible, systemPrompt, BailoutReason.LIMIT_REACHED))
-            }
-            val result = strategy.chat(visible, systemPrompt)
-            if (result.toolCalls.isEmpty()) {
-                // For thinking-only turns, the reasoning text already became the content via
-                // `isContentFromReasoning`, so don't surface it again as a reasoning trace.
-                val reasoning = result.reasoningContent?.takeIf { !result.isThinkingContent }
-                return AssistantTurn(result.textContent, reasoning)
-            }
-
-            val signatures = result.toolCalls.map { "${it.name}:${it.arguments.hashCode()}" }
-            if (isRepeatingToolCalls(recentSignatures, signatures)) {
-                return AssistantTurn(strategy.bailout(visible, systemPrompt, BailoutReason.REPEATING))
-            }
-            recentSignatures.addAll(signatures)
-
-            history.update {
-                it.toMutableList().apply {
-                    add(
-                        History(
-                            role = History.Role.ASSISTANT,
-                            content = result.textContent,
-                            isThinking = result.isThinkingContent,
-                            toolCalls = result.toolCalls.toImmutableList(),
-                            reasoningContent = result.reasoningContent,
-                        ),
-                    )
+            while (true) {
+                iteration++
+                val visible = history.value.filter { it.role != History.Role.TOOL_EXECUTING }
+                if (iteration > MAX_TOOL_ITERATIONS) {
+                    return AssistantTurn(strategy.bailout(visible, systemPrompt, BailoutReason.LIMIT_REACHED))
                 }
-            }
+                val result = strategy.chat(visible, systemPrompt)
+                if (result.toolCalls.isEmpty()) {
+                    // For thinking-only turns, the reasoning text already became the content via
+                    // `isContentFromReasoning`, so don't surface it again as a reasoning trace.
+                    val reasoning = result.reasoningContent?.takeIf { !result.isThinkingContent }
+                    return AssistantTurn(result.textContent, reasoning)
+                }
 
-            if (!overlayActive) {
-                overlayActive = true
-                notifyAgentRunActive(true)
-            }
-            val toolResults = executeToolCallsInParallel(
-                result.toolCalls.map { Triple(it.id, it.name, it.arguments) },
-            )
+                val signatures = result.toolCalls.map { "${it.name}:${it.arguments.hashCode()}" }
+                if (isRepeatingToolCalls(recentSignatures, signatures)) {
+                    return AssistantTurn(strategy.bailout(visible, systemPrompt, BailoutReason.REPEATING))
+                }
+                recentSignatures.addAll(signatures)
 
-            history.update { h ->
-                val merged = buildList(h.size + toolResults.size) {
-                    for (entry in h) {
-                        if (entry.role != History.Role.TOOL_EXECUTING) add(entry)
-                    }
-                    for ((callId, name, content) in toolResults) {
+                history.update {
+                    it.toMutableList().apply {
                         add(
                             History(
-                                role = History.Role.TOOL,
-                                content = content,
-                                toolCallId = callId,
-                                toolName = name,
+                                role = History.Role.ASSISTANT,
+                                content = result.textContent,
+                                isThinking = result.isThinkingContent,
+                                toolCalls = result.toolCalls.toImmutableList(),
+                                reasoningContent = result.reasoningContent,
                             ),
                         )
                     }
                 }
-                strategy.historyContextWindowTokens
-                    ?.let { trimHistoryForContext(merged, systemPrompt?.length ?: 0, it) }
-                    ?: merged
+
+                if (!overlayActive) {
+                    overlayActive = true
+                    notifyAgentRunActive(true)
+                }
+                val toolResults = executeToolCallsInParallel(
+                    result.toolCalls.map { Triple(it.id, it.name, it.arguments) },
+                )
+
+                history.update { h ->
+                    val merged = buildList(h.size + toolResults.size) {
+                        for (entry in h) {
+                            if (entry.role != History.Role.TOOL_EXECUTING) add(entry)
+                        }
+                        for ((callId, name, content) in toolResults) {
+                            add(
+                                History(
+                                    role = History.Role.TOOL,
+                                    content = content,
+                                    toolCallId = callId,
+                                    toolName = name,
+                                ),
+                            )
+                        }
+                    }
+                    strategy.historyContextWindowTokens
+                        ?.let { trimHistoryForContext(merged, systemPrompt?.length ?: 0, it) }
+                        ?: merged
+                }
             }
-        }
         } finally {
             if (overlayActive) notifyAgentRunActive(false)
         }

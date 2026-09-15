@@ -79,7 +79,10 @@ import org.koin.android.ext.android.inject
  * the run ends or the user returns to the app (view detached, service kept
  * until the run finishes).
  */
-class AgentOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
+class AgentOverlayService :
+    Service(),
+    LifecycleOwner,
+    SavedStateRegistryOwner {
 
     private val appSettings: AppSettings by inject()
     private val dataRepository: RemoteDataRepository by inject()
