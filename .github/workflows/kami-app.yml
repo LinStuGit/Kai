@@ -28,9 +28,11 @@ jobs:
       - name: Set execution flag for gradlew
         run: chmod +x gradlew
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install Android Build Tools
-        run: sdkmanager "build-tools;36.0.0"
+        # android-actions/setup-android@v3 is broken (legacy 'tools' package
+        # removed from Google's repo) — use the runner's preinstalled SDK.
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;36.0.0" > /dev/null
       - name: Build APKs (mini console + full Kai)
         run: bash ./gradlew :kamiApp:assembleDebug :androidApp:assembleFossDebug --stacktrace
       - name: Upload kamiApp APK Artifact
