@@ -37,10 +37,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import rikka.shizuku.Shizuku
 
 private const val REQ_SHIZUKU = 7001
@@ -84,6 +86,7 @@ class MainActivity : ComponentActivity() {
     private val shizukuAlive = mutableStateOf(false)
     private val shizukuGranted = mutableStateOf(false)
     private val screen = mutableStateOf("console")
+    private val chatHistory = JSONArray()
 
     private val binderListener = Shizuku.OnBinderReceivedListener {
         if (!ShizukuRunner.granted()) {
@@ -121,6 +124,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     when (screen.value) {
                         "settings" -> SettingsScreen()
+                        "chat" -> ChatScreen(chatHistory) { screen.value = "console" }
                         else -> ConsoleScreen()
                     }
                 }
@@ -177,6 +181,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
                 )
+                TextButton(onClick = { screen.value = "chat" }) { Text("对话") }
                 TextButton(onClick = { screen.value = "settings" }) { Text("设置") }
             }
 
@@ -379,6 +384,48 @@ class MainActivity : ComponentActivity() {
             }
             if (feedback.isNotEmpty()) {
                 Text(feedback, fontSize = 12.sp)
+            }
+
+            Text("Agent 模型（OpenAI 兼容端点）", style = MaterialTheme.typography.titleSmall)
+            val context = LocalContext.current
+            val cfg = remember { AgentClient.loadConfig(context) }
+            var baseUrl by remember { mutableStateOf(cfg.baseUrl) }
+            var apiKey by remember { mutableStateOf(cfg.apiKey) }
+            var modelName by remember { mutableStateOf(cfg.model) }
+            var savedMsg by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = { baseUrl = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Base URL，如 https://api.openai.com/v1", fontSize = 12.sp) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("API Key（本地服务可留空）", fontSize = 12.sp) },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = modelName,
+                onValueChange = { modelName = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("模型名，如 glm-4-flash", fontSize = 12.sp) },
+                singleLine = true,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = {
+                    AgentClient.saveConfig(
+                        context,
+                        AgentConfig(baseUrl.trim(), apiKey.trim(), modelName.trim()),
+                    )
+                    savedMsg = "✓ 已保存"
+                }) { Text("保存") }
+                if (savedMsg.isNotEmpty()) Text(savedMsg, fontSize = 12.sp)
             }
         }
     }
