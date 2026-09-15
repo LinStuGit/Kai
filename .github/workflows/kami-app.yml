@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'kamiApp/**'
+      - 'androidApp/**'
+      - 'composeApp/**'
       - 'gradle/libs.versions.toml'
       - 'settings.gradle.kts'
       - '.github/workflows/kami-app.yml'
@@ -13,7 +15,7 @@ on:
 
 jobs:
   apk:
-    name: Build Kami APK
+    name: Build Kami APKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,10 +31,15 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Install Android Build Tools
         run: sdkmanager "build-tools;36.0.0"
-      - name: Build APK
-        run: bash ./gradlew :kamiApp:assembleDebug --stacktrace
-      - name: Upload APK Artifact
+      - name: Build APKs (mini console + full Kai)
+        run: bash ./gradlew :kamiApp:assembleDebug :androidApp:assembleFossDebug --stacktrace
+      - name: Upload kamiApp APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Kami-debug-apk
           path: kamiApp/build/outputs/apk/debug/kamiApp-debug.apk
+      - name: Upload Kai APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kai-foss-debug-apk
+          path: androidApp/build/outputs/apk/foss/debug/androidApp-foss-debug.apk
