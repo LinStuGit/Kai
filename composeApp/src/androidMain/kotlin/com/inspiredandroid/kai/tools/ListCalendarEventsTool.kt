@@ -36,15 +36,18 @@ object ListCalendarEventsTool {
             val query = (args["query"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
 
             val now = System.currentTimeMillis()
-            return when (val result = calendarRepository.listEvents(
-                startMs = now,
-                endMs = now + days.toLong() * 24 * 60 * 60 * 1000,
-                query = query,
-            )) {
+            return when (
+                val result = calendarRepository.listEvents(
+                    startMs = now,
+                    endMs = now + days.toLong() * 24 * 60 * 60 * 1000,
+                    query = query,
+                )
+            ) {
                 is EventListResult.Error -> mapOf(
                     "success" to false,
                     "error" to result.message,
                 )
+
                 is EventListResult.Ok -> mapOf(
                     "success" to true,
                     "count" to result.events.size,
