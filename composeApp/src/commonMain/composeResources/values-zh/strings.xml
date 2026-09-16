@@ -192,6 +192,7 @@
     <string name="settings_import_section_email">邮箱</string>
     <string name="settings_import_section_tools">工具</string>
     <string name="settings_import_section_mcp">MCP 服务器</string>
+    <string name="settings_import_section_extensions">Agent 拓展</string>
     <string name="settings_import_section_conversations">对话</string>
     <string name="settings_heartbeat_reset_confirm">这将把心跳提示重置为默认值。您确定吗？</string>
     <string name="settings_heartbeat_model">模型</string>
@@ -389,6 +390,9 @@
     <string name="bot_message_thinking_label">思考</string>
     <string name="bot_message_thinking_expand_content_description">展开或收起思考</string>
     <string name="settings_theme">主题</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_language_description">选择应用语言；"跟随系统" 将使用设备语言</string>
     <string name="settings_theme_description">在系统默认、浅色、深色或纯黑 OLED 之间选择。</string>
     <string name="settings_theme_system">系统</string>
     <string name="settings_theme_light">浅色</string>
@@ -512,4 +516,18 @@
     <string name="terminal_sandbox_not_ready">沙盒尚未就绪</string>
     <string name="chat_edit_submission_content_description">编辑提交内容</string>
     <string name="chat_cancel_edit_content_description">取消编辑</string>
+    <string name="tool_approval_auto">自动执行</string>
+    <string name="tool_approval_manual">手动审批</string>
+    <string name="tool_approval_wait">Agent 请求执行工具，等待批准</string>
+    <string name="tool_approval_deny">拒绝</string>
+    <string name="tool_approval_approve">批准</string>
+    <string name="device_gate_title">设备控制请求</string>
+    <string name="device_gate_body">Agent 想执行以下设备操作：</string>
+    <string name="device_gate_allow_once">仅此一次</string>
+    <string name="device_gate_allow_session">本会话内允许</string>
+    <string name="device_gate_deny">拒绝</string>
+    <string name="shizuku_dialog_title">需要 Shizuku 授权</string>
+    <string name="shizuku_dialog_body">设备工具通过 Shizuku 执行命令（shell uid，免 root）。若 Shizuku 未运行请先打开 Shizuku 应用启动它，然后在授权弹窗中允许 Kami。</string>
+    <string name="shizuku_dialog_go">去授权</string>
+    <string name="common_cancel">取消</string>
 </resources>

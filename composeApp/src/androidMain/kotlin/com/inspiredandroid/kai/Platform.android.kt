@@ -190,6 +190,10 @@ actual fun getPlatformToolDefinitions(): List<ToolInfo> = CommonTools.commonTool
         ShizukuTools.removeExtensionToolInfo,
         ShizukuTools.listExtensionsToolInfo,
         ShizukuTools.runExtensionToolInfo,
+        ShizukuTools.launchAppToolInfo,
+        ShizukuTools.screenshotToolInfo,
+        ShizukuTools.screenTouchToolInfo,
+        ShizukuTools.inputTextToolInfo,
     )
 
 actual fun getAvailableTools(): List<Tool> {
@@ -260,6 +264,7 @@ actual fun getAvailableTools(): List<Tool> {
         // the Android host itself. Extensions must be init'd before use —
         // this is the only entry point guaranteed to run per session.
         ExtensionStore.init(context)
+        ShizukuRunner.init(context)
         if (appSettings.isToolEnabled(ShizukuTools.SHELL_ID)) {
             add(ShizukuTools.shellTool())
         }
@@ -274,6 +279,20 @@ actual fun getAvailableTools(): List<Tool> {
         }
         if (appSettings.isToolEnabled(ShizukuTools.REMOVE_EXTENSION_ID)) {
             add(ShizukuTools.removeExtensionTool())
+        }
+
+        // Sensitive device-control tools: each confirms through DeviceActionGate.
+        if (appSettings.isToolEnabled(ShizukuTools.LAUNCH_APP_ID)) {
+            add(ShizukuTools.launchAppTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.SCREENSHOT_ID)) {
+            add(ShizukuTools.screenshotTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.SCREEN_TOUCH_ID)) {
+            add(ShizukuTools.screenTouchTool())
+        }
+        if (appSettings.isToolEnabled(ShizukuTools.INPUT_TEXT_ID)) {
+            add(ShizukuTools.inputTextTool())
         }
 
         // SMS read tools: triple-gated. `isSmsSupported` is only true on FOSS builds

@@ -97,6 +97,8 @@ fun QuestionInput(
     availableServices: ImmutableList<ServiceEntry> = persistentListOf(),
     onSelectService: (String) -> Unit = {},
     installedSkills: ImmutableList<SkillManifest> = persistentListOf(),
+    toolApprovalManual: Boolean = false,
+    onToggleToolApprovalManual: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -244,6 +246,10 @@ fun QuestionInput(
                     modifier = Modifier.padding(end = 7.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    ToolApprovalToggle(
+                        manual = toolApprovalManual,
+                        onToggleManual = onToggleToolApprovalManual,
+                    )
                     if (availableServices.size > 1) {
                         ServiceSelector(
                             services = availableServices,

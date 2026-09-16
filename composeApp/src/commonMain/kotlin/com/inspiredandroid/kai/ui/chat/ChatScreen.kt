@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,8 +49,10 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +73,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,6 +83,9 @@ import com.inspiredandroid.kai.data.Service
 import com.inspiredandroid.kai.data.supportsAgenticFlows
 import com.inspiredandroid.kai.getBackgroundDispatcher
 import com.inspiredandroid.kai.onDragAndDropEventDropped
+import com.inspiredandroid.kai.tools.DeviceActionGate
+import com.inspiredandroid.kai.tools.ShizukuGate
+import com.inspiredandroid.kai.tools.launchShizukuAuthorization
 import com.inspiredandroid.kai.ui.build.KaiBuildScreen
 import com.inspiredandroid.kai.ui.chat.composables.BotMessage
 import com.inspiredandroid.kai.ui.chat.composables.ChatHistorySheet
@@ -88,9 +95,9 @@ import com.inspiredandroid.kai.ui.chat.composables.ErrorMessage
 import com.inspiredandroid.kai.ui.chat.composables.FreeProviderSuggestionsPanel
 import com.inspiredandroid.kai.ui.chat.composables.HeartbeatBanner
 import com.inspiredandroid.kai.ui.chat.composables.PendingSmsBanners
+import com.inspiredandroid.kai.ui.chat.composables.PendingToolApprovalCards
 import com.inspiredandroid.kai.ui.chat.composables.QuestionInput
 import com.inspiredandroid.kai.ui.chat.composables.ServiceSelector
-import com.inspiredandroid.kai.ui.chat.composables.ToolApprovalBar
 import com.inspiredandroid.kai.ui.chat.composables.TopBar
 import com.inspiredandroid.kai.ui.chat.composables.TrailingIcon
 import com.inspiredandroid.kai.ui.chat.composables.UserMessage
@@ -109,6 +116,12 @@ import com.inspiredandroid.kai.ui.sandbox.SandboxTabsContent
 import com.inspiredandroid.kai.ui.settings.SandboxUiState
 import com.inspiredandroid.kai.ui.settings.SandboxViewModel
 import kai.composeapp.generated.resources.Res
+import kai.composeapp.generated.resources.common_cancel
+import kai.composeapp.generated.resources.device_gate_allow_once
+import kai.composeapp.generated.resources.device_gate_allow_session
+import kai.composeapp.generated.resources.device_gate_body
+import kai.composeapp.generated.resources.device_gate_deny
+import kai.composeapp.generated.resources.device_gate_title
 import kai.composeapp.generated.resources.fallback_answered_by
 import kai.composeapp.generated.resources.fallback_service_failed
 import kai.composeapp.generated.resources.fallback_trying_next
@@ -120,6 +133,9 @@ import kai.composeapp.generated.resources.interactive_ui_parsing_failed
 import kai.composeapp.generated.resources.interactive_welcome_subtitle
 import kai.composeapp.generated.resources.interactive_welcome_title
 import kai.composeapp.generated.resources.scroll_to_bottom_content_description
+import kai.composeapp.generated.resources.shizuku_dialog_body
+import kai.composeapp.generated.resources.shizuku_dialog_go
+import kai.composeapp.generated.resources.shizuku_dialog_title
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -947,10 +963,7 @@ private fun ChatModeScreen(
             }
 
             if (!isSandboxOpen) {
-                ToolApprovalBar(
-                    manual = uiState.isToolApprovalManual,
-                    onToggleManual = uiState.actions.toggleToolApprovalManual,
-                )
+                PendingToolApprovalCards()
                 QuestionInput(
                     files = uiState.files,
                     addFile = uiState.actions.addFile,
@@ -964,6 +977,8 @@ private fun ChatModeScreen(
                     availableServices = uiState.availableServices,
                     onSelectService = uiState.actions.selectService,
                     installedSkills = uiState.installedSkills,
+                    toolApprovalManual = uiState.isToolApprovalManual,
+                    onToggleToolApprovalManual = uiState.actions.toggleToolApprovalManual,
                 )
             }
         }
@@ -983,6 +998,82 @@ private fun ChatModeScreen(
             actions = uiState.actions,
             onDismiss = { showHistorySheet = false },
             onConversationSelected = { isSandboxOpen = false },
+        )
+    }
+
+    // Device-control consent: the agent's device tools (open app, screenshot,
+    // touch, text input) suspend here until the user picks an option.
+    val dialogScope = rememberCoroutineScope()
+    val pendingDeviceAction by DeviceActionGate.pending.collectAsState()
+    pendingDeviceAction.firstOrNull()?.let { request ->
+        AlertDialog(
+            onDismissRequest = { dialogScope.launch { DeviceActionGate.decide(request.callId, false) } },
+            title = { Text(stringResource(Res.string.device_gate_title)) },
+            text = {
+                Column {
+                    Text(stringResource(Res.string.device_gate_body))
+                    Text(
+                        text = request.detail,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dialogScope.launch { DeviceActionGate.decide(request.callId, true) }
+                }) {
+                    Text(stringResource(Res.string.device_gate_allow_once))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        dialogScope.launch { DeviceActionGate.decide(request.callId, false) }
+                    }) {
+                        Text(
+                            text = stringResource(Res.string.device_gate_deny),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    TextButton(onClick = {
+                        dialogScope.launch { DeviceActionGate.decide(request.callId, true, forSession = true) }
+                    }) {
+                        Text(stringResource(Res.string.device_gate_allow_session))
+                    }
+                }
+            },
+        )
+    }
+
+    // Shizuku authorization: popped when a device tool found the permission
+    // missing. One dialog per denial bump.
+    val shizukuNeeded by ShizukuGate.needed.collectAsState()
+    var shizukuDialogSeen by remember { mutableStateOf(0) }
+    var showShizukuDialog by remember { mutableStateOf(false) }
+    if (shizukuNeeded > shizukuDialogSeen && !showShizukuDialog) {
+        showShizukuDialog = true
+        shizukuDialogSeen = shizukuNeeded
+    }
+    if (showShizukuDialog) {
+        AlertDialog(
+            onDismissRequest = { showShizukuDialog = false },
+            title = { Text(stringResource(Res.string.shizuku_dialog_title)) },
+            text = { Text(stringResource(Res.string.shizuku_dialog_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showShizukuDialog = false
+                    launchShizukuAuthorization()
+                }) {
+                    Text(stringResource(Res.string.shizuku_dialog_go))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showShizukuDialog = false }) {
+                    Text(stringResource(Res.string.common_cancel))
+                }
+            },
         )
     }
 }
