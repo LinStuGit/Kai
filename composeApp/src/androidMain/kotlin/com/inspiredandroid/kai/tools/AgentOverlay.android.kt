@@ -23,6 +23,8 @@ actual fun isOverlayPermissionGranted(): Boolean {
     return Settings.canDrawOverlays(context)
 }
 
+actual fun isRunVisibleToUser(): Boolean = AgentOverlayController.activityVisible.value
+
 actual fun requestOverlayPermission() {
     val context: Context by inject(Context::class.java)
     context.startActivity(

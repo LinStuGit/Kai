@@ -248,26 +248,24 @@ class CalendarRepository(
         }
         val selectionArgs = query?.let { arrayOf("%$it", "%$it") }
 
-        val events = mutableListOf<CalendarEventInfo>()
+        val rows = mutableListOf<EventRow>()
         context.contentResolver.query(uri, projection, selection, selectionArgs, "${CalendarContract.Instances.BEGIN} ASC")
             ?.use { cursor ->
-                while (cursor.moveToNext() && events.size < MAX_LISTED_EVENTS) {
-                    val eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID))
-                    events.add(
-                        CalendarEventInfo(
-                            eventId = eventId,
+                while (cursor.moveToNext() && rows.size < MAX_LISTED_EVENTS) {
+                    rows.add(
+                        EventRow(
+                            eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID)),
                             title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)) ?: "",
-                            startIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN))),
-                            endIso = formatIso(cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.END))),
+                            startMs = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)),
+                            endMs = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)),
                             allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)) == 1,
                             location = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_LOCATION)),
                             description = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Instances.DESCRIPTION)),
-                            reminderMinutes = getReminderMinutes(eventId),
                         ),
                     )
                 }
             }
-        return events
+        return rows.toEventInfos()
     }
 
     /** Fallback for providers with broken Instances views: raw Events rows starting in range (recurrences NOT expanded). */
@@ -294,7 +292,7 @@ class CalendarRepository(
             selectionArgs += "%$it"
         }
 
-        val events = mutableListOf<CalendarEventInfo>()
+        val rows = mutableListOf<EventRow>()
         context.contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
             projection,
@@ -302,42 +300,83 @@ class CalendarRepository(
             selectionArgs.toTypedArray(),
             "${CalendarContract.Events.DTSTART} ASC",
         )?.use { cursor ->
-            while (cursor.moveToNext() && events.size < MAX_LISTED_EVENTS) {
-                val eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events._ID))
+            while (cursor.moveToNext() && rows.size < MAX_LISTED_EVENTS) {
                 val startMsCol = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
                 // DTEND is null for recurring events (they carry DURATION instead).
                 val dtendIndex = cursor.getColumnIndex(CalendarContract.Events.DTEND)
                 val endMsCol = if (dtendIndex >= 0) cursor.getLong(dtendIndex) else 0L
-                events.add(
-                    CalendarEventInfo(
-                        eventId = eventId,
+                rows.add(
+                    EventRow(
+                        eventId = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Events._ID)),
                         title = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.TITLE)) ?: "",
-                        startIso = formatIso(startMsCol),
-                        endIso = formatIso(if (endMsCol > 0) endMsCol else startMsCol),
+                        startMs = startMsCol,
+                        endMs = if (endMsCol > 0) endMsCol else startMsCol,
                         allDay = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Events.ALL_DAY)) == 1,
                         location = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)),
                         description = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION)),
-                        reminderMinutes = getReminderMinutes(eventId),
                     ),
                 )
             }
         }
-        return events
+        return rows.toEventInfos()
     }
 
-    /** First alert reminder in minutes before the event, or null if none/unreadable. */
-    private fun getReminderMinutes(eventId: Long): Int? = try {
-        context.contentResolver.query(
-            CalendarContract.Reminders.CONTENT_URI,
-            arrayOf(CalendarContract.Reminders.MINUTES),
-            "${CalendarContract.Reminders.EVENT_ID} = ?",
-            arrayOf(eventId.toString()),
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Reminders.MINUTES)) else null
+    /** Raw event fields shared by the Instances and Events-table queries, before reminder enrichment. */
+    private class EventRow(
+        val eventId: Long,
+        val title: String,
+        val startMs: Long,
+        val endMs: Long,
+        val allDay: Boolean,
+        val location: String?,
+        val description: String?,
+    )
+
+    /** Maps raw rows to [CalendarEventInfo], resolving all reminders in ONE provider query. */
+    private fun List<EventRow>.toEventInfos(): List<CalendarEventInfo> {
+        val reminders = getReminderMinutesBatch(map { it.eventId })
+        return map {
+            CalendarEventInfo(
+                eventId = it.eventId,
+                title = it.title,
+                startIso = formatIso(it.startMs),
+                endIso = formatIso(it.endMs),
+                allDay = it.allDay,
+                location = it.location,
+                description = it.description,
+                reminderMinutes = reminders[it.eventId],
+            )
         }
-    } catch (_: Exception) {
-        null
+    }
+
+    /**
+     * First (earliest) alert per event id, batched into a single provider query —
+     * per-row queries cost one binder IPC each, which adds up at 50 events.
+     */
+    private fun getReminderMinutesBatch(eventIds: List<Long>): Map<Long, Int> {
+        if (eventIds.isEmpty()) return emptyMap()
+        val result = mutableMapOf<Long, Int>()
+        try {
+            context.contentResolver.query(
+                CalendarContract.Reminders.CONTENT_URI,
+                arrayOf(CalendarContract.Reminders.EVENT_ID, CalendarContract.Reminders.MINUTES),
+                CalendarContract.Reminders.EVENT_ID + " IN (" + eventIds.joinToString(",") { "?" } + ")",
+                eventIds.map { it.toString() }.toTypedArray(),
+                null,
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(CalendarContract.Reminders.EVENT_ID)
+                val minutesIndex = cursor.getColumnIndexOrThrow(CalendarContract.Reminders.MINUTES)
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idIndex)
+                    val minutes = cursor.getInt(minutesIndex)
+                    val existing = result[id]
+                    if (existing == null || minutes < existing) result[id] = minutes
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "reminder batch query failed", e)
+        }
+        return result
     }
 
     /**

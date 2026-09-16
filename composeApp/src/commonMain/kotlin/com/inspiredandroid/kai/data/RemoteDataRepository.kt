@@ -54,6 +54,7 @@ import com.inspiredandroid.kai.tools.NotificationListenerController
 import com.inspiredandroid.kai.tools.PermissionController
 import com.inspiredandroid.kai.tools.ToolApprovalController
 import com.inspiredandroid.kai.tools.ToolApprovalRequest
+import com.inspiredandroid.kai.tools.isRunVisibleToUser
 import com.inspiredandroid.kai.tools.notifyAgentRunActive
 import com.inspiredandroid.kai.ui.chat.History
 import com.inspiredandroid.kai.ui.chat.ToolCallInfo
@@ -672,7 +673,9 @@ class RemoteDataRepository(
                 """{"success": false, "error": "${e.message ?: "Tool execution failed"}"}"""
             }
             val elapsed = Clock.System.now().toEpochMilliseconds() - startTime
-            if (elapsed < MIN_TOOL_DISPLAY_MS) {
+            // The 2 s minimum only exists so the in-app spinner is readable — skip
+            // it entirely when the user isn't looking (overlay-only/background run).
+            if (isRunVisibleToUser() && elapsed < MIN_TOOL_DISPLAY_MS) {
                 delay(MIN_TOOL_DISPLAY_MS.milliseconds - elapsed.milliseconds)
             }
             history.update { h ->
@@ -1355,7 +1358,8 @@ class RemoteDataRepository(
                 }.awaitAll()
             }
             val elapsed = Clock.System.now().toEpochMilliseconds() - startTime
-            if (elapsed < MIN_TOOL_DISPLAY_MS) {
+            // Same visibility gate as the parallel path — no cosmetic wait off-screen.
+            if (isRunVisibleToUser() && elapsed < MIN_TOOL_DISPLAY_MS) {
                 delay((MIN_TOOL_DISPLAY_MS - elapsed).milliseconds)
             }
             return results

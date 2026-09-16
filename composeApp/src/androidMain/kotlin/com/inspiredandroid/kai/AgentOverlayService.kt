@@ -293,7 +293,7 @@ private fun OverlayContent(
 
     Surface(
         modifier = Modifier.widthIn(max = 320.dp),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.97f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         tonalElevation = 3.dp,

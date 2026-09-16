@@ -38,6 +38,9 @@ object AgentOverlayController {
 /** Platform hook: the tool loop started/stopped executing tools (Android starts/stops the overlay service). */
 expect fun notifyAgentRunActive(active: Boolean)
 
+/** Whether the user can currently see the in-app run UI — gates cosmetic waits (the 2 s tool-indicator minimum). */
+expect fun isRunVisibleToUser(): Boolean
+
 expect fun isOverlayPermissionGranted(): Boolean
 
 /** Opens the system page where the user can grant the draw-over-other-apps permission. */
