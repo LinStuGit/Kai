@@ -5,17 +5,19 @@
         into other apps. Enabled/selected programmatically via Shizuku for
         the duration of an input_text call, then switched back.
     -->
-    <service
-        android:name="com.inspiredandroid.kai.ime.KamiImeService"
-        android:exported="true"
-        android:label="Kami Input"
-        android:permission="android.permission.BIND_INPUT_METHOD">
-        <intent-filter>
-            <action android:name="android.view.InputMethod" />
-        </intent-filter>
-        <meta-data
-            android:name="android.view.im"
-            android:resource="@xml/method" />
-    </service>
+    <application>
+        <service
+            android:name="com.inspiredandroid.kai.ime.KamiImeService"
+            android:exported="true"
+            android:label="Kami Input"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
 
 </manifest>

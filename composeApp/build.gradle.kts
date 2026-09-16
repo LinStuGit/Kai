@@ -201,7 +201,10 @@ compose.desktop {
             packageName = "Kai"
             // Packagers (RPM/DMG) reject pre-release suffixes like "-beta.1";
             // the full version stays in Version.appVersion for display.
-            packageVersion = libs.versions.appVersion.get().substringBefore('-')
+            packageVersion =
+                libs.versions.appVersion
+                    .get()
+                    .substringBefore('-')
 
             macOS {
                 iconFile.set(project.file("icon.icns"))

@@ -42,6 +42,7 @@ import com.inspiredandroid.kai.tools.ProcessManagerTool
 import com.inspiredandroid.kai.tools.SendNotificationTool
 import com.inspiredandroid.kai.tools.SetAlarmTool
 import com.inspiredandroid.kai.tools.ShellCommandTool
+import com.inspiredandroid.kai.tools.ShizukuRunner
 import com.inspiredandroid.kai.tools.ShizukuTools
 import com.inspiredandroid.kai.tools.SmsTools
 import com.inspiredandroid.kai.tools.SshConfigureHostTool

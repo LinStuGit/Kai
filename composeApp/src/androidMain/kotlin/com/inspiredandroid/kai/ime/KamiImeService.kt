@@ -66,8 +66,6 @@ class KamiImeService : InputMethodService() {
     override fun onCreateInputView(): View = View(this)
 
     override fun onCreateCandidatesView(): View? = null
-
-    private companion object {
-        const val POLL_INTERVAL_MS = 100L
-    }
 }
+
+private const val POLL_INTERVAL_MS = 100L
