@@ -3,6 +3,7 @@ package com.inspiredandroid.kai.network.dtos.openaicompatible
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -18,6 +19,24 @@ import kotlinx.serialization.json.jsonPrimitive
 private val toolCallMarkerRegex = Regex("<TOOLCALL>[\\s\\S]*?</TOOLCALL>|<TOOLCALL>[\\s\\S]*$")
 
 private val thinkBlockRegex = Regex("<think>([\\s\\S]*?)</think>", RegexOption.IGNORE_CASE)
+
+private val chunkFrameJson = Json {
+    isLenient = true
+    ignoreUnknownKeys = true
+    explicitNulls = false
+}
+
+/**
+ * A streaming chunk frame some relays leak verbatim into `message.content` as
+ * plain text (the structured `tool_calls` field left null) — e.g. paratera's
+ * GLM-Z1-Flash channel. Parsing it back out recovers the real tool call.
+ */
+@Serializable
+private data class ChunkFrame(
+    @SerialName("finish_reason")
+    val finishReason: String? = null,
+    val delta: OpenAICompatibleChatResponseDto.Delta? = null,
+)
 
 /**
  * Reads `message.content` whether the provider sends a plain string or an OpenAI-style array of
@@ -61,11 +80,19 @@ data class OpenAICompatibleChatResponseDto(
         val finishReason: String? = null,
     ) {
         /**
-         * Whichever payload shape the provider used: the regular `message`, or a
-         * `delta` frame assembled into one. Null when neither carries content.
+         * Whichever payload shape the provider used: the regular `message`, a
+         * `delta` frame assembled into one, or — when content is a leaked chunk
+         * JSON carrying the real tool calls — that recovered message in place of
+         * the garbage text. Null when nothing usable is present.
          */
         val effectiveMessage: Message?
-            get() = message ?: delta?.toMessage()
+            get() = (message ?: delta?.toMessage())?.let { payload ->
+                val recovered = payload.embeddedChunkMessage ?: return@let payload
+                recovered.copy(
+                    reasoningContent = recovered.reasoningContent ?: payload.reasoningContent,
+                    reasoning = recovered.reasoning ?: payload.reasoning,
+                )
+            }
     }
 
     @Serializable
@@ -162,6 +189,22 @@ data class OpenAICompatibleChatResponseDto(
                 val raw = content ?: return null
                 return if (raw.contains("<think>")) thinkSplit.second else raw.takeIf { it.isNotBlank() }
             }
+
+        /**
+         * The real payload when `content` is a leaked streaming-chunk JSON: the
+         * delta's tool calls assembled into a Message. Only fires when the chunk
+         * actually carries tool calls, so answers that legitimately quote chunk
+         * JSON are never rewritten. Null otherwise.
+         */
+        val embeddedChunkMessage: Message? by lazy {
+            val raw = visibleContent ?: return@lazy null
+            val trimmed = raw.trim()
+            if (!trimmed.startsWith("{") || !trimmed.contains("\"delta\"")) return@lazy null
+            val frame = runCatching { chunkFrameJson.decodeFromString(ChunkFrame.serializer(), trimmed) }
+                .getOrNull() ?: return@lazy null
+            val assembled = frame.delta?.toMessage() ?: return@lazy null
+            assembled.takeIf { !it.toolCalls.isNullOrEmpty() }
+        }
 
         /** Whichever reasoning field the provider used, plus inline `<think>` text, normalized to one accessor. */
         val effectiveReasoning: String?
