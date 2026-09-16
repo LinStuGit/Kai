@@ -199,7 +199,9 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
             packageName = "Kai"
-            packageVersion = libs.versions.appVersion.get()
+            // Packagers (RPM/DMG) reject pre-release suffixes like "-beta.1";
+            // the full version stays in Version.appVersion for display.
+            packageVersion = libs.versions.appVersion.get().substringBefore('-')
 
             macOS {
                 iconFile.set(project.file("icon.icns"))
