@@ -255,7 +255,7 @@ object ShizukuTools {
         override val timeout: Duration = 1.minutes
         override suspend fun execute(args: Map<String, Any>): Any {
             if (!ShizukuRunner.granted()) return denied()
-            val action = requireString(args, "action")?.trim().lowercase().orEmpty()
+            val action = requireString(args, "action")?.trim()?.lowercase().orEmpty()
             fun num(key: String): Int? = (args[key] as? Number)?.toInt() ?: args[key]?.toString()?.toIntOrNull()
             val cmd = when (action) {
                 "tap" -> {
