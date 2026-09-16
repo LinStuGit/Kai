@@ -55,6 +55,7 @@ import kai.composeapp.generated.resources.settings_import_replace_all
 import kai.composeapp.generated.resources.settings_import_replace_all_description
 import kai.composeapp.generated.resources.settings_import_section_conversations
 import kai.composeapp.generated.resources.settings_import_section_email
+import kai.composeapp.generated.resources.settings_import_section_extensions
 import kai.composeapp.generated.resources.settings_import_section_heartbeat
 import kai.composeapp.generated.resources.settings_import_section_mcp
 import kai.composeapp.generated.resources.settings_import_section_memory
@@ -386,5 +387,6 @@ private fun sectionDisplayName(section: ImportSection): String = when (section) 
     ImportSection.SPLINTERLANDS -> "Splinterlands"
     ImportSection.TOOLS -> stringResource(Res.string.settings_import_section_tools)
     ImportSection.MCP -> stringResource(Res.string.settings_import_section_mcp)
+    ImportSection.EXTENSIONS -> stringResource(Res.string.settings_import_section_extensions)
     ImportSection.CONVERSATIONS -> stringResource(Res.string.settings_import_section_conversations)
 }

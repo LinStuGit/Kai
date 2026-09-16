@@ -42,6 +42,9 @@ import kai.composeapp.generated.resources.settings_daemon_mode
 import kai.composeapp.generated.resources.settings_daemon_mode_description
 import kai.composeapp.generated.resources.settings_dynamic_ui
 import kai.composeapp.generated.resources.settings_dynamic_ui_description
+import kai.composeapp.generated.resources.settings_language
+import kai.composeapp.generated.resources.settings_language_description
+import kai.composeapp.generated.resources.settings_language_system
 import kai.composeapp.generated.resources.settings_theme
 import kai.composeapp.generated.resources.settings_theme_dark
 import kai.composeapp.generated.resources.settings_theme_description
@@ -78,6 +81,14 @@ internal fun GeneralContent(uiState: SettingsUiState, actions: SettingsActions) 
                     themeMode = uiState.themeMode,
                     onChangeThemeMode = actions.onChangeThemeMode,
                 )
+            }
+            if (uiState.showLanguage) {
+                SettingsCard {
+                    LanguagePicker(
+                        language = uiState.language,
+                        onChangeLanguage = actions.onChangeLanguage,
+                    )
+                }
             }
         },
         end = {
@@ -182,6 +193,97 @@ private fun DynamicUiToggle(
             checked = isDynamicUiEnabled,
             onCheckedChange = onToggleDynamicUi,
         )
+    }
+}
+
+/**
+ * App-language selector: "" means follow the system. Native names on purpose —
+ * a user who can't read the current UI language must still find their language.
+ */
+@Composable
+private fun LanguagePicker(
+    language: String,
+    onChangeLanguage: (String) -> Unit,
+) {
+    val options = buildList {
+        add("" to stringResource(Res.string.settings_language_system))
+        addAll(APP_LANGUAGES.map { it.first to it.second })
+    }
+    val selectedLabel = options.firstOrNull { it.first == language }?.second ?: language
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(Res.string.settings_language),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = stringResource(Res.string.settings_language_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            KaiOutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = selectedLabel,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    Icon(
+                        modifier = Modifier.handCursor(),
+                        imageVector = vectorResource(Res.drawable.ic_arrow_drop_down),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                },
+            )
+            // Transparent overlay to capture clicks reliably on all platforms
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .handCursor()
+                    .clickable { expanded = true },
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                options.forEach { (tag, label) ->
+                    val isSelected = tag == language
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            onChangeLanguage(tag)
+                        },
+                        modifier = Modifier
+                            .handCursor()
+                            .then(
+                                if (isSelected) {
+                                    Modifier.background(
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                    )
+                }
+            }
+        }
     }
 }
 

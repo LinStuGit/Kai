@@ -6,6 +6,9 @@ import com.inspiredandroid.kai.data.AppSettings.Companion.KEY_CONFIGURED_SERVICE
 import com.inspiredandroid.kai.data.AppSettings.Companion.KEY_CURRENT_SERVICE_ID
 import com.inspiredandroid.kai.data.AppSettings.Companion.KEY_FREE_FALLBACK_ENABLED
 import com.inspiredandroid.kai.data.AppSettings.Companion.KEY_TOOL_PREFIX
+import com.inspiredandroid.kai.tools.AgentExtension
+import com.inspiredandroid.kai.tools.getAgentExtensions
+import com.inspiredandroid.kai.tools.upsertAgentExtensions
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -153,6 +156,25 @@ fun AppSettings.exportToJson(
         val mcpJson = getMcpServersJson()
         if (mcpJson.isNotBlank()) {
             map["mcp_servers"] = Json.parseToJsonElement(mcpJson)
+        }
+    }
+
+    if (ImportSection.EXTENSIONS in sections) {
+        val extensions = getAgentExtensions()
+        if (extensions.isNotEmpty()) {
+            map["agent_extensions"] = JsonArray(
+                extensions.map { ext ->
+                    JsonObject(
+                        buildMap {
+                            put("id", JsonPrimitive(ext.id))
+                            put("name", JsonPrimitive(ext.name))
+                            if (ext.desc.isNotBlank()) put("desc", JsonPrimitive(ext.desc))
+                            put("cmd", JsonPrimitive(ext.cmd))
+                            put("enabled", JsonPrimitive(ext.enabled))
+                        },
+                    )
+                },
+            )
         }
     }
 
@@ -348,6 +370,27 @@ fun AppSettings.importFromJson(
         }
     } else if (replace) {
         setMcpServersJson("")
+    }
+
+    if (ImportSection.EXTENSIONS in sections) {
+        try {
+            val items = json["agent_extensions"]?.jsonArray?.mapNotNull { element ->
+                val obj = element.jsonObject
+                val id = obj["id"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val name = obj["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val cmd = obj["cmd"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                AgentExtension(
+                    id = id,
+                    name = name,
+                    desc = obj["desc"]?.jsonPrimitive?.content.orEmpty(),
+                    cmd = cmd,
+                    enabled = obj["enabled"]?.jsonPrimitive?.content?.toBoolean() ?: true,
+                )
+            }.orEmpty()
+            if (items.isNotEmpty()) upsertAgentExtensions(items)
+        } catch (_: Exception) {
+            errors++
+        }
     }
 
     if (ImportSection.CONVERSATIONS in sections) {

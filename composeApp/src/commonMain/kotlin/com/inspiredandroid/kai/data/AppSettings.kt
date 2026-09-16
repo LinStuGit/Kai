@@ -1,5 +1,7 @@
 package com.inspiredandroid.kai.data
 
+import com.inspiredandroid.kai.applyAppLocale
+import com.inspiredandroid.kai.bumpLocaleVersion
 import com.inspiredandroid.kai.defaultUiScale
 import com.inspiredandroid.kai.linux.LinuxDistro
 import com.russhwolf.settings.Settings
@@ -21,6 +23,7 @@ enum class ImportSection {
     SPLINTERLANDS,
     TOOLS,
     MCP,
+    EXTENSIONS,
     CONVERSATIONS,
 }
 
@@ -97,6 +100,11 @@ fun detectExportableSections(json: JsonObject): Map<ImportSection, String?> {
         sections[ImportSection.MCP] = "${mcp.size}"
     }
 
+    val extensions = json["agent_extensions"]?.jsonArray
+    if (extensions != null && extensions.isNotEmpty()) {
+        sections[ImportSection.EXTENSIONS] = "${extensions.size}"
+    }
+
     val conversations = json["conversations"]?.jsonArray
     if (conversations != null && conversations.isNotEmpty()) {
         sections[ImportSection.CONVERSATIONS] = "${conversations.size}"
@@ -148,6 +156,10 @@ fun detectImportSections(json: JsonObject): Map<ImportSection, String?> {
     if (json["mcp_servers"] != null) {
         val count = json["mcp_servers"]?.jsonArray?.size
         sections[ImportSection.MCP] = count?.let { "$it" }
+    }
+    if (json["agent_extensions"] != null) {
+        val count = json["agent_extensions"]?.jsonArray?.size
+        sections[ImportSection.EXTENSIONS] = count?.let { "$it" }
     }
     if (json["conversations"] != null) {
         val count = try {
@@ -312,6 +324,21 @@ class AppSettings(internal val settings: Settings) {
     fun setThemeMode(mode: ThemeMode) {
         settings.putString(KEY_THEME_MODE, mode.name)
         _themeModeFlow.value = mode
+    }
+
+    // App language: BCP-47-ish tag or "" for system default. Applied per-platform
+    // via [applyAppLocale]; resolution rules live with the actuals.
+    private val _languageFlow = MutableStateFlow(settings.getString(KEY_LANGUAGE, ""))
+    val languageFlow: StateFlow<String> = _languageFlow
+
+    fun getLanguage(): String = _languageFlow.value
+
+    fun setLanguage(tag: String) {
+        settings.putString(KEY_LANGUAGE, tag)
+        _languageFlow.value = tag
+        applyAppLocale(tag)
+        // Non-recreating platforms (desktop/web) re-read strings via this key.
+        bumpLocaleVersion()
     }
 
     private fun loadInitialThemeMode(): ThemeMode {
@@ -592,6 +619,7 @@ class AppSettings(internal val settings: Settings) {
         const val KEY_DYNAMIC_UI_ENABLED = "dynamic_ui_enabled"
         const val KEY_OLED_MODE_ENABLED = "oled_mode_enabled"
         const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_LANGUAGE = "language"
         const val KEY_DAEMON_ENABLED = "daemon_enabled"
         const val KEY_HEARTBEAT_CONFIG = "heartbeat_config"
         const val KEY_HEARTBEAT_PROMPT = "heartbeat_prompt"

@@ -126,6 +126,8 @@ interface DataRepository {
 
     // Theme mode
     fun getThemeMode(): ThemeMode
+    fun getLanguage(): String
+    fun setLanguage(tag: String)
     fun setThemeMode(mode: ThemeMode)
 
     // Interactive mode

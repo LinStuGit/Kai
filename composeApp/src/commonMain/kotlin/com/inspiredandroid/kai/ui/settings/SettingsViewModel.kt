@@ -83,6 +83,8 @@ class SettingsViewModel(
         soulText = dataRepository.getSoulText(),
         isDynamicUiEnabled = dataRepository.isDynamicUiEnabled(),
         themeMode = dataRepository.getThemeMode(),
+        language = dataRepository.getLanguage(),
+        showLanguage = currentPlatform is Platform.Mobile.Android || currentPlatform is Platform.Desktop,
         isMemoryEnabled = dataRepository.isMemoryEnabled(),
         memories = dataRepository.getMemories().toImmutableList(),
         isSchedulingEnabled = dataRepository.isSchedulingEnabled(),
@@ -183,6 +185,7 @@ class SettingsViewModel(
         onClearPendingNotifications = ::onClearPendingNotifications,
         onToggleFreeFallback = ::onToggleFreeFallback,
         onChangeUiScale = ::onChangeUiScale,
+        onChangeLanguage = ::onChangeLanguage,
         onAddMcpServer = ::onAddMcpServer,
         onRemoveMcpServer = ::onRemoveMcpServer,
         onToggleMcpServer = ::onToggleMcpServer,
@@ -501,6 +504,11 @@ class SettingsViewModel(
     private fun onChangeThemeMode(mode: ThemeMode) {
         dataRepository.setThemeMode(mode)
         _state.update { it.copy(themeMode = mode) }
+    }
+
+    private fun onChangeLanguage(tag: String) {
+        dataRepository.setLanguage(tag)
+        _state.update { it.copy(language = tag) }
     }
 
     private fun onToggleMemory(enabled: Boolean) {

@@ -18,3 +18,6 @@ expect fun getAgentExtensions(): List<AgentExtension>
 expect fun setAgentExtensionEnabled(id: String, enabled: Boolean)
 
 expect fun removeAgentExtension(id: String)
+
+/** Insert-or-replace by id — the restore path of Settings → Backup. */
+expect fun upsertAgentExtensions(extensions: List<AgentExtension>)

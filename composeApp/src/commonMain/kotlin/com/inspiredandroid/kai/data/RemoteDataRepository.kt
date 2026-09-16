@@ -2032,6 +2032,12 @@ class RemoteDataRepository(
 
     override fun getThemeMode(): ThemeMode = appSettings.getThemeMode()
 
+    override fun getLanguage(): String = appSettings.getLanguage()
+
+    override fun setLanguage(tag: String) {
+        appSettings.setLanguage(tag)
+    }
+
     override fun setThemeMode(mode: ThemeMode) {
         appSettings.setThemeMode(mode)
     }

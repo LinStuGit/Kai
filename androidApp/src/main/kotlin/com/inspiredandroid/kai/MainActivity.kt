@@ -1,5 +1,6 @@
 package com.inspiredandroid.kai
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -22,22 +23,34 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.inspiredandroid.kai.AppLocaleHolder
+import com.inspiredandroid.kai.currentLanguageTag
 import com.inspiredandroid.kai.data.AppSettings
 import com.inspiredandroid.kai.data.DataRepository
 import com.inspiredandroid.kai.data.ThemeMode
 import com.inspiredandroid.kai.tools.AgentOverlayController
 import com.inspiredandroid.kai.ui.DarkColorScheme
 import com.inspiredandroid.kai.ui.LightColorScheme
+import com.inspiredandroid.kai.wrapContextLocale
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
 import nl.marc_apps.tts.TextToSpeechEngine
 import nl.marc_apps.tts.TextToSpeechFactory
 import nl.marc_apps.tts.TextToSpeechInstance
 import org.koin.android.ext.android.get
+import java.lang.ref.WeakReference
 
 class MainActivity : ComponentActivity() {
 
+    // Pre-33: wrap the base context with the app-language preference (the system
+    // has no per-app locales there). 33+: the system applies app locales itself,
+    // so the wrap is skipped and [applyAppLocale] drives LocaleManager instead.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(wrapContextLocale(newBase, currentLanguageTag()))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLocaleHolder.activity = WeakReference(this)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         FileKit.init(this)

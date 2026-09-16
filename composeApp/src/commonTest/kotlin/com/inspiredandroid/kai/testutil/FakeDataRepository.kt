@@ -399,6 +399,14 @@ class FakeDataRepository : DataRepository {
 
     override fun getThemeMode(): ThemeMode = themeMode
 
+    private var language: String = ""
+
+    override fun getLanguage(): String = language
+
+    override fun setLanguage(tag: String) {
+        language = tag
+    }
+
     override fun setThemeMode(mode: ThemeMode) {
         themeMode = mode
     }

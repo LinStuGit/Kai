@@ -16,6 +16,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -113,6 +114,16 @@ private fun AppContent(
 ) {
     val appSettings = koinInject<AppSettings>()
 
+    // Apply the saved app language once Koin is up (desktop/web; Android wraps the
+    // activity context earlier, so re-applying there would needlessly recreate it).
+    LaunchedEffect(Unit) {
+        val saved = appSettings.getLanguage()
+        if (saved.isNotEmpty() && currentPlatform !is Platform.Mobile.Android) {
+            applyAppLocale(saved)
+            bumpLocaleVersion()
+        }
+    }
+
     // Track app opens after Koin is initialized
     onAppOpens?.let { callback ->
         LaunchedEffect(Unit) {
@@ -162,78 +173,81 @@ private fun AppContent(
         LocalDensity provides scaledDensity,
         LocalUriHandler provides sandboxAwareUriHandler,
     ) {
-        Theme(colorScheme = effectiveColorScheme) {
-            FullScreenImageHost {
-                val chatViewModel: ChatViewModel = koinViewModel()
-                val showTabBar = currentPlatform !is Platform.Mobile
-                val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                val isHome = currentBackStackEntry?.destination?.route == "home"
+        // Rebuilds the whole UI tree when the language changes so strings re-resolve.
+        key(localeVersion) {
+            Theme(colorScheme = effectiveColorScheme) {
+                FullScreenImageHost {
+                    val chatViewModel: ChatViewModel = koinViewModel()
+                    val showTabBar = currentPlatform !is Platform.Mobile
+                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                    val isHome = currentBackStackEntry?.destination?.route == "home"
 
-                val navigationTabBar: @Composable () -> Unit = {
-                    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-                    val count = 2
-                    SingleChoiceSegmentedButtonRow {
-                        SegmentedButton(
-                            selected = isHome,
-                            onClick = {
-                                navController.navigate(Home) {
-                                    popUpTo(Home) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(index = if (isRtl) count - 1 else 0, count = count),
-                            modifier = Modifier.handCursor(),
-                        ) {
-                            Text(stringResource(Res.string.tab_chat))
-                        }
-                        SegmentedButton(
-                            selected = !isHome,
-                            onClick = {
-                                navController.navigate(Settings) {
-                                    popUpTo(Home)
-                                    launchSingleTop = true
-                                }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(index = if (isRtl) 0 else count - 1, count = count),
-                            modifier = Modifier.handCursor(),
-                        ) {
-                            Text(stringResource(Res.string.tab_settings))
-                        }
-                    }
-                }
-
-                NavHost(
-                    navController,
-                    startDestination = Home,
-                    modifier = Modifier.background(MaterialTheme.colorScheme.background),
-                ) {
-                    composable<Home> {
-                        ChatScreen(
-                            viewModel = chatViewModel,
-                            textToSpeech = textToSpeech,
-                            onNavigateToSettings = {
-                                navController.navigate(Settings)
-                            },
-                            isSandboxAvailable = currentPlatform is Platform.Mobile.Android,
-                            isKaiBuildAvailable = currentPlatform is Platform.Mobile.Android,
-                            navigationTabBar = if (showTabBar) navigationTabBar else null,
-                        )
-                    }
-                    composable<Settings> {
-                        if (showTabBar) {
-                            DisposableEffect(Unit) {
-                                onDispose {
-                                    chatViewModel.refreshSettings()
-                                }
+                    val navigationTabBar: @Composable () -> Unit = {
+                        val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+                        val count = 2
+                        SingleChoiceSegmentedButtonRow {
+                            SegmentedButton(
+                                selected = isHome,
+                                onClick = {
+                                    navController.navigate(Home) {
+                                        popUpTo(Home) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index = if (isRtl) count - 1 else 0, count = count),
+                                modifier = Modifier.handCursor(),
+                            ) {
+                                Text(stringResource(Res.string.tab_chat))
+                            }
+                            SegmentedButton(
+                                selected = !isHome,
+                                onClick = {
+                                    navController.navigate(Settings) {
+                                        popUpTo(Home)
+                                        launchSingleTop = true
+                                    }
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index = if (isRtl) 0 else count - 1, count = count),
+                                modifier = Modifier.handCursor(),
+                            ) {
+                                Text(stringResource(Res.string.tab_settings))
                             }
                         }
-                        SettingsScreen(
-                            onNavigateBack = {
-                                chatViewModel.refreshSettings()
-                                navController.navigateUp()
-                            },
-                            navigationTabBar = if (showTabBar) navigationTabBar else null,
-                        )
+                    }
+
+                    NavHost(
+                        navController,
+                        startDestination = Home,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.background),
+                    ) {
+                        composable<Home> {
+                            ChatScreen(
+                                viewModel = chatViewModel,
+                                textToSpeech = textToSpeech,
+                                onNavigateToSettings = {
+                                    navController.navigate(Settings)
+                                },
+                                isSandboxAvailable = currentPlatform is Platform.Mobile.Android,
+                                isKaiBuildAvailable = currentPlatform is Platform.Mobile.Android,
+                                navigationTabBar = if (showTabBar) navigationTabBar else null,
+                            )
+                        }
+                        composable<Settings> {
+                            if (showTabBar) {
+                                DisposableEffect(Unit) {
+                                    onDispose {
+                                        chatViewModel.refreshSettings()
+                                    }
+                                }
+                            }
+                            SettingsScreen(
+                                onNavigateBack = {
+                                    chatViewModel.refreshSettings()
+                                    navController.navigateUp()
+                                },
+                                navigationTabBar = if (showTabBar) navigationTabBar else null,
+                            )
+                        }
                     }
                 }
             }
