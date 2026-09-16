@@ -298,11 +298,7 @@ class Requests {
                 // with "no healthy deployments"/"not allowed to access model";
                 // retry once with the canonical spelling from the model list.
                 val canonical = canonicalModelId(service, credentials)
-                if (canonical == null || canonical == model) {
-                    // Not a casing problem after all (genuinely unhealthy
-                    // channel, unknown model) — surface the provider's message.
-                    Result.failure(OpenAICompatibleModelNotFoundException(firstError.message))
-                } else {
+                if (canonical != null && canonical != model) {
                     println("[Kami] Model id case mismatch; retrying with canonical '" + canonical + "'")
                     val retried = sendOnce(modelOverride = canonical)
                     if (retried.status.isSuccess()) {
@@ -310,6 +306,30 @@ class Requests {
                     } else {
                         Result.failure(buildOpenAICompatibleError(service, credentials, retried))
                     }
+                } else if (firstError.message?.contains("no healthy deployments", ignoreCase = true) == true && model != null) {
+                    // Same spelling, so the id is fine: on LiteLLM routers this
+                    // message also means every upstream deployment for the model
+                    // is in rate-limit cooldown (typically tens of seconds).
+                    // One short backoff rides out the common case.
+                    println("[Kami] Model deployments cooling down; retrying in 5s")
+                    delay(5_000)
+                    val retried = sendOnce()
+                    if (retried.status.isSuccess()) {
+                        Result.success(readChatPayload(retried))
+                    } else {
+                        val err = buildOpenAICompatibleError(service, credentials, retried)
+                        Result.failure(
+                            if (err is OpenAICompatibleModelCaseMismatchException) {
+                                OpenAICompatibleModelNotFoundException(err.message)
+                            } else {
+                                err
+                            },
+                        )
+                    }
+                } else {
+                    // Not recoverable here (unknown model, wrong URL, team
+                    // access) — surface the provider's message as detail.
+                    Result.failure(OpenAICompatibleModelNotFoundException(firstError.message))
                 }
             }
         }
