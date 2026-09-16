@@ -271,6 +271,29 @@ class Requests {
     }
 
     /**
+     * Reads the chat payload tolerantly: regular JSON, or a `data:`-prefixed SSE
+     * body (relays that force streaming) merged into a single response. Logs a
+     * diagnostic when the payload parses but carries nothing usable, so dead
+     * responses from exotic relays leave a trace in logcat.
+     */
+    private suspend fun readChatPayload(response: HttpResponse): OpenAICompatibleChatResponseDto {
+        val raw = response.bodyAsText()
+        val parsed = if (raw.trimStart().startsWith("data:")) {
+            assembleSseChunks(raw)
+        } else {
+            chatPayloadJson.decodeFromString(OpenAICompatibleChatResponseDto.serializer(), raw)
+        }
+        val usable = parsed.choices.any { choice ->
+            val message = choice.effectiveMessage
+            !message?.toolCalls.isNullOrEmpty() || !message?.effectiveContent.isNullOrBlank()
+        }
+        if (!usable) {
+            println("[Kami] OpenAI-compatible response had no usable payload: ${raw.take(500)}")
+        }
+        return parsed
+    }
+
+    /**
      * OpenAI Responses API (`POST /v1/responses`). Used for the model families whose function
      * calling chat completions rejects — see `requiresResponsesApi`. Auth, URL resolution and
      * error mapping are shared with [openAICompatibleChat]; only the body and result shape differ.
