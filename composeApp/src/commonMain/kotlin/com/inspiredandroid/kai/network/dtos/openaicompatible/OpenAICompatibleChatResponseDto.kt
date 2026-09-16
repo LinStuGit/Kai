@@ -89,10 +89,10 @@ data class OpenAICompatibleChatResponseDto(
                 .map { (_, fragments) ->
                     val first = fragments.first()
                     val function = first.function ?: return@map null
-                    Message.ToolCall(
+                    ToolCall(
                         id = first.id ?: "call-delta-${first.index}",
                         type = first.type,
-                        function = Message.FunctionCall(
+                        function = FunctionCall(
                             name = function.name.orEmpty(),
                             arguments = fragments.joinToString("") { it.function?.arguments.orEmpty() },
                         ),
