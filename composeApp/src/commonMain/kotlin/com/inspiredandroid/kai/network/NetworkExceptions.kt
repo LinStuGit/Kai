@@ -52,7 +52,7 @@ class OpenAICompatibleInvalidApiKeyException : OpenAICompatibleApiException()
 class OpenAICompatibleRateLimitExceededException : OpenAICompatibleApiException()
 class OpenAICompatibleQuotaExhaustedException : OpenAICompatibleApiException()
 class OpenAICompatibleConnectionException : OpenAICompatibleApiException()
-class OpenAICompatibleModelNotFoundException : OpenAICompatibleApiException()
+class OpenAICompatibleModelNotFoundException(detail: String? = null) : OpenAICompatibleApiException(detail)
 class OpenAICompatibleEmptyResponseException : OpenAICompatibleApiException()
 class OpenAICompatibleRequestTooLargeException : OpenAICompatibleApiException()
 class OpenAICompatibleContentModerationException(detail: String? = null) : OpenAICompatibleApiException(detail)
@@ -146,7 +146,9 @@ fun Exception.toUiError(): UiError = when (this) {
 
     is OpenAICompatibleConnectionException -> UiError.Resource(Res.string.error_openai_compatible_connection)
 
-    is OpenAICompatibleModelNotFoundException -> UiError.Resource(Res.string.error_openai_compatible_model_not_found)
+    is OpenAICompatibleModelNotFoundException -> message?.takeIf { it.isNotBlank() }
+        ?.let { UiError.ResourceWithDetail(Res.string.error_openai_compatible_model_not_found, it) }
+        ?: UiError.Resource(Res.string.error_openai_compatible_model_not_found)
 
     is OpenAICompatibleEmptyResponseException -> UiError.Resource(Res.string.error_empty_response)
 

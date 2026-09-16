@@ -48,6 +48,8 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -243,7 +245,7 @@ class Requests {
         val apiKey = getApiKeyOrThrow(service, credentials)
         val model = credentials.modelId.ifEmpty { null }
         val url = resolveUrl(service, credentials, service.chatUrl)
-        suspend fun sendOnce(): HttpResponse = defaultClient.post(url) {
+        suspend fun sendOnce(modelOverride: String? = null): HttpResponse = defaultClient.post(url) {
             applyTimeout(requestTimeoutMs)
             contentType(ContentType.Application.Json)
             apiKey?.let { bearerAuth(it) }
@@ -252,7 +254,7 @@ class Requests {
             setBody(
                 OpenAICompatibleChatRequestDto(
                     messages = messages,
-                    model = model,
+                    model = modelOverride ?: model,
                     tools = tools.toRequestTools { it.toRequestTool() },
                 ),
             )
@@ -288,7 +290,28 @@ class Requests {
         if (response.status.isSuccess()) {
             Result.success(readChatPayload(response))
         } else {
-            handleOpenAICompatibleError(service, credentials, response, preReadBody)
+            val firstError = buildOpenAICompatibleError(service, credentials, response, preReadBody)
+            if (firstError !is OpenAICompatibleModelCaseMismatchException) {
+                Result.failure(firstError)
+            } else {
+                // Case-sensitive routers (LiteLLM etc.) reject a wrongly-cased id
+                // with "no healthy deployments"/"not allowed to access model";
+                // retry once with the canonical spelling from the model list.
+                val canonical = canonicalModelId(service, credentials)
+                if (canonical == null || canonical == model) {
+                    // Not a casing problem after all (genuinely unhealthy
+                    // channel, unknown model) — surface the provider's message.
+                    Result.failure(OpenAICompatibleModelNotFoundException(firstError.message))
+                } else {
+                    println("[Kami] Model id case mismatch; retrying with canonical '" + canonical + "'")
+                    val retried = sendOnce(modelOverride = canonical)
+                    if (retried.status.isSuccess()) {
+                        Result.success(readChatPayload(retried))
+                    } else {
+                        Result.failure(buildOpenAICompatibleError(service, credentials, retried))
+                    }
+                }
+            }
         }
     } catch (e: OpenAICompatibleApiException) {
         Result.failure(e)
@@ -547,43 +570,69 @@ class Requests {
         credentials: ServiceCredentials,
         response: HttpResponse,
         preReadBody: String? = null,
-    ): Nothing {
+    ): Nothing = throw buildOpenAICompatibleError(service, credentials, response, preReadBody)
+
+    /** Provider messages that mean the id exists only with different casing. */
+    private val modelCaseMismatchHints = listOf(
+        "no healthy deployments", // LiteLLM router 400 on an unknown-cased id
+        "not allowed to access model", // LiteLLM 403 on a mixed-case id
+        "model not found",
+        "does not exist",
+    )
+
+    /**
+     * Pure counterpart of [handleOpenAICompatibleError]: maps a failed response
+     * to an exception without throwing, so [openAICompatibleChat] can react to
+     * recoverable cases (model-id casing) before surfacing the failure.
+     */
+    private suspend fun buildOpenAICompatibleError(
+        service: Service,
+        credentials: ServiceCredentials,
+        response: HttpResponse,
+        preReadBody: String? = null,
+    ): OpenAICompatibleApiException {
         val responseBody = preReadBody ?: response.bodyAsText()
         val parsed = parseOpenAICompatibleErrorDetail(responseBody)
         val moderationDetail = parsed.moderationDetail()
-        when (response.status.value) {
+        val msg = parsed.message
+        return when (response.status.value) {
             400 -> {
                 if (parsed.looksLikeContentPolicyViolation()) {
-                    throw OpenAICompatibleContentModerationException(moderationDetail)
+                    OpenAICompatibleContentModerationException(moderationDetail)
+                } else if (msg != null && unsupportedModel400Hints.any { msg.contains(it, ignoreCase = true) }) {
+                    // Relays list every upstream model in /v1/models regardless of
+                    // modality; picking an image/video/speech/embedding one fails
+                    // with a provider-specific 400. Name the actual problem instead
+                    // of showing a raw "bad request".
+                    OpenAICompatibleUnsupportedModelException(msg)
+                } else if (msg != null && modelCaseMismatchHints.any { msg.contains(it, ignoreCase = true) }) {
+                    OpenAICompatibleModelCaseMismatchException(msg)
+                } else {
+                    OpenAICompatibleBadRequestException(parsed.message)
                 }
-                // Relays list every upstream model in /v1/models regardless of
-                // modality; picking an image/video/speech/embedding one fails
-                // with a provider-specific 400. Name the actual problem instead
-                // of showing a raw "bad request".
-                val msg = parsed.message
-                if (msg != null && unsupportedModel400Hints.any { msg.contains(it, ignoreCase = true) }) {
-                    throw OpenAICompatibleUnsupportedModelException(msg)
-                }
-                throw OpenAICompatibleBadRequestException(parsed.message)
             }
 
-            401 -> throw OpenAICompatibleInvalidApiKeyException()
+            401 -> OpenAICompatibleInvalidApiKeyException()
 
-            402 -> throw OpenAICompatibleQuotaExhaustedException()
+            402 -> OpenAICompatibleQuotaExhaustedException()
 
-            403 -> throw OpenAICompatibleContentModerationException(moderationDetail)
+            403 -> if (msg != null && modelCaseMismatchHints.any { msg.contains(it, ignoreCase = true) }) {
+                OpenAICompatibleModelCaseMismatchException(msg)
+            } else {
+                OpenAICompatibleContentModerationException(moderationDetail)
+            }
 
-            404 -> throw OpenAICompatibleModelNotFoundException()
+            404 -> OpenAICompatibleModelCaseMismatchException(msg)
 
-            408, 504 -> throw OpenAICompatibleTimeoutException()
+            408, 504 -> OpenAICompatibleTimeoutException()
 
-            413 -> throw OpenAICompatibleRequestTooLargeException()
+            413 -> OpenAICompatibleRequestTooLargeException()
 
-            429 -> throw OpenAICompatibleRateLimitExceededException()
+            429 -> OpenAICompatibleRateLimitExceededException()
 
-            500, 502 -> throw OpenAICompatibleProviderErrorException(parsed.message)
+            500, 502 -> OpenAICompatibleProviderErrorException(parsed.message)
 
-            503 -> throw OpenAICompatibleServiceUnavailableException()
+            503 -> OpenAICompatibleServiceUnavailableException()
 
             else -> {
                 val haystack = parsed.message ?: responseBody
@@ -594,13 +643,36 @@ class Requests {
                     haystack.contains("subscription", ignoreCase = true) ||
                     haystack.contains("upgrade", ignoreCase = true)
                 ) {
-                    throw OpenAICompatibleQuotaExhaustedException()
+                    OpenAICompatibleQuotaExhaustedException()
+                } else {
+                    val detail = parsed.message ?: "${response.status}"
+                    OpenAICompatibleGenericException("${service.displayName}: $detail")
                 }
-                val detail = parsed.message ?: "${response.status}"
-                throw OpenAICompatibleGenericException("${service.displayName}: $detail")
             }
         }
     }
+
+    /**
+     * Looks up the configured model id in the service's model list,
+     * case-insensitively, and returns the provider's exact canonical spelling
+     * (LiteLLM-style routers are case-sensitive). Fetched once per base URL +
+     * key and cached for the session; null when unavailable.
+     */
+    private suspend fun canonicalModelId(service: Service, credentials: ServiceCredentials): String? {
+        val wanted = credentials.modelId.trim()
+        if (wanted.isEmpty()) return null
+        val cacheKey = resolveUrl(service, credentials, service.modelsUrl ?: "/models") + "|" + credentials.apiKey
+        return canonicalModelMutex.withLock {
+            val cached = canonicalModelIds[cacheKey]
+            val ids = cached ?: runCatching {
+                getOpenAICompatibleModels(service, credentials).getOrThrow().data.map { it.id }
+            }.getOrNull()?.also { canonicalModelIds[cacheKey] = it }
+            ids?.firstOrNull { it.equals(wanted, ignoreCase = true) }
+        }
+    }
+
+    private val canonicalModelIds = mutableMapOf<String, List<String>>()
+    private val canonicalModelMutex = Mutex()
 
     // Distinguish genuine network/I/O failures (preserve the "Cannot connect to
     // server" UX and the settings-screen ErrorConnectionFailed status) from
@@ -858,3 +930,6 @@ private fun JsonObject.schemaStringList(key: String): List<String>? = (this[key]
 private fun JsonObject.schemaObjectMap(key: String): Map<String, JsonObject>? = (this[key] as? JsonObject)?.mapNotNull { (k, v) -> (v as? JsonObject)?.let { k to it } }
     ?.toMap()
     ?.takeIf { it.isNotEmpty() }
+
+/** Internal marker: the model id was rejected, likely because of casing. */
+private class OpenAICompatibleModelCaseMismatchException(detail: String?) : OpenAICompatibleApiException(detail)
