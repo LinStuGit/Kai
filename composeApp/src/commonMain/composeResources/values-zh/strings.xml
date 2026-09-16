@@ -399,6 +399,8 @@
     <string name="settings_theme_dark">深色</string>
     <string name="settings_theme_oled">OLED</string>
     <string name="error_bad_request">请求无效</string>
+    <string name="error_model_not_chat">该模型不支持对话 API——可能是图像、视频、语音或嵌入模型。请在 设置 → 服务 中改选对话类模型。</string>
+    <string name="error_free_capacity">Kami 的免费线路当前全部过载（上游免费通道失败）。请稍后重试，或在 设置 → 服务 中配置自己的 API 服务商。</string>
     <string name="error_content_moderation">内容审核</string>
     <string name="error_provider_error">模型提供商返回了错误</string>
     <string name="error_service_unavailable">服务暂时不可用。请稍后重试。</string>

@@ -1078,7 +1078,7 @@ class RemoteDataRepository(
                         }
 
                         throw if (fallbackEntries.size > 1 && lastException != null) {
-                            AllServicesFailedException()
+                            AllServicesFailedException(lastException.message)
                         } else {
                             lastException ?: OpenAICompatibleEmptyResponseException()
                         }

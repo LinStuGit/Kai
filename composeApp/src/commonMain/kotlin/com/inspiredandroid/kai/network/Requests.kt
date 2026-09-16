@@ -47,6 +47,7 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -242,25 +243,52 @@ class Requests {
         val apiKey = getApiKeyOrThrow(service, credentials)
         val model = credentials.modelId.ifEmpty { null }
         val url = resolveUrl(service, credentials, service.chatUrl)
-        val response: HttpResponse =
-            defaultClient.post(url) {
-                applyTimeout(requestTimeoutMs)
-                contentType(ContentType.Application.Json)
-                apiKey?.let { bearerAuth(it) }
-                applySessionHeader(service, sessionId)
-                customHeaders.forEach { (k, v) -> header(k, v) }
-                setBody(
-                    OpenAICompatibleChatRequestDto(
-                        messages = messages,
-                        model = model,
-                        tools = tools.toRequestTools { it.toRequestTool() },
-                    ),
+        suspend fun sendOnce(): HttpResponse = defaultClient.post(url) {
+            applyTimeout(requestTimeoutMs)
+            contentType(ContentType.Application.Json)
+            apiKey?.let { bearerAuth(it) }
+            applySessionHeader(service, sessionId)
+            customHeaders.forEach { (k, v) -> header(k, v) }
+            setBody(
+                OpenAICompatibleChatRequestDto(
+                    messages = messages,
+                    model = model,
+                    tools = tools.toRequestTools { it.toRequestTool() },
+                ),
+            )
+        }
+        // One retry on transient failures: 429 (shared/free keys trip
+        // per-minute quotas constantly — agent tool loops fire several requests
+        // back to back), and the Free proxy's "All free providers failed"
+        // 500/502 (it fans out Mistral → Groq → OpenRouter; a few seconds
+        // later a provider may have recovered). Honor Retry-After when the
+        // server sends it, else a short fixed backoff.
+        var response = sendOnce()
+        var preReadBody: String? = null
+        val status = response.status.value
+        if (status == 429 || status == 500 || status == 502) {
+            // Bodies can only be read once; pass the cached text down to the
+            // error handler so nothing double-reads.
+            val body = response.bodyAsText()
+            preReadBody = body
+            val freeCapacity = body.contains("all free providers failed", ignoreCase = true)
+            if (status == 429 || freeCapacity) {
+                val retryAfterMs = response.headers["Retry-After"]?.trim()?.toLongOrNull()?.times(1000)
+                val backoffMs = (retryAfterMs ?: 5_000L).coerceIn(1_000L, 15_000L)
+                println(
+                    "[Kami] OpenAI-compatible " +
+                        (if (freeCapacity) "free providers exhausted" else "429 rate limited") +
+                        "; retrying in ${backoffMs / 1000}s",
                 )
+                delay(backoffMs)
+                response = sendOnce()
+                preReadBody = null
             }
+        }
         if (response.status.isSuccess()) {
             Result.success(readChatPayload(response))
         } else {
-            handleOpenAICompatibleError(service, credentials, response)
+            handleOpenAICompatibleError(service, credentials, response, preReadBody)
         }
     } catch (e: OpenAICompatibleApiException) {
         Result.failure(e)
@@ -503,18 +531,38 @@ class Requests {
         return credentials.apiKey.ifEmpty { null }
     }
 
+    /**
+     * 400 bodies that mean "this model has no chat API" (image/video/speech/
+     * embedding model selected for chat) rather than a malformed request.
+     */
+    private val unsupportedModel400Hints = listOf(
+        "does not support this api",
+        "is not a chat model",
+        "not a chat model",
+        "未正常接收到prompt参数",
+    )
+
     private suspend fun handleOpenAICompatibleError(
         service: Service,
         credentials: ServiceCredentials,
         response: HttpResponse,
+        preReadBody: String? = null,
     ): Nothing {
-        val responseBody = response.bodyAsText()
+        val responseBody = preReadBody ?: response.bodyAsText()
         val parsed = parseOpenAICompatibleErrorDetail(responseBody)
         val moderationDetail = parsed.moderationDetail()
         when (response.status.value) {
             400 -> {
                 if (parsed.looksLikeContentPolicyViolation()) {
                     throw OpenAICompatibleContentModerationException(moderationDetail)
+                }
+                // Relays list every upstream model in /v1/models regardless of
+                // modality; picking an image/video/speech/embedding one fails
+                // with a provider-specific 400. Name the actual problem instead
+                // of showing a raw "bad request".
+                val msg = parsed.message
+                if (msg != null && unsupportedModel400Hints.any { msg.contains(it, ignoreCase = true) }) {
+                    throw OpenAICompatibleUnsupportedModelException(msg)
                 }
                 throw OpenAICompatibleBadRequestException(parsed.message)
             }

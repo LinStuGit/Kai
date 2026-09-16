@@ -46,6 +46,18 @@ private val nonChatPatterns = listOf(
     "live-",
     "bge-",
     "shieldgemma",
+    // Image/video/speech/rank families seen on OpenAI-compatible relays
+    // (LiteLLM routers list every upstream model regardless of modality).
+    "asr",
+    "rerank",
+    "cogview",
+    "seedream",
+    "seedance",
+    "hailuo",
+    "wanx",
+    "t2i",
+    "t2v",
+    "i2v",
 )
 
 internal fun isChatModel(modelId: String): Boolean {

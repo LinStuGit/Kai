@@ -11,9 +11,11 @@ import kai.composeapp.generated.resources.error_content_moderation
 import kai.composeapp.generated.resources.error_context_window_exceeded
 import kai.composeapp.generated.resources.error_empty_response
 import kai.composeapp.generated.resources.error_file_too_large
+import kai.composeapp.generated.resources.error_free_capacity
 import kai.composeapp.generated.resources.error_image_too_large
 import kai.composeapp.generated.resources.error_insufficient_credits
 import kai.composeapp.generated.resources.error_invalid_api_key
+import kai.composeapp.generated.resources.error_model_not_chat
 import kai.composeapp.generated.resources.error_openai_compatible_connection
 import kai.composeapp.generated.resources.error_openai_compatible_model_not_found
 import kai.composeapp.generated.resources.error_provider_error
@@ -58,11 +60,12 @@ class OpenAICompatibleProviderErrorException(detail: String? = null) : OpenAICom
 class OpenAICompatibleServiceUnavailableException : OpenAICompatibleApiException()
 class OpenAICompatibleTimeoutException : OpenAICompatibleApiException()
 class OpenAICompatibleBadRequestException(detail: String? = null) : OpenAICompatibleApiException(detail)
+class OpenAICompatibleUnsupportedModelException(detail: String? = null) : OpenAICompatibleApiException(detail)
 
 class ContextWindowExceededException : ApiException(null)
 class UnsupportedFileTypeException : ApiException(null)
 class FileTooLargeException : ApiException(null)
-class AllServicesFailedException : ApiException(null)
+class AllServicesFailedException(detail: String? = null) : ApiException(detail)
 
 sealed interface UiError {
     data class Resource(val resource: StringResource) : UiError
@@ -125,7 +128,9 @@ fun Exception.toUiError(): UiError = when (this) {
 
     is ContextWindowExceededException -> UiError.Resource(Res.string.error_context_window_exceeded)
 
-    is AllServicesFailedException -> UiError.Resource(Res.string.error_all_services_failed)
+    is AllServicesFailedException -> message?.takeIf { it.isNotBlank() }
+        ?.let { UiError.ResourceWithDetail(Res.string.error_all_services_failed, it) }
+        ?: UiError.Resource(Res.string.error_all_services_failed)
 
     is OpenAICompatibleRequestTooLargeException -> UiError.Resource(Res.string.error_image_too_large)
 
@@ -153,9 +158,18 @@ fun Exception.toUiError(): UiError = when (this) {
         ?.let { UiError.ResourceWithDetail(Res.string.error_content_moderation, it) }
         ?: UiError.Resource(Res.string.error_content_moderation)
 
-    is OpenAICompatibleProviderErrorException -> message?.takeIf { it.isNotBlank() }
-        ?.let { UiError.ResourceWithDetail(Res.string.error_provider_error, it) }
-        ?: UiError.Resource(Res.string.error_provider_error)
+    is OpenAICompatibleProviderErrorException ->
+        if (messageLooksLikeFreeCapacity(message)) {
+            UiError.Resource(Res.string.error_free_capacity)
+        } else {
+            message?.takeIf { it.isNotBlank() }
+                ?.let { UiError.ResourceWithDetail(Res.string.error_provider_error, it) }
+                ?: UiError.Resource(Res.string.error_provider_error)
+        }
+
+    is OpenAICompatibleUnsupportedModelException -> message?.takeIf { it.isNotBlank() }
+        ?.let { UiError.ResourceWithDetail(Res.string.error_model_not_chat, it) }
+        ?: UiError.Resource(Res.string.error_model_not_chat)
 
     is OpenAICompatibleBadRequestException -> message?.takeIf { it.isNotBlank() }
         ?.let { UiError.ResourceWithDetail(Res.string.error_bad_request, it) }
