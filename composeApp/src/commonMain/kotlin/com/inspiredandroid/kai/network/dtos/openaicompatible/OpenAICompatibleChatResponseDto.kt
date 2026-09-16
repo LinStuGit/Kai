@@ -17,6 +17,8 @@ import kotlinx.serialization.json.jsonPrimitive
 
 private val toolCallMarkerRegex = Regex("<TOOLCALL>[\\s\\S]*?</TOOLCALL>|<TOOLCALL>[\\s\\S]*$")
 
+private val thinkBlockRegex = Regex("<think>([\\s\\S]*?)</think>", RegexOption.IGNORE_CASE)
+
 /**
  * Reads `message.content` whether the provider sends a plain string or an OpenAI-style array of
  * content blocks (e.g. `[{"type":"text","text":"..."}]`). Array forms are flattened by
@@ -138,14 +140,37 @@ data class OpenAICompatibleChatResponseDto(
         @SerialName("tool_calls")
         val toolCalls: List<ToolCall>? = null,
     ) {
-        /** Whichever reasoning field the provider used, normalized to one accessor. */
-        val effectiveReasoning: String?
-            get() = reasoningContent ?: reasoning
+        /** Reasoning emitted as a `<think>…</think>` block inside content (GLM-Z1 style): extracted text to original remainder. */
+        private val thinkSplit: Pair<String?, String?> by lazy {
+            val raw = content ?: return@lazy null to null
+            if (!raw.contains("<think>")) return@lazy null to raw
+            val match = thinkBlockRegex.find(raw)
+            if (match != null) {
+                val extracted = match.groupValues[1].trim().takeIf { it.isNotEmpty() }
+                val rest = raw.removeRange(match.range).trim().takeIf { it.isNotEmpty() }
+                extracted to rest
+            } else {
+                // Unterminated <think> (generation cut off): the tail is all reasoning.
+                val tail = raw.substringAfter("<think>").trim().takeIf { it.isNotEmpty() }
+                tail to null
+            }
+        }
 
-        /** Returns [content] if non-blank, otherwise falls back to reasoning. */
+        /** Content with any `<think>` block removed; null when nothing visible remains. */
+        private val visibleContent: String?
+            get() {
+                val raw = content ?: return null
+                return if (raw.contains("<think>")) thinkSplit.second else raw.takeIf { it.isNotBlank() }
+            }
+
+        /** Whichever reasoning field the provider used, plus inline `<think>` text, normalized to one accessor. */
+        val effectiveReasoning: String?
+            get() = reasoningContent ?: reasoning ?: thinkSplit.first
+
+        /** Returns [content] (minus `<think>`) if non-blank, otherwise falls back to reasoning. */
         val effectiveContent: String?
             get() {
-                val raw = content?.takeIf { it.isNotBlank() } ?: effectiveReasoning
+                val raw = visibleContent ?: effectiveReasoning
                 // Some providers (e.g. Ollama) embed tool calls as <TOOLCALL>[...] markers
                 // in the content field alongside structured tool_calls — strip them.
                 if (raw != null && !toolCalls.isNullOrEmpty()) {
@@ -157,7 +182,7 @@ data class OpenAICompatibleChatResponseDto(
 
         /** True when the effective content comes from reasoning rather than [content]. */
         val isContentFromReasoning: Boolean
-            get() = content.isNullOrBlank() && !effectiveReasoning.isNullOrBlank()
+            get() = visibleContent.isNullOrBlank() && !effectiveReasoning.isNullOrBlank()
 
         /**
          * Reasoning trace with the answer text trimmed off if the provider appended it.

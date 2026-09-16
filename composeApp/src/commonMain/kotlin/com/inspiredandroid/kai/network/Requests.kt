@@ -19,6 +19,8 @@ import com.inspiredandroid.kai.network.dtos.gemini.GeminiTool
 import com.inspiredandroid.kai.network.dtos.gemini.PropertySchema
 import com.inspiredandroid.kai.network.dtos.openaicompatible.OpenAICompatibleChatRequestDto
 import com.inspiredandroid.kai.network.dtos.openaicompatible.OpenAICompatibleChatResponseDto
+import com.inspiredandroid.kai.network.dtos.openaicompatible.assembleSseChunks
+import com.inspiredandroid.kai.network.dtos.openaicompatible.chatPayloadJson
 import com.inspiredandroid.kai.network.dtos.openaicompatible.OpenAICompatibleModelResponseDto
 import com.inspiredandroid.kai.network.dtos.openairesponses.OpenAIResponsesRequestDto
 import com.inspiredandroid.kai.network.dtos.openairesponses.OpenAIResponsesResponseDto
@@ -256,7 +258,7 @@ class Requests {
                 )
             }
         if (response.status.isSuccess()) {
-            Result.success(response.body())
+            Result.success(readChatPayload(response))
         } else {
             handleOpenAICompatibleError(service, credentials, response)
         }
