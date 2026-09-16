@@ -806,7 +806,7 @@ class RemoteDataRepository(
                 val response = call {
                     requests.openAICompatibleChat(service, credentials, openAIMessages, sessionId = sessionId, requestTimeoutMs = requestTimeoutMs).getOrThrow()
                 }
-                val message = response.choices.firstOrNull()?.message
+                val message = response.choices.firstOrNull()?.effectiveMessage
                 val content = message?.effectiveContent
                 if (content == null && strictEmptyResponse) throw OpenAICompatibleEmptyResponseException()
                 AssistantTurn(content.orEmpty(), message?.reasoningTraceFor(content))
@@ -1065,7 +1065,7 @@ class RemoteDataRepository(
                 val response = retryApiCall {
                     requests.openAICompatibleChat(service, credentials, msgs, tools, sessionId = sessionId).getOrThrow()
                 }
-                val message = response.choices.firstOrNull()?.message ?: throw OpenAICompatibleEmptyResponseException()
+                val message = response.choices.firstOrNull()?.effectiveMessage ?: throw OpenAICompatibleEmptyResponseException()
                 var calls = message.toolCalls.orEmpty().map { tc ->
                     ToolCallInfo(id = tc.id, name = tc.function.name, arguments = tc.function.arguments)
                 }
@@ -1314,7 +1314,7 @@ class RemoteDataRepository(
         val response = retryApiCall {
             requests.openAICompatibleChat(service, credentials, bailoutMessages, sessionId = sessionId).getOrThrow()
         }
-        return response.choices.firstOrNull()?.message?.effectiveContent ?: ""
+        return response.choices.firstOrNull()?.effectiveMessage?.effectiveContent ?: ""
     }
 
     /**
