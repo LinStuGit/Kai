@@ -76,6 +76,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.offsetAt
@@ -236,6 +238,59 @@ class RemoteDataRepository(
 
     private val _currentConversationId = MutableStateFlow<String?>(null)
     override val currentConversationId: StateFlow<String?> = _currentConversationId
+
+    // ---- Detached runs ----------------------------------------------------
+    //
+    // Navigating away from a running chat (new chat / load conversation) hands
+    // the in-flight ask to the background instead of cancelling it: writes are
+    // redirected into a per-conversation buffer, and the finished conversation
+    // is persisted when the run completes. All of the state below is guarded
+    // by [runLock]; [mutateRunHistory]/[readRunHistory] resolve under it so a
+    // detach can never interleave with a run's write.
+
+    private val runLock = Mutex()
+
+    /** In-flight detached histories by conversation id. */
+    private val runBuffers = HashMap<String, MutableStateFlow<List<History>>>()
+
+    /** Conversation ids with an ask currently executing. */
+    private val activeRuns = mutableSetOf<String>()
+
+    /** One mutex per conversation so a new ask queues behind a detached run. */
+    private val runMutexes = HashMap<String, Mutex>()
+
+    private suspend fun runMutex(conversationId: String): Mutex = runLock.withLock {
+        runMutexes.getOrPut(conversationId) { Mutex() }
+    }
+
+    /** The history a run in this coroutine context should read or write. */
+    private suspend fun resolveRunHistory(buffer: MutableStateFlow<List<History>>? = null): MutableStateFlow<List<History>> = runLock.withLock {
+        buffer ?: currentConversationIdOrNull()?.let { runBuffers[it] } ?: chatHistory
+    }
+
+    private suspend fun readRunHistory(buffer: MutableStateFlow<List<History>>? = null): List<History> = resolveRunHistory(buffer).value
+
+    private suspend fun mutateRunHistory(buffer: MutableStateFlow<List<History>>? = null, reducer: (List<History>) -> List<History>) {
+        resolveRunHistory(buffer).update(reducer)
+    }
+
+    override suspend fun detachActiveRun(): Boolean {
+        val runId = _currentConversationId.value ?: return false
+        runLock.withLock {
+            if (runId !in activeRuns) return false
+            // getOrPut: re-detaching (user left again after coming back) must
+            // keep the existing buffer, not snapshot the reloaded stale copy.
+            runBuffers.getOrPut(runId) { MutableStateFlow(chatHistory.value) }
+        }
+        return true
+    }
+
+    override suspend fun isActiveRunDetached(): Boolean {
+        val runId = currentConversationIdOrNull() ?: return false
+        runLock.withLock { return runBuffers.containsKey(runId) }
+    }
+
+    // -----------------------------------------------------------------------
 
     private val _fallbackStatus = MutableStateFlow<FallbackStatus?>(null)
     override val fallbackStatus: StateFlow<FallbackStatus?> = _fallbackStatus
@@ -496,7 +551,7 @@ class RemoteDataRepository(
         messages: List<History>,
         systemPrompt: String?,
         instanceId: String,
-        history: MutableStateFlow<List<History>> = chatHistory,
+        history: MutableStateFlow<List<History>>? = null,
     ): String {
         val engine = localInferenceEngine
             ?: throw IllegalStateException("On-device inference not available on this platform")
@@ -519,11 +574,11 @@ class RemoteDataRepository(
                 toolName = "Initializing ${model.displayName}",
                 isStatusMessage = true,
             )
-            history.update { it + statusEntry }
+            mutateRunHistory(history) { it + statusEntry }
             try {
                 engine.initialize(model, contextTokens)
             } finally {
-                history.update { h -> h.filter { it.id != statusEntry.id } }
+                mutateRunHistory(history) { h -> h.filter { it.id != statusEntry.id } }
             }
         } else {
             engine.initialize(model, contextTokens)
@@ -619,7 +674,7 @@ class RemoteDataRepository(
     private suspend fun runLocalToolWithUiFeedback(
         name: String,
         arguments: String,
-        history: MutableStateFlow<List<History>>,
+        history: MutableStateFlow<List<History>>?,
     ): String {
         // Manual approval mode: reject before any history row is written so
         // nothing appears to have run; the engine still sees the refusal.
@@ -641,7 +696,7 @@ class RemoteDataRepository(
         val displayName = toolExecutor.getToolDisplayName(name)
         // Append the assistant tool-call row and the executing indicator in a single
         // StateFlow update so the UI doesn't flash twice before the tool even starts.
-        history.update {
+        mutateRunHistory(history) {
             it.toMutableList().apply {
                 add(
                     History(
@@ -678,7 +733,7 @@ class RemoteDataRepository(
             if (isRunVisibleToUser() && elapsed < MIN_TOOL_DISPLAY_MS) {
                 delay(MIN_TOOL_DISPLAY_MS.milliseconds - elapsed.milliseconds)
             }
-            history.update { h ->
+            mutateRunHistory(history) { h ->
                 buildList(h.size) {
                     for (entry in h) {
                         if (entry.id != executingId) add(entry)
@@ -697,7 +752,7 @@ class RemoteDataRepository(
         } finally {
             // On cancellation the fused update above never ran — drop the stranded
             // indicator. On the success path this is a no-op (id already removed).
-            history.update { h ->
+            mutateRunHistory(history) { h ->
                 if (h.none { it.id == executingId }) h else h.filter { it.id != executingId }
             }
         }
@@ -708,7 +763,7 @@ class RemoteDataRepository(
         messages: List<History>,
         systemPrompt: String?,
         instanceId: String,
-        history: MutableStateFlow<List<History>> = chatHistory,
+        history: MutableStateFlow<List<History>>? = null,
     ): AssistantTurn {
         if (service.isOnDevice) {
             // No retry: local-inference failures are deterministic, and this path mutates
@@ -879,148 +934,161 @@ class RemoteDataRepository(
         // falls through to a shared default — which both makes the new chat
         // invisible in the Terminal session picker and lets unrelated callers
         // collide on the same shell mutex. Persistence is deferred to the
-        // existing saveCurrentConversation() flow that runs after the response.
+        // existing saveRunConversation() flow that runs after the response.
         if (_currentConversationId.value == null) {
             setCurrentConversationId(Uuid.random().toString())
         }
-        // Process every attached file: classify, compress/encode, and build an Attachment.
-        // readBytes() is suspend, so this happens before the StateFlow.update block.
-        val attachments = files.map { file ->
-            val fileMimeType = file.mimeType()?.toString()
-            val fileName = file.name
+        val runId = _currentConversationId.value ?: return
+        // Serialize asks per conversation: a detached background run keeps its
+        // mutex until it finishes, so a user returning to that chat and sending
+        // the next message queues behind it instead of interleaving turns.
+        runMutex(runId).withLock {
+            runLock.withLock { activeRuns.add(runId) }
+            try {
+                withContext(ConversationIdElement(runId)) {
+                    // Process every attached file: classify, compress/encode, and build an Attachment.
+                    // readBytes() is suspend, so this happens before the StateFlow.update block.
+                    val attachments = files.map { file ->
+                        val fileMimeType = file.mimeType()?.toString()
+                        val fileName = file.name
 
-            val category = classifyFile(fileMimeType, fileName)
-            if (category == FileCategory.UNSUPPORTED) throw UnsupportedFileTypeException()
+                        val category = classifyFile(fileMimeType, fileName)
+                        if (category == FileCategory.UNSUPPORTED) throw UnsupportedFileTypeException()
 
-            // Reject oversized files by stat size before readBytes(), which would otherwise
-            // allocate a ByteArray large enough to OOM the process on multi-GB inputs.
-            val rawSizeLimit = when (category) {
-                FileCategory.TEXT -> MAX_TEXT_FILE_BYTES.toLong()
-                FileCategory.PDF -> MAX_PDF_BYTES.toLong()
-                FileCategory.IMAGE -> MAX_RAW_IMAGE_BYTES.toLong()
-                FileCategory.UNSUPPORTED -> 0L
-            }
-            if (file.size() > rawSizeLimit) throw FileTooLargeException()
+                        // Reject oversized files by stat size before readBytes(), which would otherwise
+                        // allocate a ByteArray large enough to OOM the process on multi-GB inputs.
+                        val rawSizeLimit = when (category) {
+                            FileCategory.TEXT -> MAX_TEXT_FILE_BYTES.toLong()
+                            FileCategory.PDF -> MAX_PDF_BYTES.toLong()
+                            FileCategory.IMAGE -> MAX_RAW_IMAGE_BYTES.toLong()
+                            FileCategory.UNSUPPORTED -> 0L
+                        }
+                        if (file.size() > rawSizeLimit) throw FileTooLargeException()
 
-            val rawBytes = file.readBytes()
+                        val rawBytes = file.readBytes()
 
-            when (category) {
-                FileCategory.IMAGE -> {
-                    val compressed = compressImageBytes(rawBytes, fileMimeType ?: "image/jpeg")
-                    // compressImageBytes can fall back to the original bytes on failure or on
-                    // platforms without compression — guard against Base64 OOM for oversized input.
-                    if (compressed.size > MAX_IMAGE_BYTES) throw FileTooLargeException()
-                    Attachment(
-                        data = Base64.encode(compressed),
-                        mimeType = "image/jpeg",
-                        fileName = null,
-                    )
-                }
+                        when (category) {
+                            FileCategory.IMAGE -> {
+                                val compressed = compressImageBytes(rawBytes, fileMimeType ?: "image/jpeg")
+                                // compressImageBytes can fall back to the original bytes on failure or on
+                                // platforms without compression — guard against Base64 OOM for oversized input.
+                                if (compressed.size > MAX_IMAGE_BYTES) throw FileTooLargeException()
+                                Attachment(
+                                    data = Base64.encode(compressed),
+                                    mimeType = "image/jpeg",
+                                    fileName = null,
+                                )
+                            }
 
-                FileCategory.TEXT -> Attachment(
-                    data = Base64.encode(rawBytes),
-                    mimeType = fileMimeType ?: "text/plain",
-                    fileName = fileName,
-                )
+                            FileCategory.TEXT -> Attachment(
+                                data = Base64.encode(rawBytes),
+                                mimeType = fileMimeType ?: "text/plain",
+                                fileName = fileName,
+                            )
 
-                FileCategory.PDF -> Attachment(
-                    data = Base64.encode(rawBytes),
-                    mimeType = "application/pdf",
-                    fileName = fileName,
-                )
+                            FileCategory.PDF -> Attachment(
+                                data = Base64.encode(rawBytes),
+                                mimeType = "application/pdf",
+                                fileName = fileName,
+                            )
 
-                FileCategory.UNSUPPORTED -> throw UnsupportedFileTypeException()
-            }
-        }.toImmutableList()
+                            FileCategory.UNSUPPORTED -> throw UnsupportedFileTypeException()
+                        }
+                    }.toImmutableList()
 
-        if (question != null) {
-            chatHistory.update {
-                it.toMutableList().apply {
-                    add(
-                        History(
-                            role = History.Role.USER,
-                            content = question,
-                            attachments = attachments,
-                            uiSubmission = uiSubmission,
-                        ),
-                    )
-                }
-            }
-        }
+                    if (question != null) {
+                        mutateRunHistory {
+                            it.toMutableList().apply {
+                                add(
+                                    History(
+                                        role = History.Role.USER,
+                                        content = question,
+                                        attachments = attachments,
+                                        uiSubmission = uiSubmission,
+                                    ),
+                                )
+                            }
+                        }
+                    }
 
-        compactHistoryIfNeeded()
+                    compactHistoryIfNeeded()
 
-        val messages = chatHistory.value
-        val systemPrompt = getActiveSystemPrompt()
+                    val messages = readRunHistory()
+                    val systemPrompt = getActiveSystemPrompt()
 
-        val fallbackEntries = getOrderedFallbackEntries().filter { hasValidInstanceApiKey(it.instanceId, it.service) }
+                    val fallbackEntries = getOrderedFallbackEntries().filter { hasValidInstanceApiKey(it.instanceId, it.service) }
 
-        val historyChars = messages.sumOf { it.content.length } + (systemPrompt?.length ?: 0)
+                    val historyChars = messages.sumOf { it.content.length } + (systemPrompt?.length ?: 0)
 
-        var lastException: Exception? = null
-        var fallbackServiceName: String? = null
+                    var lastException: Exception? = null
+                    var fallbackServiceName: String? = null
 
-        try {
-            for ((index, entry) in fallbackEntries.withIndex()) {
-                // Skip fallback services whose context window is too small for the current history
-                // On-device models handle their own context limits, so skip this check for them
-                if (!entry.service.isOnDevice) {
-                    val creds = instanceCredentials(entry.instanceId, entry.service)
-                    val entryWindowChars = ModelCatalog.estimateContextWindow(creds.modelId) * ESTIMATED_CHARS_PER_TOKEN
-                    if (historyChars > entryWindowChars) {
-                        lastException = ContextWindowExceededException()
-                        _fallbackStatus.value = FallbackStatus(
-                            serviceName = entry.service.displayName,
-                            errorReason = ContextWindowExceededException().toUiError(),
-                            nextServiceName = fallbackEntries.getOrNull(index + 1)?.service?.displayName,
-                        )
-                        continue
+                    try {
+                        for ((index, entry) in fallbackEntries.withIndex()) {
+                            // Skip fallback services whose context window is too small for the current history
+                            // On-device models handle their own context limits, so skip this check for them
+                            if (!entry.service.isOnDevice) {
+                                val creds = instanceCredentials(entry.instanceId, entry.service)
+                                val entryWindowChars = ModelCatalog.estimateContextWindow(creds.modelId) * ESTIMATED_CHARS_PER_TOKEN
+                                if (historyChars > entryWindowChars) {
+                                    lastException = ContextWindowExceededException()
+                                    _fallbackStatus.value = FallbackStatus(
+                                        serviceName = entry.service.displayName,
+                                        errorReason = ContextWindowExceededException().toUiError(),
+                                        nextServiceName = fallbackEntries.getOrNull(index + 1)?.service?.displayName,
+                                    )
+                                    continue
+                                }
+                            }
+
+                            // No retry wrapper here: each network call retries inside askWithService.
+                            // Retrying the whole call would re-enter the tool loop against a chat
+                            // history already mutated by the failed attempt.
+                            val turn = try {
+                                askWithService(entry.service, messages, systemPrompt, entry.instanceId)
+                            } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                // On-device services should not silently fall back — surface the error
+                                if (entry.service.isOnDevice) throw e
+                                lastException = e
+                                _fallbackStatus.value = FallbackStatus(
+                                    serviceName = entry.service.displayName,
+                                    errorReason = e.toUiError(),
+                                    nextServiceName = fallbackEntries.getOrNull(index + 1)?.service?.displayName,
+                                )
+                                continue
+                            }
+                            if (index > 0) {
+                                fallbackServiceName = entry.service.displayName
+                            }
+                            mutateRunHistory {
+                                it.toMutableList().apply {
+                                    add(
+                                        History(
+                                            role = History.Role.ASSISTANT,
+                                            content = turn.content,
+                                            reasoningContent = turn.reasoningContent,
+                                            fallbackServiceName = fallbackServiceName,
+                                        ),
+                                    )
+                                }
+                            }
+                            saveRunConversation()
+                            return@withContext
+                        }
+
+                        throw if (fallbackEntries.size > 1 && lastException != null) {
+                            AllServicesFailedException()
+                        } else {
+                            lastException ?: OpenAICompatibleEmptyResponseException()
+                        }
+                    } finally {
+                        _fallbackStatus.value = null
                     }
                 }
-
-                // No retry wrapper here: each network call retries inside askWithService.
-                // Retrying the whole call would re-enter the tool loop against a chat
-                // history already mutated by the failed attempt.
-                val turn = try {
-                    askWithService(entry.service, messages, systemPrompt, entry.instanceId)
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    // On-device services should not silently fall back — surface the error
-                    if (entry.service.isOnDevice) throw e
-                    lastException = e
-                    _fallbackStatus.value = FallbackStatus(
-                        serviceName = entry.service.displayName,
-                        errorReason = e.toUiError(),
-                        nextServiceName = fallbackEntries.getOrNull(index + 1)?.service?.displayName,
-                    )
-                    continue
-                }
-                if (index > 0) {
-                    fallbackServiceName = entry.service.displayName
-                }
-                chatHistory.update {
-                    it.toMutableList().apply {
-                        add(
-                            History(
-                                role = History.Role.ASSISTANT,
-                                content = turn.content,
-                                reasoningContent = turn.reasoningContent,
-                                fallbackServiceName = fallbackServiceName,
-                            ),
-                        )
-                    }
-                }
-                saveCurrentConversation()
-                return
+            } finally {
+                runLock.withLock { activeRuns.remove(runId) }
             }
-
-            throw if (fallbackEntries.size > 1 && lastException != null) {
-                AllServicesFailedException()
-            } else {
-                lastException ?: OpenAICompatibleEmptyResponseException()
-            }
-        } finally {
-            _fallbackStatus.value = null
         }
     }
 
@@ -1030,7 +1098,7 @@ class RemoteDataRepository(
         @Suppress("UNUSED_PARAMETER") messages: List<History>,
         tools: List<Tool>,
         systemPrompt: String? = null,
-        history: MutableStateFlow<List<History>> = chatHistory,
+        history: MutableStateFlow<List<History>>? = null,
     ): AssistantTurn {
         val contextWindowTokens = ModelCatalog.estimateContextWindow(credentials.modelId)
         val declaredToolNames = tools.map { it.schema.name }.toSet()
@@ -1105,7 +1173,7 @@ class RemoteDataRepository(
         @Suppress("UNUSED_PARAMETER") messages: List<History>,
         tools: List<Tool>,
         systemPrompt: String? = null,
-        history: MutableStateFlow<List<History>> = chatHistory,
+        history: MutableStateFlow<List<History>>? = null,
     ): AssistantTurn {
         val contextWindowTokens = ModelCatalog.estimateContextWindow(credentials.modelId)
         val strategy = object : ToolLoopStrategy {
@@ -1147,7 +1215,7 @@ class RemoteDataRepository(
         @Suppress("UNUSED_PARAMETER") messages: List<History>,
         tools: List<Tool>,
         systemPrompt: String? = null,
-        history: MutableStateFlow<List<History>> = chatHistory,
+        history: MutableStateFlow<List<History>>? = null,
     ): AssistantTurn {
         val contextWindowTokens = ModelCatalog.estimateContextWindow(credentials.modelId)
         val strategy = object : ToolLoopStrategy {
@@ -1184,7 +1252,7 @@ class RemoteDataRepository(
     private suspend fun runToolLoop(
         strategy: ToolLoopStrategy,
         systemPrompt: String?,
-        history: MutableStateFlow<List<History>>,
+        history: MutableStateFlow<List<History>>? = null,
     ): AssistantTurn {
         var iteration = 0
         val recentSignatures = mutableListOf<String>()
@@ -1194,7 +1262,7 @@ class RemoteDataRepository(
         try {
             while (true) {
                 iteration++
-                val visible = history.value.filter { it.role != History.Role.TOOL_EXECUTING }
+                val visible = readRunHistory(history).filter { it.role != History.Role.TOOL_EXECUTING }
                 if (iteration > MAX_TOOL_ITERATIONS) {
                     return AssistantTurn(strategy.bailout(visible, systemPrompt, BailoutReason.LIMIT_REACHED))
                 }
@@ -1212,7 +1280,7 @@ class RemoteDataRepository(
                 }
                 recentSignatures.addAll(signatures)
 
-                history.update {
+                mutateRunHistory(history) {
                     it.toMutableList().apply {
                         add(
                             History(
@@ -1237,7 +1305,7 @@ class RemoteDataRepository(
                     executeToolCallsInParallel(calls)
                 }
 
-                history.update { h ->
+                mutateRunHistory(history) { h ->
                     val merged = buildList(h.size + toolResults.size) {
                         for (entry in h) {
                             if (entry.role != History.Role.TOOL_EXECUTING) add(entry)
@@ -1329,7 +1397,7 @@ class RemoteDataRepository(
         for ((index, toolCall) in toolCalls.withIndex()) {
             val (_, name, _) = toolCall
             val toolDisplayName = toolExecutor.getToolDisplayName(name)
-            chatHistory.update {
+            mutateRunHistory {
                 it.toMutableList().apply {
                     add(
                         History(
@@ -1366,7 +1434,7 @@ class RemoteDataRepository(
         } finally {
             // Remove all TOOL_EXECUTING indicators — also on cancellation, so stopping a
             // run doesn't strand spinner rows in the chat. Non-suspending, safe in finally.
-            chatHistory.update { history ->
+            mutateRunHistory { history ->
                 history.filter { h -> h.id !in executingIds }
             }
         }
@@ -1543,7 +1611,7 @@ class RemoteDataRepository(
         val modelId = appSettings.getSelectedModelId(service)
         val contextWindowTokens = ModelCatalog.estimateContextWindow(modelId)
 
-        val history = chatHistory.value.filter { it.role != History.Role.TOOL_EXECUTING }
+        val history = readRunHistory().filter { it.role != History.Role.TOOL_EXECUTING }
         val systemPromptChars = getActiveSystemPrompt()?.length ?: 0
         val totalChars = history.sumOf { it.content.length } + systemPromptChars
         val maxChars = contextWindowTokens * ESTIMATED_CHARS_PER_TOKEN
@@ -1576,7 +1644,7 @@ class RemoteDataRepository(
             askSilently(summaryPrompt)
         } catch (_: Exception) {
             // Summarization failed — fall back to dropping old messages
-            chatHistory.value = recentMessages
+            mutateRunHistory { recentMessages }
             return
         }
 
@@ -1585,7 +1653,7 @@ class RemoteDataRepository(
             content = "[Conversation summary: $summary]",
         )
 
-        chatHistory.value = listOf(summaryEntry) + recentMessages
+        mutateRunHistory { listOf(summaryEntry) + recentMessages }
     }
 
     private fun trimToRecentExchanges(history: List<History>, maxExchanges: Int): List<History> {
@@ -1597,12 +1665,14 @@ class RemoteDataRepository(
         return history.subList(cutoffIndex, history.size)
     }
 
-    private suspend fun saveCurrentConversation() {
-        val history = trimToRecentExchanges(chatHistory.value, 20)
+    private suspend fun saveRunConversation() {
+        val history = trimToRecentExchanges(readRunHistory(), 20)
         if (history.isEmpty()) return
 
         val now = Clock.System.now().toEpochMilliseconds()
-        val conversationId = _currentConversationId.value ?: Uuid.random().toString().also {
+        // The run's own id wins: a detached run must persist under the
+        // conversation it started in, not whichever chat is visible now.
+        val conversationId = activeConversationId() ?: Uuid.random().toString().also {
             setCurrentConversationId(it)
         }
 
@@ -1637,6 +1707,18 @@ class RemoteDataRepository(
         )
 
         conversationStorage.saveConversation(conversation)
+
+        // Run finished: drop its detached buffer, if any. When the user is
+        // watching this conversation right now they loaded the stale persisted
+        // copy — replace it with the finished run, but only while no other ask
+        // is queued on the conversation (its writes would otherwise be wiped).
+        val finishedBuffer = runLock.withLock { runBuffers.remove(conversationId)?.value }
+        if (finishedBuffer != null &&
+            _currentConversationId.value == conversationId &&
+            runLock.withLock { activeRuns.count { it == conversationId } } <= 1
+        ) {
+            chatHistory.value = finishedBuffer
+        }
     }
 
     override fun clearHistory() {
@@ -1680,35 +1762,42 @@ class RemoteDataRepository(
         conversationStorage.loadConversations()
     }
 
-    override fun loadConversation(id: String) {
+    override suspend fun loadConversation(id: String) {
         val conversation = savedConversations.value.find { it.id == id } ?: return
 
         setCurrentConversationId(id)
-        chatHistory.value = conversation.messages.map { m ->
-            // Prefer the modern `attachments` field. Fall back to the legacy single-file
-            // fields for conversations saved before multi-attachment support.
-            val attachments = when {
-                m.attachments.isNotEmpty() -> m.attachments.toImmutableList()
+        // A detached run still writing this conversation's buffer beats the
+        // stale persisted copy — surface its in-flight messages instead. The
+        // run keeps appending here without live UI updates; the finished
+        // buffer replaces this list when the run completes.
+        val buffered = runLock.withLock { runBuffers[id]?.value }
+        chatHistory.value = (
+            buffered ?: conversation.messages.map { m ->
+                // Prefer the modern `attachments` field. Fall back to the legacy single-file
+                // fields for conversations saved before multi-attachment support.
+                val attachments = when {
+                    m.attachments.isNotEmpty() -> m.attachments.toImmutableList()
 
-                m.data != null && m.mimeType != null ->
-                    persistentListOf(Attachment(data = m.data, mimeType = m.mimeType, fileName = m.fileName))
+                    m.data != null && m.mimeType != null ->
+                        persistentListOf(Attachment(data = m.data, mimeType = m.mimeType, fileName = m.fileName))
 
-                else -> persistentListOf()
+                    else -> persistentListOf()
+                }
+                History(
+                    id = m.id,
+                    role = when (m.role) {
+                        "user" -> History.Role.USER
+                        "tool" -> History.Role.TOOL
+                        else -> History.Role.ASSISTANT
+                    },
+                    content = m.content,
+                    attachments = attachments,
+                    uiSubmission = m.uiSubmission,
+                    isThinking = m.isThinking,
+                    reasoningContent = m.reasoningContent,
+                )
             }
-            History(
-                id = m.id,
-                role = when (m.role) {
-                    "user" -> History.Role.USER
-                    "tool" -> History.Role.TOOL
-                    else -> History.Role.ASSISTANT
-                },
-                content = m.content,
-                attachments = attachments,
-                uiSubmission = m.uiSubmission,
-                isThinking = m.isThinking,
-                reasoningContent = m.reasoningContent,
             )
-        }
     }
 
     override suspend fun deleteConversation(id: String) {
@@ -1753,7 +1842,7 @@ class RemoteDataRepository(
         }
     }
 
-    override fun restoreCurrentConversation() {
+    override suspend fun restoreCurrentConversation() {
         // One-time migration for existing users: pin the latest conversation as the new
         // "current" pointer so the upgrade is non-disruptive.
         if (!appSettings.isCurrentConversationMigrated()) {

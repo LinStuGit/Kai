@@ -247,6 +247,7 @@ class ChatViewModel(
             // Android 17+ blocks LAN traffic without the local network permission — without
             // asking first, requests to self-hosted servers silently never leave the device.
             if (!ensureLocalNetworkPermission()) {
+                if (dataRepository.isActiveRunDetached()) return@launch
                 _state.update {
                     it.copy(
                         error = UiError.Resource(Res.string.error_local_network_permission),
@@ -264,12 +265,20 @@ class ChatViewModel(
                     retryIfNoValidKaiUi()
                 }
 
-                _state.update {
-                    it.copy(isLoading = false)
+                // A detached run belongs to a conversation the user already
+                // left — it must not touch whatever is on screen now.
+                if (!dataRepository.isActiveRunDetached()) {
+                    _state.update {
+                        it.copy(isLoading = false)
+                    }
                 }
             } catch (exception: Exception) {
                 // CancellationException must be re-thrown to properly propagate coroutine cancellation
                 if (exception is CancellationException) throw exception
+
+                // Detached failures stay silent: the conversation keeps its last
+                // persisted state, no error banner over the currently-open chat.
+                if (dataRepository.isActiveRunDetached()) return@launch
 
                 val showUpsell = shouldShowFreeProviderSuggestions(
                     noConfiguredServices = dataRepository.getConfiguredServiceInstances().isEmpty(),
@@ -469,20 +478,28 @@ class ChatViewModel(
     }
 
     private fun loadConversation(id: String) {
-        currentJob?.cancel()
-        currentJob = null
-        val conversation = dataRepository.savedConversations.value.find { it.id == id }
-        val isInteractive = conversation?.type == Conversation.TYPE_INTERACTIVE
-        dataRepository.setInteractiveMode(isInteractive)
-        dataRepository.loadConversation(id)
-        _state.update {
-            it.copy(
-                error = null,
-                showFreeProviderSuggestions = false,
-                isInteractiveMode = isInteractive,
-                isLoading = false,
-                composerPrefill = null,
-            )
+        viewModelScope.launch {
+            // Same detached handoff as startNewChat: switching conversations must
+            // not cancel a run that is still streaming in the one being left.
+            if (dataRepository.detachActiveRun()) {
+                currentJob = null
+            } else {
+                currentJob?.cancel()
+                currentJob = null
+            }
+            val conversation = dataRepository.savedConversations.value.find { it.id == id }
+            val isInteractive = conversation?.type == Conversation.TYPE_INTERACTIVE
+            dataRepository.setInteractiveMode(isInteractive)
+            dataRepository.loadConversation(id)
+            _state.update {
+                it.copy(
+                    error = null,
+                    showFreeProviderSuggestions = false,
+                    isInteractiveMode = isInteractive,
+                    isLoading = false,
+                    composerPrefill = null,
+                )
+            }
         }
     }
 
@@ -540,18 +557,27 @@ class ChatViewModel(
     }
 
     private fun startNewChat(composerPrefill: String? = null) {
-        currentJob?.cancel()
-        currentJob = null
-        dataRepository.startNewChat()
-        dataRepository.setInteractiveMode(false)
-        _state.update {
-            it.copy(
-                error = null,
-                showFreeProviderSuggestions = false,
-                isInteractiveMode = false,
-                isLoading = false,
-                composerPrefill = composerPrefill,
-            )
+        viewModelScope.launch {
+            // Leaving a running chat hands the run to the background (detached)
+            // instead of killing it — the conversation keeps streaming and
+            // persists when done, so "new chat" never loses it.
+            if (dataRepository.detachActiveRun()) {
+                currentJob = null
+            } else {
+                currentJob?.cancel()
+                currentJob = null
+            }
+            dataRepository.startNewChat()
+            dataRepository.setInteractiveMode(false)
+            _state.update {
+                it.copy(
+                    error = null,
+                    showFreeProviderSuggestions = false,
+                    isInteractiveMode = false,
+                    isLoading = false,
+                    composerPrefill = composerPrefill,
+                )
+            }
         }
     }
 

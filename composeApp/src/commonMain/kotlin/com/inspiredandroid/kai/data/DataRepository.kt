@@ -62,13 +62,24 @@ interface DataRepository {
     // Conversation management
     val savedConversations: StateFlow<List<Conversation>>
     fun loadConversations()
-    fun loadConversation(id: String)
+    suspend fun loadConversation(id: String)
     suspend fun deleteConversation(id: String)
     fun startNewChat()
+
+    /**
+     * Hands the in-flight run of the currently-visible conversation to the
+     * background instead of cancelling it: its writes move to a private buffer
+     * and the finished conversation is persisted when the run completes. False
+     * when no run is executing — callers then cancel their job themselves.
+     */
+    suspend fun detachActiveRun(): Boolean
+
+    /** True when the calling ask runs detached (the user navigated away). */
+    suspend fun isActiveRunDetached(): Boolean
     fun regenerate()
     fun popLastExchange()
     fun truncateFrom(messageId: String)
-    fun restoreCurrentConversation()
+    suspend fun restoreCurrentConversation()
 
     // Tool management
     fun getToolDefinitions(): List<ToolInfo>

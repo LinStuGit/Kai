@@ -247,7 +247,7 @@ class FakeDataRepository : DataRepository {
         // No-op in tests
     }
 
-    override fun loadConversation(id: String) {
+    override suspend fun loadConversation(id: String) {
         val conversation = savedConversations.value.find { it.id == id } ?: return
         currentConversationId.value = id
         chatHistory.value = conversation.messages.map { m ->
@@ -288,6 +288,10 @@ class FakeDataRepository : DataRepository {
         chatHistory.value = emptyList()
     }
 
+    override suspend fun detachActiveRun(): Boolean = false
+
+    override suspend fun isActiveRunDetached(): Boolean = false
+
     override fun popLastExchange() {
         chatHistory.update { history ->
             val lastUserIndex = history.indexOfLast { it.role == History.Role.USER }
@@ -302,7 +306,7 @@ class FakeDataRepository : DataRepository {
         }
     }
 
-    override fun restoreCurrentConversation() {
+    override suspend fun restoreCurrentConversation() {
         restoreCurrentConversationCalls++
     }
 
