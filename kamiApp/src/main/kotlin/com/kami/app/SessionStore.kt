@@ -56,8 +56,7 @@ internal object SessionStore {
         sessions.value = sessions.value.map { if (it.id == id) transform(it) else it }
     }
 
-    fun history(id: String): JSONArray =
-        sessions.value.firstOrNull { it.id == id }?.history ?: JSONArray()
+    fun history(id: String): JSONArray = sessions.value.firstOrNull { it.id == id }?.history ?: JSONArray()
 
     private fun newSession(id: String, n: Int) = AgentSession(id = id, title = "会话 $n")
 }

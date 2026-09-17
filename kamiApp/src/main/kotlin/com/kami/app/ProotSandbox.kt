@@ -98,11 +98,10 @@ object ProotSandbox {
         ).ifEmpty { "(无输出)" }
     }
 
-    private fun installed(): Boolean =
-        ShizukuRunner.granted() &&
-            ShizukuRunner.run(
-                "test -x $DIR/proot && test -f $DIR/alpine/bin/sh && echo yes || echo no",
-            ).contains("yes")
+    private fun installed(): Boolean = ShizukuRunner.granted() &&
+        ShizukuRunner.run(
+            "test -x $DIR/proot && test -f $DIR/alpine/bin/sh && echo yes || echo no",
+        ).contains("yes")
 
     /**
      * App-private files are not shell-readable; transfer via chunked base64

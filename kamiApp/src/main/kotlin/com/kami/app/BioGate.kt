@@ -25,9 +25,8 @@ object BioGate {
             BiometricManager.BIOMETRIC_SUCCESS
     }.getOrDefault(false)
 
-    fun enabled(context: Context): Boolean =
-        context.getSharedPreferences("kami_bio", Context.MODE_PRIVATE)
-            .getBoolean("enabled", true)
+    fun enabled(context: Context): Boolean = context.getSharedPreferences("kami_bio", Context.MODE_PRIVATE)
+        .getBoolean("enabled", true)
 
     fun setEnabled(context: Context, value: Boolean) {
         context.getSharedPreferences("kami_bio", Context.MODE_PRIVATE)
@@ -35,30 +34,29 @@ object BioGate {
     }
 
     /** Show the system biometric prompt; true only on successful auth. */
-    suspend fun authenticate(activity: FragmentActivity, title: String, description: String): Boolean =
-        withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { cont ->
-                val prompt = BiometricPrompt(
-                    activity,
-                    ContextCompat.getMainExecutor(activity),
-                    object : BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                            if (cont.isActive) cont.resume(true)
-                        }
+    suspend fun authenticate(activity: FragmentActivity, title: String, description: String): Boolean = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { cont ->
+            val prompt = BiometricPrompt(
+                activity,
+                ContextCompat.getMainExecutor(activity),
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        if (cont.isActive) cont.resume(true)
+                    }
 
-                        override fun onAuthenticationError(code: Int, errString: CharSequence) {
-                            if (cont.isActive) cont.resume(false)
-                        }
-                    },
-                )
-                val info = BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(title)
-                    .setSubtitle(description.take(80))
-                    .setNegativeButtonText("取消")
-                    .build()
-                prompt.authenticate(info)
-            }
+                    override fun onAuthenticationError(code: Int, errString: CharSequence) {
+                        if (cont.isActive) cont.resume(false)
+                    }
+                },
+            )
+            val info = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle(description.take(80))
+                .setNegativeButtonText("取消")
+                .build()
+            prompt.authenticate(info)
         }
+    }
 }
 
 /**

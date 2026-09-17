@@ -7,12 +7,12 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlinx.coroutines.runBlocking
 
 /**
  * The on-device agent brain: a minimal OpenAI-compatible chat-completions
@@ -176,7 +176,9 @@ object AgentClient {
             )
 
             "sandbox_run" -> ProotSandbox.run(args.optString("command"))
+
             "sandbox_status" -> ProotSandbox.status()
+
             "notify_user" -> notifyUser(context, args)
 
             "add_extension" -> {
