@@ -1,5 +1,6 @@
 package com.kami.app
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,38 +26,51 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 
-/** One rendered chat line; role is "user", "assistant" or "event". */
-private data class ChatLine(val role: String, val text: String)
-
-private const val WELCOME =
-    "我是 Kami agent——可以直接操作这台手机，也能把命令固化为快捷指令。" +
-        "试试：「看看设备信息」或「加一个一键截屏功能」"
-
-/** In-app agent conversation: tool activity shows as dim mono event lines. */
+/**
+ * In-app agent conversations: sessions run in parallel, switch via the chip
+ * row, and each session holds its own JWT (see [JwtKeyPool]). Tool activity
+ * shows as dim mono event lines; agent-initiated destructive shell commands
+ * suspend in [SensitiveGate] until the biometric prompt below resolves.
+ */
 @Composable
-internal fun ChatScreen(
-    history: JSONArray,
-    onBack: () -> Unit,
-) {
+internal fun ChatScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val config = remember { AgentClient.loadConfig(context) }
-    var lines by remember { mutableStateOf(listOf(ChatLine("assistant", WELCOME))) }
-    var input by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+    val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
+    val sessions by SessionStore.sessions
+    val activeId by SessionStore.activeId
+    val session = sessions.firstOrNull { it.id == activeId } ?: sessions.first()
 
-    LaunchedEffect(lines.size) {
+    // Resolve pending sensitive-command requests one by one (sequential
+    // prompts; fail-open when the device has no biometrics or it's off).
+    LaunchedEffect(Unit) {
+        snapshotFlow { SensitiveGate.pending.value }.collect {
+            val req = SensitiveGate.claimFirst() ?: return@collect
+            val ok = if (activity != null && BioGate.available(context) && BioGate.enabled(context)) {
+                BioGate.authenticate(activity, req.title, req.detail)
+            } else {
+                true
+            }
+            SensitiveGate.decide(req.id, ok)
+        }
+    }
+
+    var input by remember(session.id) { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    val lines = session.lines
+
+    LaunchedEffect(session.id, lines.size) {
         if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1)
     }
 
@@ -64,16 +80,34 @@ internal fun ChatScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("← 返回") }
-            Text("Agent 对话", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Agent 对话",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            TextButton(onClick = { SessionStore.newSession() }) { Text("＋ 新会话") }
         }
 
-        if (config.model.isBlank()) {
-            Text(
-                "⚠️ 未配置模型 — 请到「设置」填写 OpenAI 兼容端点" +
-                    "（Base URL / API Key / 模型名），远端 API 或局域网 llama-server 均可",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // Parallel sessions: tap to switch (spinner = a turn is running),
+        // ✕ on the active chip closes it.
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            sessions.forEach { s ->
+                val selected = s.id == session.id
+                AssistChip(
+                    onClick = { SessionStore.activeId.value = s.id },
+                    label = {
+                        Text(
+                            (if (selected) "▶" else "") +
+                                (if (s.busy) "◌ " else "") +
+                                s.title,
+                            fontSize = 12.sp,
+                        )
+                    },
+                )
+            }
         }
 
         LazyColumn(
@@ -123,8 +157,8 @@ internal fun ChatScreen(
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("让 agent 做点什么…", fontSize = 13.sp) },
                 singleLine = true,
-                enabled = !busy && config.model.isNotBlank(),
-                trailingIcon = if (busy) {
+                enabled = !session.busy,
+                trailingIcon = if (session.busy) {
                     { CircularProgressIndicator(Modifier.padding(6.dp)) }
                 } else {
                     null
@@ -133,23 +167,38 @@ internal fun ChatScreen(
             Button(
                 onClick = {
                     val text = input.trim()
-                    if (text.isEmpty() || busy) return@Button
+                    if (text.isEmpty() || session.busy) return@Button
                     input = ""
-                    lines = lines + ChatLine("user", text)
-                    busy = true
+                    val sid = session.id
+                    SessionStore.update(sid) {
+                        it.copy(busy = true, lines = it.lines + ChatLine("user", text))
+                    }
                     scope.launch(Dispatchers.IO) {
                         try {
-                            val reply = AgentClient.turn(config, history, text) { ev ->
-                                lines = lines + ChatLine("event", ev)
+                            val reply = AgentClient.turn(
+                                sid,
+                                context.applicationContext,
+                                SessionStore.history(sid),
+                                text,
+                            ) { ev ->
+                                SessionStore.update(sid) { s ->
+                                    s.copy(lines = s.lines + ChatLine("event", ev))
+                                }
                             }
-                            lines = lines + ChatLine("assistant", reply)
+                            SessionStore.update(sid) { s ->
+                                s.copy(busy = false, lines = s.lines + ChatLine("assistant", reply))
+                            }
                         } catch (t: Throwable) {
-                            lines = lines + ChatLine("assistant", "❌ ${t.message}")
+                            SessionStore.update(sid) { s ->
+                                s.copy(
+                                    busy = false,
+                                    lines = s.lines + ChatLine("assistant", "❌ ${t.message}"),
+                                )
+                            }
                         }
-                        busy = false
                     }
                 },
-                enabled = !busy && config.model.isNotBlank() && input.isNotBlank(),
+                enabled = !session.busy && input.isNotBlank(),
             ) { Text("发送") }
         }
     }

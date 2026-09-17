@@ -1,18 +1,33 @@
 package com.kami.app
 
+import android.Manifest
+import android.app.AppOpsManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.os.Environment
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,8 +42,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,16 +57,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import rikka.shizuku.Shizuku
 
 private const val REQ_SHIZUKU = 7001
 
 private const val BANNER =
     "Kami ADB console — 命令经 Shizuku 以 shell uid 执行\n" +
-        "支持 ; / && 串联与管道，无 root\n"
+        "支持 ; / && 串联与管道，无 root；agent 对话可另用 Alpine proot 沙箱\n"
 
 /** One-tap preset commands shown as chips. */
 private data class QuickAction(val label: String, val cmd: String)
@@ -76,17 +96,188 @@ private const val EXT_HINT =
         "am broadcast -a com.kami.app.ext.LIST\n" +
         "logcat -d -s KamiExt"
 
+/** Runtime permission groups surfaced in Settings → 权限管理. */
+private data class PermGroup(val label: String, val perms: List<String>)
+
+private val RUNTIME_GROUPS: List<PermGroup> = buildList {
+    if (Build.VERSION.SDK_INT >= 33) {
+        add(PermGroup("通知", listOf(Manifest.permission.POST_NOTIFICATIONS)))
+    }
+    add(PermGroup("相机", listOf(Manifest.permission.CAMERA)))
+    add(PermGroup("麦克风", listOf(Manifest.permission.RECORD_AUDIO)))
+    add(
+        PermGroup(
+            "定位",
+            listOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+        ),
+    )
+    add(PermGroup("后台定位（先授权定位）", listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)))
+    add(
+        PermGroup(
+            "联系人",
+            listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS),
+        ),
+    )
+    add(
+        PermGroup(
+            "日历",
+            listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+        ),
+    )
+    add(
+        PermGroup(
+            "电话",
+            listOf(
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.CALL_PHONE,
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.ANSWER_PHONE_CALLS,
+            ),
+        ),
+    )
+    add(
+        PermGroup(
+            "短信",
+            listOf(
+                Manifest.permission.READ_SMS,
+                Manifest.permission.SEND_SMS,
+                Manifest.permission.RECEIVE_SMS,
+            ),
+        ),
+    )
+    add(
+        if (Build.VERSION.SDK_INT >= 33) {
+            PermGroup(
+                "媒体文件",
+                listOf(
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_VIDEO,
+                    Manifest.permission.READ_MEDIA_AUDIO,
+                ),
+            )
+        } else {
+            PermGroup("媒体文件", listOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+        },
+    )
+    if (Build.VERSION.SDK_INT >= 31) {
+        add(
+            PermGroup(
+                "蓝牙",
+                listOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                ),
+            ),
+        )
+    }
+    add(PermGroup("身体传感器", listOf(Manifest.permission.BODY_SENSORS)))
+    add(PermGroup("活动识别", listOf(Manifest.permission.ACTIVITY_RECOGNITION)))
+}
+
+/** Special app accesses that live on dedicated system settings screens. */
+private data class SpecialAccess(
+    val label: String,
+    val granted: (Context) -> Boolean,
+    val open: (Context) -> Unit,
+)
+
+private val SPECIAL_ACCESS: List<SpecialAccess> = listOf(
+    SpecialAccess(
+        "悬浮窗",
+        { Settings.canDrawOverlays(it) },
+        { ctx ->
+            ctx.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${ctx.packageName}"),
+                ),
+            )
+        },
+    ),
+    SpecialAccess(
+        "修改系统设置",
+        { Settings.System.canWrite(it) },
+        { ctx ->
+            ctx.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:${ctx.packageName}"),
+                ),
+            )
+        },
+    ),
+    SpecialAccess(
+        "安装未知应用",
+        { it.packageManager.canRequestPackageInstalls() },
+        { ctx ->
+            ctx.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:${ctx.packageName}"),
+                ),
+            )
+        },
+    ),
+    SpecialAccess(
+        "所有文件访问",
+        { Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager() },
+        { ctx ->
+            ctx.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:${ctx.packageName}"),
+                ),
+            )
+        },
+    ),
+    SpecialAccess(
+        "使用情况访问",
+        { usageAccessGranted(it) },
+        { ctx -> ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
+    ),
+    SpecialAccess(
+        "电池优化白名单",
+        { ctx ->
+            (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .isIgnoringBatteryOptimizations(ctx.packageName)
+        },
+        { ctx ->
+            ctx.startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${ctx.packageName}"),
+                ),
+            )
+        },
+    ),
+)
+
+private fun usageAccessGranted(ctx: Context): Boolean = try {
+    val ops = ctx.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    ops.checkOpNoThrow(
+        AppOpsManager.OPSTR_GET_USAGE_STATS,
+        android.os.Process.myUid(),
+        ctx.packageName,
+    ) == AppOpsManager.MODE_ALLOWED
+} catch (t: Throwable) {
+    false
+}
+
 /**
  * Shizuku-backed ADB shell console: status card, quick actions (built-in +
  * agent-added extensions) and a free command line; Settings manages the
- * extension interface. Every command runs as shell uid via Shizuku — no root.
+ * extension interface, the fixed madmodel agent endpoint, the biometric
+ * gate and the permission surface. Every Shizuku command runs as shell
+ * uid — no root.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val shizukuAlive = mutableStateOf(false)
     private val shizukuGranted = mutableStateOf(false)
     private val screen = mutableStateOf("console")
-    private val chatHistory = JSONArray()
 
     private val binderListener = Shizuku.OnBinderReceivedListener {
         if (!ShizukuRunner.granted()) {
@@ -113,6 +304,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ExtensionStore.init(applicationContext)
+        ProotSandbox.init(applicationContext)
+        // targetSdk 35+ enforces edge-to-edge; draw edge to edge on purpose
+        // and pad content with safeDrawing (status bar + nav + IME) below.
+        enableEdgeToEdge()
         try {
             Shizuku.addBinderReceivedListenerSticky(binderListener)
             Shizuku.addRequestPermissionResultListener(permissionListener)
@@ -122,10 +317,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    when (screen.value) {
-                        "settings" -> SettingsScreen()
-                        "chat" -> ChatScreen(chatHistory) { screen.value = "console" }
-                        else -> ConsoleScreen()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.safeDrawing),
+                    ) {
+                        when (screen.value) {
+                            "settings" -> SettingsScreen()
+                            "chat" -> ChatScreen { screen.value = "console" }
+                            else -> ConsoleScreen()
+                        }
                     }
                 }
             }
@@ -280,9 +481,22 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun SettingsScreen() {
+        val context = LocalContext.current
+        val activity = context as? FragmentActivity
+        val scope = rememberCoroutineScope()
         val scroll = rememberScrollState()
         var jsonInput by remember { mutableStateOf("") }
         var feedback by remember { mutableStateOf("") }
+
+        // Refresh grant states + JWT card whenever the screen resumes.
+        var revision by remember { mutableStateOf(0) }
+        DisposableEffect(activity) {
+            val obs = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) revision++
+            }
+            activity?.lifecycle?.addObserver(obs)
+            onDispose { activity?.lifecycle?.removeObserver(obs) }
+        }
 
         Column(
             modifier = Modifier
@@ -295,6 +509,9 @@ class MainActivity : ComponentActivity() {
                 TextButton(onClick = { screen.value = "console" }) { Text("← 返回") }
                 Text("设置", style = MaterialTheme.typography.titleLarge)
             }
+
+            AgentSection(revision)
+            BioSection()
 
             // Master switch for the whole extension interface.
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -377,8 +594,23 @@ class MainActivity : ComponentActivity() {
                         "❌ 解析失败：${t.message}"
                     }
                 }) { Text("导入 JSON") }
+
+                // Destructive: gated behind biometric auth when available.
+                val fa = activity
                 OutlinedButton(
-                    onClick = { ExtensionStore.clear() },
+                    onClick = {
+                        scope.launch {
+                            val count = ExtensionStore.items.value.size
+                            val ok = if (
+                                fa != null && BioGate.available(context) && BioGate.enabled(context)
+                            ) {
+                                BioGate.authenticate(fa, "清空全部拓展", "将删除 $count 项拓展功能")
+                            } else {
+                                true
+                            }
+                            if (ok) ExtensionStore.clear()
+                        }
+                    },
                     enabled = ExtensionStore.items.value.isNotEmpty(),
                 ) { Text("清空全部") }
             }
@@ -386,46 +618,115 @@ class MainActivity : ComponentActivity() {
                 Text(feedback, fontSize = 12.sp)
             }
 
-            Text("Agent 模型（OpenAI 兼容端点）", style = MaterialTheme.typography.titleSmall)
-            val context = LocalContext.current
-            val cfg = remember { AgentClient.loadConfig(context) }
-            var baseUrl by remember { mutableStateOf(cfg.baseUrl) }
-            var apiKey by remember { mutableStateOf(cfg.apiKey) }
-            var modelName by remember { mutableStateOf(cfg.model) }
-            var savedMsg by remember { mutableStateOf("") }
-            OutlinedTextField(
-                value = baseUrl,
-                onValueChange = { baseUrl = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Base URL，如 https://api.openai.com/v1", fontSize = 12.sp) },
-                singleLine = true,
+            PermissionsSection(revision)
+        }
+    }
+
+    @Composable
+    private fun AgentSection(revision: Int) {
+        Text("Agent 模型（固定接入）", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "端点  ${MadModel.BASE}\n模型  ${MadModel.MODEL}\n" +
+                "key = check 端点签发的 JWT，5 小时自动换新，每个会话独立一条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val keys = remember(revision) { JwtKeyPool.snapshot() }
+        if (keys.isEmpty()) {
+            Text(
+                "暂无活跃 key — 发起一次 agent 对话后出现",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("API Key（本地服务可留空）", fontSize = 12.sp) },
-                singleLine = true,
+        }
+        keys.forEach { (session, iat, minutes) ->
+            Text(
+                "$session   iat=$iat   ${minutes}min 后换新",
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
             )
-            OutlinedTextField(
-                value = modelName,
-                onValueChange = { modelName = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("模型名，如 glm-4-flash", fontSize = 12.sp) },
-                singleLine = true,
+        }
+        OutlinedButton(onClick = { JwtKeyPool.dropAll() }) { Text("换新全部 key") }
+    }
+
+    @Composable
+    private fun BioSection() {
+        val context = LocalContext.current
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("敏感操作生物验证", style = MaterialTheme.typography.titleSmall)
+                val hint = if (BioGate.available(context)) {
+                    "agent 危险命令与清空拓展前要求指纹/面部验证"
+                } else {
+                    "本机未录入生物凭据 — 验证不可用时自动放行"
+                }
+                Text(
+                    hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = BioGate.enabled(context) && BioGate.available(context),
+                onCheckedChange = { BioGate.setEnabled(context, it) },
+                enabled = BioGate.available(context),
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Button(onClick = {
-                    AgentClient.saveConfig(
-                        context,
-                        AgentConfig(baseUrl.trim(), apiKey.trim(), modelName.trim()),
+        }
+    }
+
+    @Composable
+    private fun PermissionsSection(revision: Int) {
+        val context = LocalContext.current
+        var requested by remember { mutableStateOf(false) }
+        val launcher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { requested = true }
+
+        Text("权限管理", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "按需授权 — agent 会检查权限并提示缺什么",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // Re-read grant states on resume (revision) and after a permission
+        // dialog returns (requested) — both are read via key() below.
+        key(revision, requested) {
+            RUNTIME_GROUPS.forEach { group ->
+                val missing = group.perms.filter {
+                    ContextCompat.checkSelfPermission(context, it) !=
+                        PackageManager.PERMISSION_GRANTED
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        group.label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
-                    savedMsg = "✓ 已保存"
-                }) { Text("保存") }
-                if (savedMsg.isNotEmpty()) Text(savedMsg, fontSize = 12.sp)
+                    if (missing.isEmpty()) {
+                        Text("✓", color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        TextButton(onClick = { launcher.launch(group.perms.toTypedArray()) }) {
+                            Text("授权")
+                        }
+                    }
+                }
+            }
+
+            Text("特殊访问（系统设置页）", style = MaterialTheme.typography.titleSmall)
+            SPECIAL_ACCESS.forEach { sa ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        sa.label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (sa.granted(context)) {
+                        Text("✓", color = MaterialTheme.colorScheme.primary)
+                    } else {
+                        TextButton(onClick = { runCatching { sa.open(context) } }) { Text("去开启") }
+                    }
+                }
             }
         }
     }

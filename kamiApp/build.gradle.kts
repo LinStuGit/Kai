@@ -33,6 +33,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.biometric)
     implementation(libs.compose.material3)
     implementation(libs.androidx.foundation.android)
     implementation(libs.shizuku.api)
