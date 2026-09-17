@@ -59,9 +59,9 @@ object JwtKeyPool {
     @Synchronized
     fun snapshot(): List<Triple<String, Long?, Long>> {
         val now = System.currentTimeMillis()
-        return pool.entries
-            .map { Triple(it.key, it.iat, (MadModel.TTL_MS - (now - it.value.fetchedAt)) / 60_000) }
-            .sortedBy { it.first }
+        return pool.map { (session, entry) ->
+            Triple(session, entry.iat, (MadModel.TTL_MS - (now - entry.fetchedAt)) / 60_000)
+        }.sortedBy { it.first }
     }
 
     fun decodeIat(jwt: String): Long? = runCatching {
