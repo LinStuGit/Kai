@@ -342,7 +342,9 @@ class MainActivity : FragmentActivity() {
                     ) {
                         when (screen.value) {
                             "settings" -> SettingsScreen()
+
                             "console" -> ConsoleScreen()
+
                             else -> ChatScreen(
                                 onConsole = { screen.value = "console" },
                                 onSettings = { screen.value = "settings" },

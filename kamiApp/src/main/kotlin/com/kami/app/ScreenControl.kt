@@ -48,13 +48,17 @@ object ScreenControl {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
         val cmd = when (action) {
             "tap" -> "input tap $x $y"
+
             "longpress" -> "input swipe $x $y $x $y ${durationMs ?: 600}"
+
             "swipe" -> "input swipe $x $y ${x2 ?: x} ${y2 ?: y} ${durationMs ?: 300}"
+
             "key" -> {
                 val name = (key ?: "").trim().uppercase()
                 if (!KEY_NAME.matches(name)) return "错误：非法按键名：$key"
                 "input keyevent KEYCODE_$name"
             }
+
             else -> return "错误：未知 action：$action"
         }
         return ShizukuRunner.run(cmd).ifEmpty { "✓ $action 完成" }

@@ -21,8 +21,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.compose.runtime.mutableStateOf
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.Job
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Shared agent-run state: the chat screen registers its running jobs here,
@@ -76,7 +76,7 @@ class AgentOverlayService : Service() {
                 val active = AgentOverlayState.jobs.count { it.isActive }
                 statusView.text =
                     (if (active > 1) "[$active 个会话] " else "") +
-                        AgentOverlayState.status.value.ifEmpty { "思考中…" }
+                    AgentOverlayState.status.value.ifEmpty { "思考中…" }
             }
             handler.postDelayed(this, 500)
         }
