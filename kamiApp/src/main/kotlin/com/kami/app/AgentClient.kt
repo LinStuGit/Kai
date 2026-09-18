@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -78,7 +79,7 @@ object AgentClient {
         val thinkings = mutableListOf<String>()
         history.put(JSONObject().put("role", "user").put("content", userText))
         repeat(MAX_STEPS) {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val resp = postChat(sessionId, history)
             val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
             val reasoning = msg.optString("reasoning_content")
