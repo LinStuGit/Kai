@@ -516,8 +516,12 @@ class MainActivity : FragmentActivity() {
             // Screen-driving commands (screencap/uiautomator/input) earn the
             // floating window; the rest report via the notification shade.
             val screenOp = listOf(
-                "screencap", "uiautomator", "input tap", "input swipe",
-                "input keyevent", "input text",
+                "screencap",
+                "uiautomator",
+                "input tap",
+                "input swipe",
+                "input keyevent",
+                "input text",
             ).any { c.contains(it) }
             val job = scope.launch(Dispatchers.IO) {
                 running = true
