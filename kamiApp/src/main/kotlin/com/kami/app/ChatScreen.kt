@@ -80,6 +80,7 @@ private fun buildEntries(lines: List<ChatLine>): List<ChatEntry> = buildList {
 internal fun ChatScreen(
     onConsole: () -> Unit,
     onSettings: () -> Unit,
+    onArchive: () -> Unit,
 ) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
@@ -150,6 +151,16 @@ internal fun ChatScreen(
             AssistChip(
                 onClick = { SessionStore.newSession() },
                 label = { Text("＋ 新会话", fontSize = 12.sp) },
+            )
+            if (sessions.any { it.busy }) {
+                AssistChip(
+                    onClick = { AgentOverlayState.cancelAll() },
+                    label = { Text("■ 终止", fontSize = 12.sp) },
+                )
+            }
+            AssistChip(
+                onClick = onArchive,
+                label = { Text("历史", fontSize = 12.sp) },
             )
         }
 

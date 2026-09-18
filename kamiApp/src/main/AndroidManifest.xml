@@ -158,5 +158,10 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Notification action / home chip: cancel every running agent job -->
+        <receiver
+            android:name=".StopReceiver"
+            android:exported="false" />
     </application>
 </manifest>

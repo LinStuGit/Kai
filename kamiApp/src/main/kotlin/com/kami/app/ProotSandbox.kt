@@ -52,8 +52,9 @@ object ProotSandbox {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
         val flags = ShizukuRunner.run(
             "test -x $DIR/proot && echo proot=ok || echo proot=missing; " +
-                "{ test -f $DIR/alpine/bin/sh || test -f $DIR/alpine/usr/bin/busybox; } && " +
-                "echo rootfs=ok || echo rootfs=missing; du -sh $DIR 2>/dev/null | cut -f1",
+                "{ [ -f $DIR/alpine/etc/alpine-release ] || [ -f $DIR/alpine/bin/busybox ] || " +
+                "[ -f $DIR/alpine/usr/bin/busybox ]; } && echo rootfs=ok || echo rootfs=missing; " +
+                "du -sh $DIR 2>/dev/null | cut -f1",
         )
         return if (installed()) {
             "沙箱已安装\n$flags"
@@ -97,16 +98,15 @@ object ProotSandbox {
         pushFile(prootFile, "$DIR/proot", log, executable = true)
         pushFile(fsFile, "$DIR/rootfs.tar", log, executable = false)
 
-        // toybox tar can choke on rootfs entries it dislikes (absolute-path
-        // symlinks among them) and bail early — don't trust its exit code.
-        // Judge by the result instead, and recreate the top-level usr
-        // symlinks when the tar dropped them.
+        // Judge extraction by real marker files, never by tar's exit code
+        // (toybox tar can bail on entries it dislikes). Alpine's bin/sh is
+        // an ABSOLUTE symlink (/bin/busybox), so `test` on it resolves
+        // against the Android host and always fails — alpine-release and
+        // busybox are plain files in either rootfs layout.
         val tarOut = ShizukuRunner.run("tar -xf $DIR/rootfs.tar -C $DIR/alpine 2>/dev/null; echo tar-done")
         val check = ShizukuRunner.run(
-            "cd $DIR/alpine && { [ -e bin/sh ] || " +
-                "{ ln -sfn usr/bin bin; ln -sfn usr/sbin sbin; ln -sfn usr/lib lib; " +
-                "ln -sfn usr/lib64 lib64 2>/dev/null; }; }; " +
-                "{ [ -f bin/sh ] || [ -f usr/bin/busybox ]; } && echo rootfs-ok || echo rootfs-broken",
+            "cd $DIR/alpine && { [ -f etc/alpine-release ] || [ -f bin/busybox ] || " +
+                "[ -f usr/bin/busybox ]; } && echo rootfs-ok || echo rootfs-broken",
         )
         if (!check.contains("rootfs-ok")) {
             return "rootfs 解压失败：${tarOut.take(200)} / $check"
@@ -126,17 +126,21 @@ object ProotSandbox {
     fun run(cmd: String): String {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
         if (!installed()) return "错误：沙箱未安装，先调用 sandbox_setup"
-        val esc = cmd.trim().replace("'", "'\\''")
+        val esc = "export PATH=/bin:/sbin:/usr/bin:/usr/sbin; " +
+            cmd.trim().replace("'", "'\\''")
+        // -r, not -R: -R also binds $HOME, and Android shells have HOME=/
+        // whose trailing `bind /` would override the rootfs binding entirely.
+        // The guest needs an explicit PATH (Android's PATH leaks in uselessly).
         return ShizukuRunner.run(
             "PROOT_TMP_DIR=$DIR/tmp PROOT_NO_SECCOMP=1 timeout 600 " +
-                "$DIR/proot -R $DIR/alpine /bin/sh -c '$esc'",
+                "$DIR/proot -r $DIR/alpine -b /dev -b /proc -b /sys -w / /bin/sh -c '$esc'",
         ).ifEmpty { "(无输出)" }
     }
 
     private fun installed(): Boolean = ShizukuRunner.granted() &&
         ShizukuRunner.run(
-            "{ test -x $DIR/proot && { test -f $DIR/alpine/bin/sh || " +
-                "test -f $DIR/alpine/usr/bin/busybox; }; } && echo yes || echo no",
+            "{ [ -f $DIR/alpine/etc/alpine-release ] || [ -f $DIR/alpine/bin/busybox ] || " +
+                "[ -f $DIR/alpine/usr/bin/busybox ]; } && echo yes || echo no",
         ).contains("yes")
 
     /** Copy a bundled asset to a cache file (app can't hand assets to shell directly). */

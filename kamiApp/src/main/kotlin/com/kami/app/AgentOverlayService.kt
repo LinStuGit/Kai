@@ -3,6 +3,7 @@ package com.kami.app
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -16,8 +17,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.compose.runtime.mutableStateOf
@@ -26,8 +30,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Shared agent-run state: the chat screen registers its running jobs here,
- * the overlay service polls it (500ms) and shows a floating window with the
- * live output plus a force-stop button whenever the user leaves the app
+ * the overlay service polls it (500ms) and shows a small draggable floating
+ * ball (tap to expand status + force-stop) whenever the user leaves the app
  * mid-run. Plain classic views on purpose — no Compose in a Service.
  */
 object AgentOverlayState {
@@ -36,17 +40,17 @@ object AgentOverlayState {
     val status = mutableStateOf("")
     val activityVisible = mutableStateOf(true)
 
-    /** Set while the agent reads the screen / screenshots: hide the window. */
+    /** Set while the agent reads the screen: collapse the panel to the ball. */
     val suppress = mutableStateOf(false)
 
     /**
      * >0 while a screen-control tool is actually running. Non-screen work
-     * stays in the notification shade; the floating window is reserved for
+     * stays in the notification shade; the floating ball is reserved for
      * when the agent is driving the screen.
      */
     val screenBusy = mutableStateOf(0)
 
-    /** Console quick actions classified as screen ops force the window on. */
+    /** Console quick actions classified as screen ops force the ball on. */
     val forceWindow = mutableStateOf(false)
 
     val jobs = CopyOnWriteArrayList<Job>()
@@ -62,7 +66,7 @@ object AgentOverlayState {
         running.value = jobs.isNotEmpty()
     }
 
-    /** Force-stop every running session (overlay button). */
+    /** Force-stop every running session (ball panel / notification / home). */
     fun cancelAll() {
         jobs.forEach { it.cancel() }
         running.value = false
@@ -72,7 +76,11 @@ object AgentOverlayState {
 class AgentOverlayService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private var view: LinearLayout? = null
+    private var root: FrameLayout? = null
+    private var ball: View? = null
+    private var panel: LinearLayout? = null
+    private var params: WindowManager.LayoutParams? = null
+    private var expanded = false
     private var attached = false
     private var lastNotifiedStatus: String? = null
     private lateinit var statusView: TextView
@@ -84,8 +92,10 @@ class AgentOverlayService : Service() {
                 stopSelf()
                 return
             }
+            // While the agent reads the screen, collapse to the ball so the
+            // dump is not occluded — the ball itself (tiny, draggable) stays.
+            if (AgentOverlayState.suppress.value) setExpanded(false)
             val show = !AgentOverlayState.activityVisible.value &&
-                !AgentOverlayState.suppress.value &&
                 (AgentOverlayState.screenBusy.value > 0 || AgentOverlayState.forceWindow.value)
             if (show && !attached) attach()
             if (!show && attached) detach()
@@ -95,7 +105,7 @@ class AgentOverlayService : Service() {
             if (attached) {
                 statusView.text = st
             }
-            // Non-screen work reports progress in the notification shade.
+            // Every run reports progress in the notification shade.
             if (st != lastNotifiedStatus) {
                 lastNotifiedStatus = st
                 notifyProgress(st)
@@ -118,16 +128,10 @@ class AgentOverlayService : Service() {
                 ),
             )
         }
-        val notification = Notification.Builder(this, "kami_overlay")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Kami Agent 运行中")
-            .setContentText("切走时悬浮窗显示输出，可强制终止")
-            .setOngoing(true)
-            .build()
         if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(NOTIF_ID, buildNotification("运行进度在此通知更新"), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(NOTIF_ID, notification)
+            startForeground(NOTIF_ID, buildNotification("运行进度在此通知更新"))
         }
     }
 
@@ -137,37 +141,86 @@ class AgentOverlayService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()
+
     private fun attach() {
         if (!Settings.canDrawOverlays(this)) return
-        val density = resources.displayMetrics.density
-        val pad = (16 * density).toInt()
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                setColor(0xEE101418.toInt())
-                cornerRadius = 16f * density
-            }
-            setPadding(pad, pad, pad, pad)
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val prefs = getSharedPreferences("kami_overlay", Context.MODE_PRIVATE)
+        val dm = resources.displayMetrics
+
+        // Expanded panel: status + force-stop. Hidden until the ball is tapped.
+        statusView = TextView(this).apply {
+            setTextColor(0xFFD5E0EA.toInt())
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
         }
         val title = TextView(this).apply {
             text = "Kami Agent"
             setTextColor(0xFF9BD1FF.toInt())
             textSize = 12f
         }
-        statusView = TextView(this).apply {
-            setTextColor(0xFFD5E0EA.toInt())
-            textSize = 11f
-            typeface = Typeface.MONOSPACE
+        val collapse = TextView(this).apply {
+            text = "收起"
+            setTextColor(0xFF8A97A3.toInt())
+            textSize = 12f
+            setOnClickListener { setExpanded(false) }
+        }
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(6f))
+            addView(title, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(collapse)
         }
         val stop = Button(this).apply {
             text = "强制终止"
             textSize = 12f
             setOnClickListener { AgentOverlayState.cancelAll() }
         }
-        box.addView(title)
-        box.addView(statusView)
-        box.addView(stop)
-        val params = WindowManager.LayoutParams(
+        val cardBg = GradientDrawable().apply {
+            setColor(0xEE101418.toInt())
+            cornerRadius = 14f * resources.displayMetrics.density
+        }
+        panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = cardBg
+            setPadding(dp(12f), dp(12f), dp(12f), dp(12f))
+            visibility = View.GONE
+            addView(head)
+            addView(statusView)
+            addView(stop)
+        }
+
+        // The ball: a small draggable circle, tap (no drag) to expand.
+        val dot = View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFF9BD1FF.toInt())
+            }
+        }
+        val ballSize = dp(38f)
+        ball = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xCC101418.toInt())
+            }
+            addView(
+                dot,
+                FrameLayout.LayoutParams(dp(10f), dp(10f), Gravity.CENTER),
+            )
+            setOnTouchListener(makeBallDragListener(ballSize))
+        }
+
+        root = FrameLayout(this).apply {
+            addView(panel, FrameLayout.LayoutParams(dp(230f), FrameLayout.LayoutParams.WRAP_CONTENT))
+            addView(
+                ball,
+                FrameLayout.LayoutParams(ballSize, ballSize),
+            )
+        }
+
+        params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -175,33 +228,110 @@ class AgentOverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = pad
-            y = pad * 5 // stay clear of the status bar
+            x = prefs.getInt("x", dp(16f)).coerceIn(0, dm.widthPixels - ballSize)
+            y = prefs.getInt("y", dp(96f)).coerceIn(0, dm.heightPixels - ballSize)
         }
-        (getSystemService(Context.WINDOW_SERVICE) as WindowManager).addView(box, params)
-        view = box
+        wm.addView(root, params)
         attached = true
+    }
+
+    /** Drag moves the ball (position persisted); a plain tap toggles the panel. */
+    private fun makeBallDragListener(ballSize: Int): View.OnTouchListener {
+        val dm = resources.displayMetrics
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var dragging = false
+        return View.OnTouchListener { v, e ->
+            val p = params ?: return@OnTouchListener false
+            when (e.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX
+                    downY = e.rawY
+                    startX = p.x
+                    startY = p.y
+                    dragging = false
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - downX
+                    val dy = e.rawY - downY
+                    if (dragging || dx * dx + dy * dy > 20 * 20) {
+                        dragging = true
+                        p.x = (startX + dx).toInt().coerceIn(0, dm.widthPixels - ballSize)
+                        p.y = (startY + dy).toInt().coerceIn(0, dm.heightPixels - ballSize)
+                        runCatching {
+                            (getSystemService(Context.WINDOW_SERVICE) as WindowManager)
+                                .updateViewLayout(root, p)
+                        }
+                    }
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (dragging) {
+                        getSharedPreferences("kami_overlay", Context.MODE_PRIVATE)
+                            .edit().putInt("x", p.x).putInt("y", p.y).apply()
+                    } else {
+                        setExpanded(!expanded)
+                    }
+                    true
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun setExpanded(value: Boolean) {
+        if (expanded == value) return
+        expanded = value
+        panel?.visibility = if (value) View.VISIBLE else View.GONE
+        ball?.visibility = if (value) View.GONE else View.VISIBLE
     }
 
     private fun detach() {
         if (!attached) return
         attached = false
+        setExpanded(false)
         runCatching {
-            (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(view)
+            (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(root)
         }
-        view = null
+        root = null
+        ball = null
+        panel = null
     }
+
+    private fun stopPi(): PendingIntent = PendingIntent.getBroadcast(
+        this,
+        0,
+        Intent(this, StopReceiver::class.java).setAction(StopReceiver.ACTION),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    private fun buildNotification(text: String): Notification = Notification.Builder(this, "kami_overlay")
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("Kami Agent 运行中")
+        .setContentText(text)
+        .setOngoing(true)
+        .addAction(
+            Notification.Action.Builder(
+                android.graphics.drawable.Icon.createWithResource(
+                    this,
+                    android.R.drawable.ic_menu_close_clear_cancel,
+                ),
+                "强制终止",
+                stopPi(),
+            ).build(),
+        )
+        .build()
 
     /** Update the foreground notification with the latest status line. */
     private fun notifyProgress(text: String) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val n = Notification.Builder(this, "kami_overlay")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Kami Agent 运行中")
-            .setContentText(text)
-            .setOngoing(true)
-            .build()
-        runCatching { nm.notify(NOTIF_ID, n) }
+        runCatching { nm.notify(NOTIF_ID, buildNotification(text)) }
     }
 
     override fun onDestroy() {

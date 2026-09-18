@@ -355,6 +355,8 @@ class MainActivity : FragmentActivity() {
         MemoryStore.init(applicationContext)
         SkillStore.init(applicationContext)
         ReminderStore.init(applicationContext)
+        SessionStore.init(applicationContext)
+        ArchiveStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
         // targetSdk 35+ enforces edge-to-edge; draw edge to edge on purpose
         // and pad content with safeDrawing (status bar + nav + IME) below.
@@ -389,7 +391,7 @@ class MainActivity : FragmentActivity() {
                             .fillMaxSize()
                             .windowInsetsPadding(WindowInsets.safeDrawing),
                     ) {
-                        EssentialPermissionsOnce()
+                        FirstLaunchPermissions()
 
                         when (screen.value) {
                             "console" -> ConsoleScreen()
@@ -397,6 +399,8 @@ class MainActivity : FragmentActivity() {
                             "term" -> TerminalScreen(onBack = { screen.value = "console" })
 
                             "settings" -> SettingsScreen()
+
+                            "archive" -> ArchiveSection()
 
                             "set-agent" -> SubPage("Agent 模型") { AgentSection() }
 
@@ -413,6 +417,7 @@ class MainActivity : FragmentActivity() {
                             else -> ChatScreen(
                                 onConsole = { screen.value = "console" },
                                 onSettings = { screen.value = "settings" },
+                                onArchive = { screen.value = "archive" },
                             )
                         }
                     }
@@ -438,25 +443,32 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * Calendar is an essential permission (schedules/reminders) — ask for
-     * it plus notifications once on first launch, right on the home screen.
+     * First launch: ask for every runtime permission the manifest declares
+     * (Android groups them into a few dialogs). Denied ones stay available
+     * in 设置 → 权限管理; special accesses are always manual.
      */
     @Composable
-    private fun EssentialPermissionsOnce() {
+    private fun FirstLaunchPermissions() {
         val ctx = LocalContext.current
         val launcher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
         ) { }
         LaunchedEffect(Unit) {
             val prefs = ctx.getSharedPreferences("kami_essential", Context.MODE_PRIVATE)
-            if (prefs.getBoolean("asked", false)) return@LaunchedEffect
-            prefs.edit().putBoolean("asked", true).apply()
-            val perms = buildList {
-                add(Manifest.permission.READ_CALENDAR)
-                add(Manifest.permission.WRITE_CALENDAR)
-                if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            runCatching { launcher.launch(perms.toTypedArray()) }
+            if (prefs.getBoolean("asked_all", false)) return@LaunchedEffect
+            prefs.edit().putBoolean("asked_all", true).apply()
+            val declared = runCatching {
+                ctx.packageManager
+                    .getPackageInfo(ctx.packageName, PackageManager.GET_PERMISSIONS)
+                    .requestedPermissions
+                    ?.toSet()
+                    .orEmpty()
+            }.getOrElse { emptySet() }
+            val perms = RUNTIME_GROUPS
+                .flatMap { it.perms }
+                .distinct()
+                .filter { it in declared }
+            if (perms.isNotEmpty()) runCatching { launcher.launch(perms.toTypedArray()) }
         }
     }
 
@@ -722,6 +734,83 @@ class MainActivity : FragmentActivity() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 16.dp),
             )
+        }
+    }
+
+    /** Archived conversations: tap a row to read the transcript. */
+    @Composable
+    private fun ArchiveSection() {
+        val items = ArchiveStore.items.value
+        val fmt = remember { java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault()) }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { screen.value = "chat" }) { Text("← 主页") }
+                Text(
+                    "历史会话",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                TextButton(
+                    onClick = { ArchiveStore.clear() },
+                    enabled = items.isNotEmpty(),
+                ) { Text("清空") }
+            }
+            if (items.isEmpty()) {
+                Text(
+                    "暂无归档 — 删除会话或进程重建后，旧对话会留在这里",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            items.forEach { a ->
+                var open by remember(a.id) { mutableStateOf(false) }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(10.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { open = !open }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(a.title, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    "${a.lines.size} 条 · ${fmt.format(java.util.Date(a.ts))}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(onClick = { ArchiveStore.remove(a.id) }) { Text("删") }
+                        }
+                        if (open) {
+                            a.lines.forEach { l ->
+                                val prefix = when (l.role) {
+                                    "user" -> "你："
+                                    "event" -> "· "
+                                    else -> ""
+                                }
+                                Text(
+                                    prefix + l.text,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
