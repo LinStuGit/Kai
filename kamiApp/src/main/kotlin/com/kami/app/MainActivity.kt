@@ -11,6 +11,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -277,7 +279,9 @@ class MainActivity : FragmentActivity() {
 
     private val shizukuAlive = mutableStateOf(false)
     private val shizukuGranted = mutableStateOf(false)
-    private val screen = mutableStateOf("console")
+
+    /** "chat" is the home screen; console/settings sit on top of it. */
+    private val screen = mutableStateOf("chat")
 
     private val binderListener = Shizuku.OnBinderReceivedListener {
         if (!ShizukuRunner.granted()) {
@@ -315,6 +319,20 @@ class MainActivity : FragmentActivity() {
         }
         refresh()
         setContent {
+            // Home (chat): double-back within 2s to exit; other screens go
+            // back to chat on system back.
+            var lastBackAt by remember { mutableStateOf(0L) }
+            BackHandler(enabled = screen.value == "chat") {
+                val now = System.currentTimeMillis()
+                if (now - lastBackAt < 2000) {
+                    finish()
+                } else {
+                    lastBackAt = now
+                    Toast.makeText(this@MainActivity, "再按一次返回退出", Toast.LENGTH_SHORT).show()
+                }
+            }
+            BackHandler(enabled = screen.value != "chat") { screen.value = "chat" }
+
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(
@@ -324,13 +342,26 @@ class MainActivity : FragmentActivity() {
                     ) {
                         when (screen.value) {
                             "settings" -> SettingsScreen()
-                            "chat" -> ChatScreen { screen.value = "console" }
-                            else -> ConsoleScreen()
+                            "console" -> ConsoleScreen()
+                            else -> ChatScreen(
+                                onConsole = { screen.value = "console" },
+                                onSettings = { screen.value = "settings" },
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AgentOverlayState.activityVisible.value = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AgentOverlayState.activityVisible.value = false
     }
 
     override fun onDestroy() {
@@ -377,12 +408,12 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { screen.value = "chat" }) { Text("← 对话") }
                 Text(
-                    "Kami · Shizuku ADB 控制",
+                    "控制台",
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
                 )
-                TextButton(onClick = { screen.value = "chat" }) { Text("对话") }
                 TextButton(onClick = { screen.value = "settings" }) { Text("设置") }
             }
 

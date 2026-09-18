@@ -3,8 +3,9 @@ package com.kami.app
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 
-/** One rendered chat line; role is "user", "assistant" or "event". */
-internal data class ChatLine(val role: String, val text: String)
+/** One rendered chat line; role is "user", "assistant" or "event".
+ *  [thinking] (model reasoning) rides on assistant lines, rendered collapsed. */
+internal data class ChatLine(val role: String, val text: String, val thinking: String? = null)
 
 internal const val WELCOME =
     "我是 Kami agent——可以直接操作这台手机（Shizuku shell），也能在 Alpine Linux " +

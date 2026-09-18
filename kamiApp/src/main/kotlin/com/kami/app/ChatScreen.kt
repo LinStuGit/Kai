@@ -1,5 +1,8 @@
 package com.kami.app
 
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,18 +36,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * In-app agent conversations: sessions run in parallel, switch via the chip
- * row, and each session holds its own JWT (see [JwtKeyPool]). Tool activity
- * shows as dim mono event lines; agent-initiated destructive shell commands
- * suspend in [SensitiveGate] until the biometric prompt below resolves.
+ * The app home: agent conversations running in parallel (one JWT each),
+ * switchable via the chip row. Model reasoning renders as a collapsed
+ * "思考过程" block, tap to expand. While a turn runs and the user leaves
+ * the app, [AgentOverlayService] shows live output with a force-stop.
  */
 @Composable
-internal fun ChatScreen(onBack: () -> Unit) {
+internal fun ChatScreen(
+    onConsole: () -> Unit,
+    onSettings: () -> Unit,
+) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
@@ -79,13 +87,13 @@ internal fun ChatScreen(onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← 返回") }
             Text(
-                "Agent 对话",
+                "Kami",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            TextButton(onClick = { SessionStore.newSession() }) { Text("＋ 新会话") }
+            TextButton(onClick = onConsole) { Text("控制台") }
+            TextButton(onClick = onSettings) { Text("设置") }
         }
 
         // Parallel sessions: tap to switch (spinner = a turn is running),
@@ -135,12 +143,15 @@ internal fun ChatScreen(onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
-                    else -> Row(Modifier.fillMaxWidth()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Text(line.text, modifier = Modifier.padding(10.dp))
+                    else -> Column(Modifier.fillMaxWidth()) {
+                        line.thinking?.let { ThinkingBlock(it) }
+                        Row(Modifier.fillMaxWidth()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text(line.text, modifier = Modifier.padding(10.dp))
+                            }
                         }
                     }
                 }
@@ -170,36 +181,94 @@ internal fun ChatScreen(onBack: () -> Unit) {
                     if (text.isEmpty() || session.busy) return@Button
                     input = ""
                     val sid = session.id
+                    val appCtx = context.applicationContext
                     SessionStore.update(sid) {
                         it.copy(busy = true, lines = it.lines + ChatLine("user", text))
                     }
-                    scope.launch(Dispatchers.IO) {
+                    val job = scope.launch(Dispatchers.IO) {
                         try {
                             val reply = AgentClient.turn(
                                 sid,
-                                context.applicationContext,
+                                appCtx,
                                 SessionStore.history(sid),
                                 text,
                             ) { ev ->
+                                AgentOverlayState.status.value = ev
                                 SessionStore.update(sid) { s ->
                                     s.copy(lines = s.lines + ChatLine("event", ev))
                                 }
                             }
                             SessionStore.update(sid) { s ->
-                                s.copy(busy = false, lines = s.lines + ChatLine("assistant", reply))
-                            }
-                        } catch (t: Throwable) {
-                            SessionStore.update(sid) { s ->
                                 s.copy(
                                     busy = false,
-                                    lines = s.lines + ChatLine("assistant", "❌ ${t.message}"),
+                                    lines = s.lines + ChatLine("assistant", reply.text, reply.thinking),
                                 )
                             }
+                        } catch (t: Throwable) {
+                            val msg = if (t is CancellationException) {
+                                "⏹ 已强制终止"
+                            } else {
+                                "❌ ${t.message}"
+                            }
+                            SessionStore.update(sid) { s ->
+                                s.copy(busy = false, lines = s.lines + ChatLine("assistant", msg))
+                            }
+                        } finally {
+                            AgentOverlayState.refresh()
+                            if (!AgentOverlayState.running.value) {
+                                runCatching {
+                                    appCtx.stopService(Intent(appCtx, AgentOverlayService::class.java))
+                                }
+                            }
+                        }
+                    }
+                    AgentOverlayState.status.value = ""
+                    AgentOverlayState.add(job)
+                    // Overlay window only works with the special-access grant.
+                    if (Settings.canDrawOverlays(appCtx)) {
+                        runCatching {
+                            ContextCompat.startForegroundService(
+                                appCtx,
+                                Intent(appCtx, AgentOverlayService::class.java),
+                            )
                         }
                     }
                 },
                 enabled = !session.busy && input.isNotBlank(),
             ) { Text("发送") }
+        }
+    }
+}
+
+/** Model reasoning, collapsed by default; tap the header to expand. */
+@Composable
+private fun ThinkingBlock(text: String) {
+    var open by remember { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Text(
+                if (open) "▼ 思考过程" else "▸ 思考过程",
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (open) {
+                Text(
+                    text,
+                    modifier = Modifier.padding(top = 6.dp),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

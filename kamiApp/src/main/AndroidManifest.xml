@@ -67,6 +67,7 @@
     <!-- Background / system integration -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -110,6 +111,30 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Overlay while the agent runs outside the app: output + force stop -->
+        <service
+            android:name=".AgentOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Show live agent output with a force-stop button while the user is outside the app" />
+        </service>
+
+        <!-- ADB-Keyboard-style IME for agent text input (non-ASCII) -->
+        <service
+            android:name=".AdbKeyboardService"
+            android:exported="true"
+            android:label="Kami ADB Keyboard"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
 
         <!-- Extension interface: agent pushes features via adb broadcast -->
         <receiver
