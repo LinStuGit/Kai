@@ -1,37 +1,72 @@
 package com.kami.app
 
+import android.content.Context
+import android.os.PowerManager
+
 /**
  * Agent-facing host screen control, all through Shizuku shell:
  * screenshot to Download, uiautomator hierarchy dump (the agent's "eyes"),
  * tap/swipe/longpress/key, and text input — ASCII straight through
  * `input text`, everything else via the bundled ADB-Keyboard IME.
+ *
+ * Every call holds a bright wake lock while it runs: dumps and synthetic
+ * taps hit nothing on a sleeping display, so the screen is lit (and woken
+ * if asleep) for the duration of the operation.
  */
 object ScreenControl {
 
-    private val ASCII_ONLY = Regex("^[A-Za-z0-9@#%+=:;._\\-/]+$")
-    private val KEY_NAME = Regex("^[A-Z0-9_]+$")
+    private var app: Context? = null
+    private const val WAKE_TIMEOUT_MS = 30_000L
 
-    fun screenshot(): String {
-        if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
+    /** Call once from Activity startup with an application context. */
+    fun init(context: Context) {
+        app = context.applicationContext
+    }
+
+    /**
+     * Run [block] with the screen on: a SCREEN_BRIGHT wake lock that also
+     * wakes a sleeping display, released as soon as the call returns
+     * (30s timeout guards against a lost release).
+     */
+    private fun <T> withScreenOn(block: () -> T): T {
+        var lock: PowerManager.WakeLock? = null
+        app?.let { ctx ->
+            val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            lock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "kami:screen-control",
+            )
+            lock?.acquire(WAKE_TIMEOUT_MS)
+        }
+        return try {
+            block()
+        } finally {
+            lock?.release()
+        }
+    }
+
+    fun screenshot(): String = withScreenOn {
+        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
         val path = "/sdcard/Download/kami-${System.currentTimeMillis()}.png"
         val out = ShizukuRunner.run("screencap -p $path && ls -l $path")
-        if (!out.contains("kami-")) return "错误：截屏失败：$out"
-        return "已保存 $path（图片内容对 agent 不可见；理解屏幕内容请用 read_screen）"
+        if (!out.contains("kami-")) return@withScreenOn "错误：截屏失败：$out"
+        "已保存 $path（图片内容对 agent 不可见；理解屏幕内容请用 read_screen）"
     }
 
     /**
      * Trimmed uiautomator dump: drop noisy attributes, keep text / ids /
      * descs / clickable / bounds so it fits the tool-result budget.
      */
-    fun readScreen(): String {
-        if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
+    fun readScreen(): String = withScreenOn {
+        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
         val xml = ShizukuRunner.run(
             "uiautomator dump /sdcard/kami-uidump.xml >/dev/null 2>&1; " +
                 "sed -E 's/(index|package|checkable|checked|enabled|focusable|focused|" +
                 "selected|password|NAF)=\"[^\"]*\" //g' /sdcard/kami-uidump.xml 2>/dev/null | " +
                 "head -c 8000; rm -f /sdcard/kami-uidump.xml",
         )
-        return xml.ifBlank {
+        xml.ifBlank {
             "错误：屏幕层级获取失败（屏幕可能非空闲或目标窗口禁止 dump，稍后重试）"
         }
     }
@@ -44,8 +79,8 @@ object ScreenControl {
         y2: Int?,
         durationMs: Int?,
         key: String?,
-    ): String {
-        if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
+    ): String = withScreenOn {
+        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
         val cmd = when (action) {
             "tap" -> "input tap $x $y"
 
@@ -55,23 +90,23 @@ object ScreenControl {
 
             "key" -> {
                 val name = (key ?: "").trim().uppercase()
-                if (!KEY_NAME.matches(name)) return "错误：非法按键名：$key"
+                if (!KEY_NAME.matches(name)) return@withScreenOn "错误：非法按键名：$key"
                 "input keyevent KEYCODE_$name"
             }
 
-            else -> return "错误：未知 action：$action"
+            else -> return@withScreenOn "错误：未知 action：$action"
         }
-        return ShizukuRunner.run(cmd).ifEmpty { "$action 完成" }
+        ShizukuRunner.run(cmd).ifEmpty { "$action 完成" }
     }
 
-    fun inputText(text: String): String {
-        if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
-        if (text.isBlank()) return "错误：空文本"
+    fun inputText(text: String): String = withScreenOn {
+        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
+        if (text.isBlank()) return@withScreenOn "错误：空文本"
 
         // Pure ASCII: no IME dance needed, `input text` carries it directly.
         if (ASCII_ONLY.matches(text)) {
             val out = ShizukuRunner.run("input text '$text'")
-            return out.ifEmpty { "已输入（input text）" }
+            return@withScreenOn out.ifEmpty { "已输入（input text）" }
         }
 
         // Non-ASCII (e.g. Chinese): switch to the bundled ADB-Keyboard IME,
@@ -92,6 +127,6 @@ object ScreenControl {
                 ShizukuRunner.run("ime set $original")
             }
         }
-        return "已发送输入（若未生效，目标界面可能没有聚焦的输入框）"
+        "已发送输入（若未生效，目标界面可能没有聚焦的输入框）"
     }
 }

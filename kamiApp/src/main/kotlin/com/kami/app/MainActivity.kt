@@ -309,6 +309,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         ExtensionStore.init(applicationContext)
         ProotSandbox.init(applicationContext)
+        ScreenControl.init(applicationContext)
         // targetSdk 35+ enforces edge-to-edge; draw edge to edge on purpose
         // and pad content with safeDrawing (status bar + nav + IME) below.
         enableEdgeToEdge()
