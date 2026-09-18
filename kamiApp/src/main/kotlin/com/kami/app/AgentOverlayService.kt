@@ -39,6 +39,16 @@ object AgentOverlayState {
     /** Set while the agent reads the screen / screenshots: hide the window. */
     val suppress = mutableStateOf(false)
 
+    /**
+     * >0 while a screen-control tool is actually running. Non-screen work
+     * stays in the notification shade; the floating window is reserved for
+     * when the agent is driving the screen.
+     */
+    val screenBusy = mutableStateOf(0)
+
+    /** Console quick actions classified as screen ops force the window on. */
+    val forceWindow = mutableStateOf(false)
+
     val jobs = CopyOnWriteArrayList<Job>()
 
     fun add(job: Job) {
@@ -64,6 +74,7 @@ class AgentOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var view: LinearLayout? = null
     private var attached = false
+    private var lastNotifiedStatus: String? = null
     private lateinit var statusView: TextView
 
     private val tick = object : Runnable {
@@ -73,14 +84,21 @@ class AgentOverlayService : Service() {
                 stopSelf()
                 return
             }
-            val show = !AgentOverlayState.activityVisible.value && !AgentOverlayState.suppress.value
+            val show = !AgentOverlayState.activityVisible.value &&
+                !AgentOverlayState.suppress.value &&
+                (AgentOverlayState.screenBusy.value > 0 || AgentOverlayState.forceWindow.value)
             if (show && !attached) attach()
             if (!show && attached) detach()
+            val active = AgentOverlayState.jobs.count { it.isActive }
+            val st = (if (active > 1) "[$active 个会话] " else "") +
+                AgentOverlayState.status.value.ifEmpty { "思考中…" }
             if (attached) {
-                val active = AgentOverlayState.jobs.count { it.isActive }
-                statusView.text =
-                    (if (active > 1) "[$active 个会话] " else "") +
-                    AgentOverlayState.status.value.ifEmpty { "思考中…" }
+                statusView.text = st
+            }
+            // Non-screen work reports progress in the notification shade.
+            if (st != lastNotifiedStatus) {
+                lastNotifiedStatus = st
+                notifyProgress(st)
             }
             handler.postDelayed(this, 500)
         }
@@ -174,9 +192,22 @@ class AgentOverlayService : Service() {
         view = null
     }
 
+    /** Update the foreground notification with the latest status line. */
+    private fun notifyProgress(text: String) {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val n = Notification.Builder(this, "kami_overlay")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Kami Agent 运行中")
+            .setContentText(text)
+            .setOngoing(true)
+            .build()
+        runCatching { nm.notify(NOTIF_ID, n) }
+    }
+
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         detach()
+        lastNotifiedStatus = null
         super.onDestroy()
     }
 

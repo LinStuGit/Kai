@@ -53,7 +53,7 @@ object AgentClient {
         """
         [
           {"type":"function","function":{"name":"run_shell","description":"在手机上以 shell uid（Shizuku，免 root）执行命令；支持 ; && 串联与管道","parameters":{"type":"object","properties":{"command":{"type":"string","description":"shell 命令"}},"required":["command"]}}},
-          {"type":"function","function":{"name":"sandbox_setup","description":"安装 Alpine Linux proot 沙箱：自动按设备架构下载 proot 静态二进制与 Alpine minirootfs 到 /data/local/tmp/kami-proot。首次使用沙箱前执行一次，重复执行会重装","parameters":{"type":"object","properties":{"proot_url":{"type":"string","description":"可选，自定义 proot 静态二进制下载地址"},"rootfs_url":{"type":"string","description":"可选，自定义 Alpine rootfs tar.gz 地址"}}}}},
+          {"type":"function","function":{"name":"sandbox_setup","description":"安装 Alpine Linux proot 沙箱：proot 与 rootfs 已内置（arm64/arm，免下载，数秒完成）；其它架构或自定义源时用可传 URL 下载。重复执行会重装","parameters":{"type":"object","properties":{"proot_url":{"type":"string","description":"可选，自定义 proot 静态二进制下载地址"},"rootfs_url":{"type":"string","description":"可选，自定义 Alpine rootfs tar.gz 地址"}}}}},
           {"type":"function","function":{"name":"sandbox_run","description":"在 Alpine Linux 沙箱内执行命令（与宿主隔离，apk add 可装软件包，适合编译、网络工具、文件处理）","parameters":{"type":"object","properties":{"command":{"type":"string","description":"在 Alpine 内执行的 sh 命令"}},"required":["command"]}}},
           {"type":"function","function":{"name":"sandbox_status","description":"查看沙箱安装状态","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"notify_user","description":"发一条系统通知提醒用户（长任务完成、需要用户回来授权或操作时用）","parameters":{"type":"object","properties":{"title":{"type":"string","description":"通知标题"},"text":{"type":"string","description":"通知正文"}},"required":["text"]}}},

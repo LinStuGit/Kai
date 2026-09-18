@@ -147,6 +147,10 @@ internal fun ChatScreen(
                     },
                 )
             }
+            AssistChip(
+                onClick = { SessionStore.newSession() },
+                label = { Text("＋ 新会话", fontSize = 12.sp) },
+            )
         }
 
         LazyColumn(

@@ -9,10 +9,12 @@ import java.net.URL
 import java.security.MessageDigest
 
 /**
- * Alpine Linux sandbox on proot: the app downloads the official static
- * proot binary and the Alpine minirootfs, pushes both through Shizuku into
- * /data/local/tmp/kami-proot (shell uid may execute there) and then runs
- * commands inside the guest rootfs — isolated from the host, with apk.
+ * Alpine Linux sandbox on proot. The static proot binary and the Alpine
+ * minirootfs for arm64/arm are bundled in assets/ — installing needs no
+ * download. Both are pushed through Shizuku into /data/local/tmp/kami-proot
+ * (shell uid may execute there) and commands then run inside the guest
+ * rootfs — isolated from the host, with apk. Other architectures fall back
+ * to downloading (or custom URLs).
  */
 object ProotSandbox {
 
@@ -20,6 +22,9 @@ object ProotSandbox {
     private const val PROOT_TAG = "v5.3.0" // last release shipping static per-arch builds
     private const val ALPINE_BRANCH = "v3.22"
     private const val CHUNK = 90_000 // base64 chunk < MAX_ARG_STRLEN (128K)
+
+    /** Architectures whose proot + rootfs ship inside the APK. */
+    private val BUNDLED = setOf("aarch64", "arm")
 
     private val PROOT_ARCH = mapOf(
         "arm64-v8a" to "aarch64",
@@ -34,9 +39,11 @@ object ProotSandbox {
         "x86" to "x86",
     )
 
+    private lateinit var appContext: Context
     private lateinit var cacheDir: File
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         cacheDir = context.applicationContext.cacheDir
     }
 
@@ -44,15 +51,20 @@ object ProotSandbox {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
         val flags = ShizukuRunner.run(
             "test -x $DIR/proot && echo proot=ok || echo proot=missing; " +
-                "test -f $DIR/alpine/bin/sh && echo rootfs=ok || echo rootfs=missing; " +
-                "du -sh $DIR 2>/dev/null | cut -f1",
+                "{ test -f $DIR/alpine/bin/sh || test -f $DIR/alpine/usr/bin/busybox; } && " +
+                "echo rootfs=ok || echo rootfs=missing; du -sh $DIR 2>/dev/null | cut -f1",
         )
-        return if (installed()) "沙箱已安装\n$flags" else "沙箱未安装（调用 sandbox_setup 安装）\n$flags"
+        return if (installed()) {
+            "沙箱已安装\n$flags"
+        } else {
+            "沙箱未安装（内置资源一键安装，无需下载）\n$flags"
+        }
     }
 
     /**
-     * Download → push via chunked base64 over Shizuku → extract → smoke
-     * test. Custom URLs let the agent work around blocked sources.
+     * Install: read the bundled assets (no download) when available, push
+     * both files through Shizuku, extract and verify. Custom URLs override
+     * the assets and let the agent work around blocked sources.
      */
     fun setup(prootUrl: String? = null, rootfsUrl: String? = null): String {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权，请先在主界面授权"
@@ -61,21 +73,41 @@ object ProotSandbox {
         val prootArch = PROOT_ARCH[abi] ?: return "不支持的设备架构：$abi"
         val alpineArch = ALPINE_ARCH[prootArch] ?: return "Alpine 无对应架构：$prootArch"
 
-        val pUrl = prootUrl?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: "https://github.com/proot-me/proot/releases/download/$PROOT_TAG/proot-$PROOT_TAG-$prootArch-static"
-        val rUrl = rootfsUrl?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: latestMinirootfs(alpineArch)
-
+        val bundled = prootUrl.isNullOrBlank() && rootfsUrl.isNullOrBlank() && prootArch in BUNDLED
         val log = StringBuilder()
-        val prootFile = download(pUrl, File(cacheDir, "proot-static"), log)
-        val fsFile = download(rUrl, File(cacheDir, "minirootfs.tar.gz"), log)
+        val prootFile: File
+        val fsFile: File
+        if (bundled) {
+            prootFile = assetToFile("proot/$prootArch/proot", File(cacheDir, "proot-static"))
+            fsFile = assetToFile("rootfs/$prootArch/rootfs.tar.gz", File(cacheDir, "minirootfs.tar.gz"))
+            log.append("已从内置资源读取（免下载）\n")
+        } else {
+            val pUrl = prootUrl?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: "https://github.com/proot-me/proot/releases/download/$PROOT_TAG/proot-$PROOT_TAG-$prootArch-static"
+            val rUrl = rootfsUrl?.trim().takeUnless { it.isNullOrEmpty() }
+                ?: latestMinirootfs(alpineArch)
+            prootFile = download(pUrl, File(cacheDir, "proot-static"), log)
+            fsFile = download(rUrl, File(cacheDir, "minirootfs.tar.gz"), log)
+        }
 
-        ShizukuRunner.run("mkdir -p $DIR/alpine $DIR/tmp")
+        ShizukuRunner.run("rm -rf $DIR/alpine && mkdir -p $DIR/alpine $DIR/tmp")
         pushFile(prootFile, "$DIR/proot", log, executable = true)
         pushFile(fsFile, "$DIR/rootfs.tar.gz", log, executable = false)
 
-        val extract = ShizukuRunner.run("tar -xzf $DIR/rootfs.tar.gz -C $DIR/alpine && echo OK")
-        if (!extract.contains("OK")) return "rootfs 解压失败：$extract"
+        // toybox tar can choke on rootfs entries it dislikes (absolute-path
+        // symlinks among them) and bail early — don't trust its exit code.
+        // Judge by the result instead, and recreate the top-level usr
+        // symlinks when the tar dropped them.
+        val tarOut = ShizukuRunner.run("tar -xzf $DIR/rootfs.tar.gz -C $DIR/alpine 2>/dev/null; echo tar-done")
+        val check = ShizukuRunner.run(
+            "cd $DIR/alpine && { [ -e bin/sh ] || " +
+                "{ ln -sfn usr/bin bin; ln -sfn usr/sbin sbin; ln -sfn usr/lib lib; " +
+                "ln -sfn usr/lib64 lib64 2>/dev/null; }; }; " +
+                "{ [ -f bin/sh ] || [ -f usr/bin/busybox ]; } && echo rootfs-ok || echo rootfs-broken",
+        )
+        if (!check.contains("rootfs-ok")) {
+            return "rootfs 解压失败：${tarOut.take(200)} / $check"
+        }
         // Host has no /etc/resolv.conf for proot's -R to bind; write DNS into
         // the guest so apk/wget work inside.
         ShizukuRunner.run(
@@ -100,8 +132,17 @@ object ProotSandbox {
 
     private fun installed(): Boolean = ShizukuRunner.granted() &&
         ShizukuRunner.run(
-            "test -x $DIR/proot && test -f $DIR/alpine/bin/sh && echo yes || echo no",
+            "{ test -x $DIR/proot && { test -f $DIR/alpine/bin/sh || " +
+                "test -f $DIR/alpine/usr/bin/busybox; }; } && echo yes || echo no",
         ).contains("yes")
+
+    /** Copy a bundled asset to a cache file (app can't hand assets to shell directly). */
+    private fun assetToFile(relPath: String, dest: File): File {
+        appContext.assets.open(relPath).use { input ->
+            dest.outputStream().use { output -> input.copyTo(output) }
+        }
+        return dest
+    }
 
     /**
      * App-private files are not shell-readable; transfer via chunked base64

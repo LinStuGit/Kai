@@ -31,28 +31,31 @@ object ScreenControl {
     /**
      * Run [block] with the screen on: a SCREEN_BRIGHT wake lock that also
      * wakes a sleeping display, released as soon as the call returns
-     * (30s timeout guards against a lost release).
+     * (30s timeout guards against a lost release). Inline so the lambdas
+     * may return out of the whole tool call.
      */
-    private fun <T> withScreenOn(block: () -> T): T {
+    private inline fun <T> withScreenOn(block: () -> T): T {
+        AgentOverlayState.screenBusy.value += 1
         var lock: PowerManager.WakeLock? = null
-        app?.let { ctx ->
-            val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
-            @Suppress("DEPRECATION")
-            lock = pm.newWakeLock(
-                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                "kami:screen-control",
-            )
-            lock?.acquire(WAKE_TIMEOUT_MS)
-        }
-        return try {
-            block()
+        try {
+            app?.let { ctx ->
+                val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+                @Suppress("DEPRECATION")
+                lock = pm.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "kami:screen-control",
+                )
+                lock?.acquire(WAKE_TIMEOUT_MS)
+            }
+            return block()
         } finally {
             lock?.release()
+            AgentOverlayState.screenBusy.value -= 1
         }
     }
 
     /** Hide our own overlay window for the duration of [block]. */
-    private fun <T> withOverlayHidden(block: () -> T): T {
+    private inline fun <T> withOverlayHidden(block: () -> T): T {
         val was = AgentOverlayState.suppress.value
         AgentOverlayState.suppress.value = true
         return try {

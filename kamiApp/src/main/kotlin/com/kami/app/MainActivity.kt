@@ -40,6 +40,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -303,6 +304,7 @@ private data class SettingsEntry(val title: String, val subtitle: String, val ta
 private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("Agent 模型", "固定 madmodel 端点 · JWT 池状态", "set-agent"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
+    SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
     SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板", "set-ext"),
     SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
     SettingsEntry("安全", "敏感操作生物验证", "set-sec"),
@@ -399,6 +401,8 @@ class MainActivity : FragmentActivity() {
                             "set-agent" -> SubPage("Agent 模型") { AgentSection() }
 
                             "set-tasks" -> SubPage("定时任务") { ReminderSection() }
+
+                            "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
 
@@ -509,6 +513,12 @@ class MainActivity : FragmentActivity() {
             input = ""
             if (history.lastOrNull() != c) history.add(c)
             val appCtx = applicationContext
+            // Screen-driving commands (screencap/uiautomator/input) earn the
+            // floating window; the rest report via the notification shade.
+            val screenOp = listOf(
+                "screencap", "uiautomator", "input tap", "input swipe",
+                "input keyevent", "input text",
+            ).any { c.contains(it) }
             val job = scope.launch(Dispatchers.IO) {
                 running = true
                 transcript += "\n→ $c\n"
@@ -523,6 +533,7 @@ class MainActivity : FragmentActivity() {
                     }
                 } finally {
                     running = false
+                    AgentOverlayState.forceWindow.value = false
                     AgentOverlayState.refresh()
                     if (!AgentOverlayState.running.value) {
                         runCatching {
@@ -535,6 +546,7 @@ class MainActivity : FragmentActivity() {
             // floating window (output + force-stop) shows while the user
             // is in another app.
             AgentOverlayState.status.value = "控制台：$c"
+            AgentOverlayState.forceWindow.value = screenOp
             AgentOverlayState.add(job)
             if (Settings.canDrawOverlays(appCtx)) {
                 runCatching {
@@ -707,6 +719,60 @@ class MainActivity : FragmentActivity() {
                 modifier = Modifier.padding(top = 16.dp),
             )
         }
+    }
+
+    @Composable
+    private fun SandboxSection() {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        var status by remember { mutableStateOf("读取中…") }
+        var running by remember { mutableStateOf(false) }
+
+        LaunchedEffect(Unit) {
+            status = kotlinx.coroutines.withContext(Dispatchers.IO) { ProotSandbox.status() }
+        }
+
+        Text("Alpine 沙箱", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "proot 与 Alpine rootfs 已内置（arm64/arm），安装无需下载、数秒完成。" +
+                "沙箱与手机宿主隔离，apk add 可装软件包；控制台「终端」页可直接进入命令行",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            status,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    if (running) return@Button
+                    scope.launch(Dispatchers.IO) {
+                        running = true
+                        status = "安装中…"
+                        status = ProotSandbox.setup()
+                        running = false
+                    }
+                },
+                enabled = !running,
+            ) { Text("安装/重装沙箱") }
+            OutlinedButton(
+                onClick = {
+                    scope.launch(Dispatchers.IO) { status = ProotSandbox.status() }
+                },
+                enabled = !running,
+            ) { Text("刷新状态") }
+        }
+        if (running) {
+            CircularProgressIndicator(Modifier.padding(6.dp))
+        }
+        Text(
+            "提示：agent 也能用 sandbox_setup/sandbox_run/sandbox_status 工具操作沙箱",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 
     @Composable
