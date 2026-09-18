@@ -35,6 +35,10 @@ object AgentOverlayState {
     val running = mutableStateOf(false)
     val status = mutableStateOf("")
     val activityVisible = mutableStateOf(true)
+
+    /** Set while the agent reads the screen / screenshots: hide the window. */
+    val suppress = mutableStateOf(false)
+
     val jobs = CopyOnWriteArrayList<Job>()
 
     fun add(job: Job) {
@@ -69,7 +73,7 @@ class AgentOverlayService : Service() {
                 stopSelf()
                 return
             }
-            val show = !AgentOverlayState.activityVisible.value
+            val show = !AgentOverlayState.activityVisible.value && !AgentOverlayState.suppress.value
             if (show && !attached) attach()
             if (!show && attached) detach()
             if (attached) {

@@ -37,10 +37,17 @@ object AgentClient {
             "sandbox_run 在 Alpine Linux 沙箱内执行（与宿主隔离，apk add 可装包；未安装时先调 " +
             "sandbox_setup，装好后编译/网络/脚本类任务优先在沙箱里做）；add_extension 把 " +
             "shell 命令固化成用户主界面一键功能——当用户要求新能力时优先注册拓展，而不是只执行一次；" +
-            "notify_user 可发系统通知（长任务完成或需要用户回来时用）。危险命令（重启/卸载/" +
-            "清数据等）会触发生物验证，用户拒绝则立即放弃并说明。回答用中文，简洁直接。"
+            "notify_user 可发系统通知（长任务完成或需要用户回来时用）。" +
+            "跨会话持久记忆可用：用户的偏好、背景、长期约定与重要结论用 memory_save 主动记录" +
+            "（不必询问），memory_recall 可检索；add_reminder 可创建每日定时提醒（重要提醒会" +
+            "震动并全屏弹出到应用，适合早报/作业/上课提醒），list_reminders/remove_reminder 管理；" +
+            "calendar_add/calendar_list 读写系统日历日程；list_skills/skill_run 调用用户自定义" +
+            "技能模板。屏幕操作要点：先 read_screen 定位（它会自动隐藏 Kami 悬浮窗并收起键盘，" +
+            "不会遮挡目标界面），随后凭一次读取的 bounds 连续执行多个点击/输入，不要每步都重读；" +
+            "完成后再读一次确认结果。危险命令（重启/卸载/清数据等）会触发生物验证，用户拒绝则" +
+            "立即放弃并说明。回答用中文，简洁直接。"
 
-    private const val MAX_TOOL_RESULT = 4000
+    private const val MAX_TOOL_RESULT = 6000
 
     private val TOOLS: JSONArray = JSONArray(
         """
@@ -57,7 +64,16 @@ object AgentClient {
           {"type":"function","function":{"name":"add_extension","description":"注册一个新功能：shell 命令固化为用户主界面快捷指令（一键执行）。让功能持久化的正规途径","parameters":{"type":"object","properties":{"id":{"type":"string","description":"可选，稳定唯一 id，重复则替换"},"name":{"type":"string","description":"功能名，要短"},"desc":{"type":"string","description":"一句话说明"},"cmd":{"type":"string","description":"要执行的 shell 命令"}},"required":["name","cmd"]}}},
           {"type":"function","function":{"name":"remove_extension","description":"删除已注册的拓展功能","parameters":{"type":"object","properties":{"id":{"type":"string","description":"拓展 id"}},"required":["id"]}}},
           {"type":"function","function":{"name":"list_extensions","description":"列出全部已注册拓展（JSON 数组）","parameters":{"type":"object","properties":{}}}},
-          {"type":"function","function":{"name":"device_info","description":"设备概况：型号/系统版本/无线调试开关与端口","parameters":{"type":"object","properties":{}}}}
+          {"type":"function","function":{"name":"device_info","description":"设备概况：型号/系统版本/无线调试开关与端口","parameters":{"type":"object","properties":{}}}},
+          {"type":"function","function":{"name":"memory_save","description":"把重要事实写入持久记忆（跨会话有效）：用户偏好、项目背景、长期约定、重要结论。值得记的主动存，不必询问","parameters":{"type":"object","properties":{"text":{"type":"string","description":"要记住的事实，一句话"}},"required":["text"]}}},
+          {"type":"function","function":{"name":"memory_recall","description":"检索持久记忆；不带 query 返回最近记忆","parameters":{"type":"object","properties":{"query":{"type":"string","description":"关键词，可省略"}}}}},
+          {"type":"function","function":{"name":"add_reminder","description":"创建每日定时提醒，到点发系统通知；important=true 时震动并全屏弹出到应用。适合每日早报、作业提醒、上课提醒等","parameters":{"type":"object","properties":{"title":{"type":"string","description":"提醒标题，要短"},"text":{"type":"string","description":"通知内容"},"hour":{"type":"integer","description":"小时 0-23"},"minute":{"type":"integer","description":"分钟 0-59"},"important":{"type":"boolean","description":"重要：震动+全屏直达，默认 false"}},"required":["title","text","hour","minute"]}}},
+          {"type":"function","function":{"name":"remove_reminder","description":"删除定时提醒","parameters":{"type":"object","properties":{"id":{"type":"string","description":"提醒 id 或精确标题"}},"required":["id"]}}},
+          {"type":"function","function":{"name":"list_reminders","description":"列出全部定时提醒","parameters":{"type":"object","properties":{}}}},
+          {"type":"function","function":{"name":"calendar_add","description":"在系统日历新建日程事件","parameters":{"type":"object","properties":{"title":{"type":"string"},"start_ms":{"type":"integer","description":"开始时间 epoch 毫秒"},"duration_min":{"type":"integer","description":"持续分钟，默认 60"},"desc":{"type":"string","description":"描述，可省略"}},"required":["title","start_ms"]}}},
+          {"type":"function","function":{"name":"calendar_list","description":"查看未来几天的系统日历日程","parameters":{"type":"object","properties":{"days":{"type":"integer","description":"往后看几天，默认 7"}}}}},
+          {"type":"function","function":{"name":"list_skills","description":"列出可用的技能（用户自定义的提示词模板）","parameters":{"type":"object","properties":{}}}},
+          {"type":"function","function":{"name":"skill_run","description":"展开技能模板为完整任务指令，按展开结果立即执行","parameters":{"type":"object","properties":{"name":{"type":"string","description":"技能名"},"args":{"type":"object","description":"模板变量键值对，如 {\"日期\":\"明天\"}"}},"required":["name"]}}}
         ]
         """.trimIndent(),
     )
@@ -136,13 +152,13 @@ object AgentClient {
 
     private fun send(key: String, history: JSONArray): SendResult {
         val msgs = JSONArray().put(
-            JSONObject().put("role", "system").put("content", SYSTEM_PROMPT),
+            JSONObject().put("role", "system").put("content", systemContent()),
         )
         for (i in 0 until history.length()) msgs.put(history.getJSONObject(i))
         val body = JSONObject()
             .put("model", MadModel.MODEL)
             .put("messages", msgs)
-            .put("tools", TOOLS)
+            .put("tools", toolSchemas())
 
         val conn = URL(MadModel.BASE.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
@@ -165,6 +181,25 @@ object AgentClient {
     }
 
     private class SendResult(val code: Int, val text: String, val body: JSONObject)
+
+    /** System prompt plus the latest persisted memories for this turn. */
+    private fun systemContent(): String {
+        val mem = MemoryStore.recent(30)
+        return if (mem.isEmpty()) {
+            SYSTEM_PROMPT
+        } else {
+            SYSTEM_PROMPT + "\n\n[持久记忆]\n" + mem.joinToString("\n") { "- $it" }
+        }
+    }
+
+    /** Built-in tools merged with anything registered in the registry (MCP). */
+    private fun toolSchemas(): JSONArray {
+        val all = JSONArray()
+        for (i in 0 until TOOLS.length()) all.put(TOOLS.getJSONObject(i))
+        val extra = ExtraToolRegistry.schemas()
+        for (i in 0 until extra.length()) all.put(extra.getJSONObject(i))
+        return all
+    }
 
     private fun executeTool(
         sessionId: String,
@@ -230,6 +265,87 @@ object AgentClient {
 
             "list_extensions" -> ExtensionStore.toJson()
 
+            "memory_save" -> {
+                if (MemoryStore.save(args.optString("text"))) {
+                    "已记住（现共 ${MemoryStore.all().size} 条）"
+                } else {
+                    "未保存（内容为空或已存在）"
+                }
+            }
+
+            "memory_recall" -> {
+                val q = args.optString("query").trim()
+                val found = if (q.isEmpty()) MemoryStore.recent(20) else MemoryStore.search(q)
+                if (found.isEmpty()) "（无匹配记忆）" else found.joinToString("\n")
+            }
+
+            "add_reminder" -> {
+                val r = ReminderStore.add(
+                    context.applicationContext,
+                    args.optString("title"),
+                    args.optString("text"),
+                    args.optInt("hour").coerceIn(0, 23),
+                    args.optInt("minute").coerceIn(0, 59),
+                    args.optBoolean("important"),
+                )
+                "已创建每日提醒 ${r.hour}:${"%02d".format(r.minute)} 「${r.title}」" +
+                    if (r.important) "（重要：震动+全屏直达）" else ""
+            }
+
+            "remove_reminder" -> {
+                val removed = ReminderStore.remove(context.applicationContext, args.optString("id"))
+                if (removed) "已删除提醒" else "未找到该提醒（list_reminders 可查 id）"
+            }
+
+            "list_reminders" -> {
+                val all = ReminderStore.all()
+                if (all.isEmpty()) {
+                    "（暂无定时提醒）"
+                } else {
+                    all.joinToString("\n") {
+                        "%s id=%s %02d:%02d%s%s".format(
+                            it.title,
+                            it.id,
+                            it.hour,
+                            it.minute,
+                            if (it.important) " [重要]" else "",
+                            if (!it.enabled) " [已停用]" else "",
+                        )
+                    }
+                }
+            }
+
+            "calendar_add" -> CalendarTools.addEvent(
+                context,
+                args.optString("title"),
+                args.optLong("start_ms"),
+                args.optInt("duration_min", 60),
+                args.optString("desc"),
+            )
+
+            "calendar_list" -> CalendarTools.listEvents(context, args.optInt("days", 7))
+
+            "list_skills" -> {
+                val skills = SkillStore.all()
+                if (skills.isEmpty()) {
+                    "（暂无技能 — 用户可在设置页导入，或把建议的模板给用户）"
+                } else {
+                    skills.joinToString("\n") { s ->
+                        "${s.name}（${s.desc.ifBlank { "无描述" }}）模板：${s.template.take(200)}"
+                    }
+                }
+            }
+
+            "skill_run" -> {
+                val skill = SkillStore.byName(args.optString("name"))
+                if (skill == null) {
+                    "未知技能：${args.optString("name")}（list_skills 可查）"
+                } else {
+                    val expanded = SkillStore.fill(skill, args.optJSONObject("args") ?: JSONObject())
+                    "技能「${skill.name}」已展开，请按以下指令立即执行任务：\n$expanded"
+                }
+            }
+
             "device_info" -> {
                 if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
                 ShizukuRunner.run(
@@ -239,7 +355,7 @@ object AgentClient {
                 )
             }
 
-            else -> "未知工具: $name"
+            else -> ExtraToolRegistry.get(name)?.execute(argsJson) ?: "未知工具: $name"
         }
     }
 
@@ -252,14 +368,17 @@ object AgentClient {
         }
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
+            // IMPORTANCE_HIGH: heads-up banner, shade, and lockscreen /
+            //焦点通知（灵动岛类）都能完整展示。
             nm.createNotificationChannel(
-                NotificationChannel("kami_agent", "Kami Agent", NotificationManager.IMPORTANCE_DEFAULT),
+                NotificationChannel("kami_agent", "Kami Agent", NotificationManager.IMPORTANCE_HIGH),
             )
         }
         val n = Notification.Builder(context, "kami_agent")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(args.optString("title").ifBlank { "Kami Agent" })
             .setContentText(args.optString("text"))
+            .setCategory(Notification.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .build()
         nm.notify((System.currentTimeMillis() / 1000).toInt(), n)

@@ -18,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +40,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -98,6 +98,11 @@ private const val EXT_HINT =
         "am broadcast -a com.kami.app.ext.LIST\n" +
         "logcat -d -s KamiExt"
 
+private const val SKILL_HINT =
+    "技能 = 提示词模板（{{变量}} 占位），agent 用 skill_run 展开后执行：\n" +
+        "{\"name\":\"早报\",\"desc\":\"生成每日早报\",\"template\":\"现在 {{时间}}，生成今日早报：日程、提醒、待办\"}\n" +
+        "也可让 agent 自己通过 add_extension 之外的方式建议模板，由用户导入"
+
 /** Runtime permission groups surfaced in Settings → 权限管理. */
 private data class PermGroup(val label: String, val perms: List<String>)
 
@@ -120,13 +125,19 @@ private val RUNTIME_GROUPS: List<PermGroup> = buildList {
     add(
         PermGroup(
             "联系人",
-            listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS),
+            listOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.WRITE_CONTACTS,
+            ),
         ),
     )
     add(
         PermGroup(
             "日历",
-            listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+            listOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR,
+            ),
         ),
     )
     add(
@@ -241,6 +252,24 @@ private val SPECIAL_ACCESS: List<SpecialAccess> = listOf(
         { ctx -> ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) },
     ),
     SpecialAccess(
+        "闹钟与提醒（精确闹钟）",
+        {
+            Build.VERSION.SDK_INT < 31 ||
+                (it.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager)
+                    .canScheduleExactAlarms()
+        },
+        { ctx ->
+            if (Build.VERSION.SDK_INT >= 31) {
+                runCatching {
+                    ctx.startActivity(
+                        Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                            .setData(Uri.parse("package:${ctx.packageName}")),
+                    )
+                }
+            }
+        },
+    ),
+    SpecialAccess(
         "电池优化白名单",
         { ctx ->
             (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager)
@@ -268,19 +297,30 @@ private fun usageAccessGranted(ctx: Context): Boolean = try {
     false
 }
 
+/** Settings menu entry: title row that opens a sub page. */
+private data class SettingsEntry(val title: String, val subtitle: String, val target: String)
+
+private val SETTINGS_ENTRIES = listOf(
+    SettingsEntry("Agent 模型", "固定 madmodel 端点 · JWT 池状态", "set-agent"),
+    SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
+    SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板", "set-ext"),
+    SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
+    SettingsEntry("安全", "敏感操作生物验证", "set-sec"),
+)
+
+private val TIME_RE = Regex("^(\\d{1,2}):(\\d{2})$")
+
 /**
- * Shizuku-backed ADB shell console: status card, quick actions (built-in +
- * agent-added extensions) and a free command line; Settings manages the
- * extension interface, the fixed madmodel agent endpoint, the biometric
- * gate and the permission surface. Every Shizuku command runs as shell
- * uid — no root.
+ * Shizuku-backed ADB shell console + on-device agent. Home is the chat
+ * screen; console / terminal / settings sub pages sit on top of it.
+ * Every Shizuku command runs as shell uid — no root.
  */
 class MainActivity : FragmentActivity() {
 
     private val shizukuAlive = mutableStateOf(false)
     private val shizukuGranted = mutableStateOf(false)
 
-    /** "chat" is the home screen; console/settings sit on top of it. */
+    /** "chat" is the home screen; everything else sits on top of it. */
     private val screen = mutableStateOf("chat")
 
     private val binderListener = Shizuku.OnBinderReceivedListener {
@@ -310,6 +350,10 @@ class MainActivity : FragmentActivity() {
         ExtensionStore.init(applicationContext)
         ProotSandbox.init(applicationContext)
         ScreenControl.init(applicationContext)
+        MemoryStore.init(applicationContext)
+        SkillStore.init(applicationContext)
+        ReminderStore.init(applicationContext)
+        ReminderScheduler.scheduleAll(applicationContext)
         // targetSdk 35+ enforces edge-to-edge; draw edge to edge on purpose
         // and pad content with safeDrawing (status bar + nav + IME) below.
         enableEdgeToEdge()
@@ -320,8 +364,8 @@ class MainActivity : FragmentActivity() {
         }
         refresh()
         setContent {
-            // Home (chat): double-back within 2s to exit; other screens go
-            // back to chat on system back.
+            // Home (chat): double-back within 2s to exit; settings sub pages
+            // go back to the settings menu; everything else goes home.
             var lastBackAt by remember { mutableStateOf(0L) }
             BackHandler(enabled = screen.value == "chat") {
                 val now = System.currentTimeMillis()
@@ -332,7 +376,9 @@ class MainActivity : FragmentActivity() {
                     Toast.makeText(this@MainActivity, "再按一次返回退出", Toast.LENGTH_SHORT).show()
                 }
             }
-            BackHandler(enabled = screen.value != "chat") { screen.value = "chat" }
+            BackHandler(enabled = screen.value != "chat") {
+                screen.value = if (screen.value.startsWith("set-")) "settings" else "chat"
+            }
 
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -341,12 +387,24 @@ class MainActivity : FragmentActivity() {
                             .fillMaxSize()
                             .windowInsetsPadding(WindowInsets.safeDrawing),
                     ) {
-                        when (screen.value) {
-                            "settings" -> SettingsScreen()
+                        EssentialPermissionsOnce()
 
+                        when (screen.value) {
                             "console" -> ConsoleScreen()
 
                             "term" -> TerminalScreen(onBack = { screen.value = "console" })
+
+                            "settings" -> SettingsScreen()
+
+                            "set-agent" -> SubPage("Agent 模型") { AgentSection() }
+
+                            "set-tasks" -> SubPage("定时任务") { ReminderSection() }
+
+                            "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
+
+                            "set-perms" -> SubPage("权限管理") { PermissionsSection() }
+
+                            "set-sec" -> SubPage("安全") { BioSection() }
 
                             else -> ChatScreen(
                                 onConsole = { screen.value = "console" },
@@ -375,6 +433,65 @@ class MainActivity : FragmentActivity() {
         Shizuku.removeRequestPermissionResultListener(permissionListener)
     }
 
+    /**
+     * Calendar is an essential permission (schedules/reminders) — ask for
+     * it plus notifications once on first launch, right on the home screen.
+     */
+    @Composable
+    private fun EssentialPermissionsOnce() {
+        val ctx = LocalContext.current
+        val launcher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { }
+        LaunchedEffect(Unit) {
+            val prefs = ctx.getSharedPreferences("kami_essential", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("asked", false)) return@LaunchedEffect
+            prefs.edit().putBoolean("asked", true).apply()
+            val perms = buildList {
+                add(Manifest.permission.READ_CALENDAR)
+                add(Manifest.permission.WRITE_CALENDAR)
+                if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            runCatching { launcher.launch(perms.toTypedArray()) }
+        }
+    }
+
+    /** Counts ON_RESUME events — sub pages re-read permission/JWT state. */
+    @Composable
+    private fun rememberResumeRevision(): Int {
+        val activity = LocalContext.current as? FragmentActivity
+        var revision by remember { mutableStateOf(0) }
+        DisposableEffect(activity) {
+            val obs = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) revision++
+            }
+            activity?.lifecycle?.addObserver(obs)
+            onDispose { activity?.lifecycle?.removeObserver(obs) }
+        }
+        return revision
+    }
+
+    /** Generic sub page: header back to the settings menu + scrolled content. */
+    @Composable
+    private fun SubPage(
+        title: String,
+        content: @Composable () -> Unit,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { screen.value = "settings" }) { Text("← 设置") }
+                Text(title, style = MaterialTheme.typography.titleLarge)
+            }
+            content()
+        }
+    }
+
     @Composable
     private fun ConsoleScreen() {
         val alive by shizukuAlive
@@ -391,18 +508,41 @@ class MainActivity : FragmentActivity() {
             if (c.isEmpty() || running) return
             input = ""
             if (history.lastOrNull() != c) history.add(c)
-            scope.launch(Dispatchers.IO) {
+            val appCtx = applicationContext
+            val job = scope.launch(Dispatchers.IO) {
                 running = true
                 transcript += "\n→ $c\n"
-                val t0 = System.currentTimeMillis()
-                val out = ShizukuRunner.run(c)
-                val ms = System.currentTimeMillis() - t0
-                transcript += if (out.isEmpty()) {
-                    "（无输出，${ms}ms）\n"
-                } else {
-                    "$out\n"
+                try {
+                    val t0 = System.currentTimeMillis()
+                    val out = ShizukuRunner.run(c)
+                    val ms = System.currentTimeMillis() - t0
+                    transcript += if (out.isEmpty()) {
+                        "（无输出，${ms}ms）\n"
+                    } else {
+                        "$out\n"
+                    }
+                } finally {
+                    running = false
+                    AgentOverlayState.refresh()
+                    if (!AgentOverlayState.running.value) {
+                        runCatching {
+                            appCtx.stopService(Intent(appCtx, AgentOverlayService::class.java))
+                        }
+                    }
                 }
-                running = false
+            }
+            // Quick actions can drive the screen — track them so the
+            // floating window (output + force-stop) shows while the user
+            // is in another app.
+            AgentOverlayState.status.value = "控制台：$c"
+            AgentOverlayState.add(job)
+            if (Settings.canDrawOverlays(appCtx)) {
+                runCatching {
+                    ContextCompat.startForegroundService(
+                        appCtx,
+                        Intent(appCtx, AgentOverlayService::class.java),
+                    )
+                }
             }
         }
 
@@ -516,151 +656,62 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    /** Settings home: a simple navigation list into the sub pages. */
     @Composable
     private fun SettingsScreen() {
         val context = LocalContext.current
-        val activity = context as? FragmentActivity
-        val scope = rememberCoroutineScope()
-        val scroll = rememberScrollState()
-        var jsonInput by remember { mutableStateOf("") }
-        var feedback by remember { mutableStateOf("") }
-
-        // Refresh grant states + JWT card whenever the screen resumes.
-        var revision by remember { mutableStateOf(0) }
-        DisposableEffect(activity) {
-            val obs = LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) revision++
-            }
-            activity?.lifecycle?.addObserver(obs)
-            onDispose { activity?.lifecycle?.removeObserver(obs) }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scroll)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { screen.value = "chat" }) { Text("← 主页") }
                 Text("设置", style = MaterialTheme.typography.titleLarge)
             }
 
-            AgentSection(revision)
-            BioSection()
-
-            // Master switch for the whole extension interface.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Agent 拓展接口", style = MaterialTheme.typography.titleSmall)
+            SETTINGS_ENTRIES.forEach { entry ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { screen.value = entry.target }
+                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            entry.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
-                        "允许外部 agent 通过 adb 广播增删本应用功能",
-                        style = MaterialTheme.typography.bodySmall,
+                        "›",
+                        fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(
-                    checked = ExtensionStore.master.value,
-                    onCheckedChange = { ExtensionStore.setMaster(it) },
-                )
             }
 
             Text(
-                EXT_HINT,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
+                "Kami Console " + runCatching {
+                    val pi = context.packageManager.getPackageInfo(context.packageName, 0)
+                    @Suppress("DEPRECATION")
+                    "v${pi.versionName} (${pi.versionCode})"
+                }.getOrElse { "" },
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp),
             )
-
-            Text(
-                "已注册拓展（${ExtensionStore.items.value.size}）",
-                style = MaterialTheme.typography.titleSmall,
-            )
-            val list = ExtensionStore.items.value
-            if (list.isEmpty()) {
-                Text(
-                    "暂无 — 让 agent 用上方广播添加，或在下面粘贴 JSON 导入",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            list.forEach { e ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(e.name, style = MaterialTheme.typography.bodyMedium)
-                        if (e.desc.isNotBlank()) {
-                            Text(
-                                e.desc,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Switch(
-                        checked = e.enabled,
-                        onCheckedChange = { ExtensionStore.setEnabled(e.id, it) },
-                    )
-                    TextButton(onClick = { ExtensionStore.remove(e.id) }) { Text("删") }
-                }
-            }
-
-            OutlinedTextField(
-                value = jsonInput,
-                onValueChange = { jsonInput = it },
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                placeholder = {
-                    Text(
-                        "手动导入：{\"name\":\"截屏\",\"cmd\":\"screencap -p /sdcard/kami.png\"}",
-                        fontSize = 12.sp,
-                    )
-                },
-                textStyle = MaterialTheme.typography.bodySmall,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    feedback = try {
-                        val n = ExtensionStore.addFromJson(jsonInput)
-                        if (n > 0) {
-                            jsonInput = ""
-                            "已添加 $n 项"
-                        } else {
-                            "需要 name 与 cmd 字段"
-                        }
-                    } catch (t: Throwable) {
-                        "解析失败：${t.message}"
-                    }
-                }) { Text("导入 JSON") }
-
-                // Destructive: gated behind biometric auth when available.
-                val fa = activity
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            val count = ExtensionStore.items.value.size
-                            val ok = if (
-                                fa != null && BioGate.available(context) && BioGate.enabled(context)
-                            ) {
-                                BioGate.authenticate(fa, "清空全部拓展", "将删除 $count 项拓展功能")
-                            } else {
-                                true
-                            }
-                            if (ok) ExtensionStore.clear()
-                        }
-                    },
-                    enabled = ExtensionStore.items.value.isNotEmpty(),
-                ) { Text("清空全部") }
-            }
-            if (feedback.isNotEmpty()) {
-                Text(feedback, fontSize = 12.sp)
-            }
-
-            PermissionsSection(revision)
         }
     }
 
     @Composable
-    private fun AgentSection(revision: Int) {
+    private fun AgentSection() {
+        val revision = rememberResumeRevision()
         Text("Agent 模型（固定接入）", style = MaterialTheme.typography.titleSmall)
         Text(
             "端点  ${MadModel.BASE}\n模型  ${MadModel.MODEL}\n" +
@@ -684,6 +735,284 @@ class MainActivity : FragmentActivity() {
             )
         }
         OutlinedButton(onClick = { JwtKeyPool.dropAll() }) { Text("换新全部 key") }
+    }
+
+    @Composable
+    private fun ReminderSection() {
+        val context = LocalContext.current
+        var title by remember { mutableStateOf("") }
+        var text by remember { mutableStateOf("") }
+        var time by remember { mutableStateOf("") }
+        var important by remember { mutableStateOf(false) }
+        var feedback by remember { mutableStateOf("") }
+
+        Text("每日提醒", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "到点发系统通知；重要任务震动并全屏直达本应用（早报、作业提醒、上课提醒等）。" +
+                "也可以直接让 agent 创建",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        val items = ReminderStore.all().sortedBy { it.hour * 60 + it.minute }
+        if (items.isEmpty()) {
+            Text(
+                "暂无任务",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items.forEach { r ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "%02d:%02d  %s".format(r.hour, r.minute, r.title) +
+                            if (r.important) "  重要" else "",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        r.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = r.enabled,
+                    onCheckedChange = { ReminderStore.setEnabled(context, r.id, it) },
+                )
+                TextButton(onClick = { ReminderStore.remove(context, r.id) }) { Text("删") }
+            }
+        }
+
+        Text("新建", style = MaterialTheme.typography.titleSmall)
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("标题，如：早报") },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("通知内容") },
+            singleLine = true,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = time,
+                onValueChange = { time = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("时间 HH:mm，如 07:30") },
+                singleLine = true,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("重要", style = MaterialTheme.typography.bodySmall)
+                Switch(checked = important, onCheckedChange = { important = it })
+            }
+            Button(
+                onClick = {
+                    val m = TIME_RE.find(time.trim())
+                    val h = m?.groupValues?.get(1)?.toIntOrNull()
+                    val min = m?.groupValues?.get(2)?.toIntOrNull()
+                    if (title.isBlank() || text.isBlank() || h == null || min == null ||
+                        h > 23 || min > 59
+                    ) {
+                        feedback = "需要标题、内容与合法时间（HH:mm）"
+                        return@Button
+                    }
+                    ReminderStore.add(context, title, text, h, min, important)
+                    title = ""
+                    text = ""
+                    time = ""
+                    important = false
+                    feedback = "已创建，每日 ${"%02d:%02d".format(h, min)} 提醒"
+                },
+                enabled = title.isNotBlank() || text.isNotBlank() || time.isNotBlank(),
+            ) { Text("添加") }
+        }
+        if (feedback.isNotEmpty()) {
+            Text(feedback, fontSize = 12.sp)
+        }
+    }
+
+    @Composable
+    private fun ExtensionsSection() {
+        val context = LocalContext.current
+        val activity = context as? FragmentActivity
+        val scope = rememberCoroutineScope()
+        var jsonInput by remember { mutableStateOf("") }
+        var feedback by remember { mutableStateOf("") }
+        var skillInput by remember { mutableStateOf("") }
+        var skillFeedback by remember { mutableStateOf("") }
+
+        // Master switch for the whole extension interface.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Agent 拓展接口", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "允许外部 agent 通过 adb 广播增删本应用功能",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = ExtensionStore.master.value,
+                onCheckedChange = { ExtensionStore.setMaster(it) },
+            )
+        }
+
+        Text(
+            EXT_HINT,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Text(
+            "已注册拓展（${ExtensionStore.items.value.size}）",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        val list = ExtensionStore.items.value
+        if (list.isEmpty()) {
+            Text(
+                "暂无 — 让 agent 添加，或在下面粘贴 JSON 导入",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        list.forEach { e ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(e.name, style = MaterialTheme.typography.bodyMedium)
+                    if (e.desc.isNotBlank()) {
+                        Text(
+                            e.desc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Switch(
+                    checked = e.enabled,
+                    onCheckedChange = { ExtensionStore.setEnabled(e.id, it) },
+                )
+                TextButton(onClick = { ExtensionStore.remove(e.id) }) { Text("删") }
+            }
+        }
+
+        OutlinedTextField(
+            value = jsonInput,
+            onValueChange = { jsonInput = it },
+            modifier = Modifier.fillMaxWidth().height(110.dp),
+            placeholder = {
+                Text(
+                    "导入拓展：{\"name\":\"截屏\",\"cmd\":\"screencap -p /sdcard/kami.png\"}",
+                    fontSize = 12.sp,
+                )
+            },
+            textStyle = MaterialTheme.typography.bodySmall,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                feedback = try {
+                    val n = ExtensionStore.addFromJson(jsonInput)
+                    if (n > 0) {
+                        jsonInput = ""
+                        "已添加 $n 项"
+                    } else {
+                        "需要 name 与 cmd 字段"
+                    }
+                } catch (t: Throwable) {
+                    "解析失败：${t.message}"
+                }
+            }) { Text("导入 JSON") }
+
+            // Destructive: gated behind biometric auth when available.
+            val fa = activity
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        val count = ExtensionStore.items.value.size
+                        val ok = if (
+                            fa != null && BioGate.available(context) && BioGate.enabled(context)
+                        ) {
+                            BioGate.authenticate(fa, "清空全部拓展", "将删除 $count 项拓展功能")
+                        } else {
+                            true
+                        }
+                        if (ok) ExtensionStore.clear()
+                    }
+                },
+                enabled = ExtensionStore.items.value.isNotEmpty(),
+            ) { Text("清空全部") }
+        }
+        if (feedback.isNotEmpty()) {
+            Text(feedback, fontSize = 12.sp)
+        }
+
+        Text("技能（提示词模板）", style = MaterialTheme.typography.titleSmall)
+        Text(
+            SKILL_HINT,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val skills = SkillStore.all()
+        if (skills.isEmpty()) {
+            Text(
+                "暂无技能",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        skills.forEach { s ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(s.name, style = MaterialTheme.typography.bodyMedium)
+                    if (s.desc.isNotBlank()) {
+                        Text(
+                            s.desc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                TextButton(onClick = { SkillStore.remove(s.id) }) { Text("删") }
+            }
+        }
+        OutlinedTextField(
+            value = skillInput,
+            onValueChange = { skillInput = it },
+            modifier = Modifier.fillMaxWidth().height(110.dp),
+            placeholder = {
+                Text(
+                    "导入技能：{\"name\":\"早报\",\"template\":\"生成 {{日期}} 早报\"}",
+                    fontSize = 12.sp,
+                )
+            },
+            textStyle = MaterialTheme.typography.bodySmall,
+        )
+        Button(onClick = {
+            skillFeedback = try {
+                val n = SkillStore.addFromJson(skillInput)
+                if (n > 0) {
+                    skillInput = ""
+                    "已添加 $n 项技能"
+                } else {
+                    "需要 name 与 template 字段"
+                }
+            } catch (t: Throwable) {
+                "解析失败：${t.message}"
+            }
+        }) { Text("导入技能") }
+        if (skillFeedback.isNotEmpty()) {
+            Text(skillFeedback, fontSize = 12.sp)
+        }
     }
 
     @Composable
@@ -712,12 +1041,25 @@ class MainActivity : FragmentActivity() {
     }
 
     @Composable
-    private fun PermissionsSection(revision: Int) {
+    private fun PermissionsSection() {
         val context = LocalContext.current
+        val revision = rememberResumeRevision()
         var requested by remember { mutableStateOf(false) }
         val launcher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
         ) { requested = true }
+
+        // Only offer permissions actually declared in the manifest —
+        // requesting undeclared ones is what crashed the launcher.
+        val declared = remember(context) {
+            runCatching {
+                context.packageManager
+                    .getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+                    .requestedPermissions
+                    ?.toSet()
+                    .orEmpty()
+            }.getOrElse { emptySet() }
+        }
 
         Text("权限管理", style = MaterialTheme.typography.titleSmall)
         Text(
@@ -730,7 +1072,8 @@ class MainActivity : FragmentActivity() {
         // dialog returns (requested) — both are read via key() below.
         key(revision, requested) {
             RUNTIME_GROUPS.forEach { group ->
-                val missing = group.perms.filter {
+                val present = group.perms.filter { it in declared }
+                val missing = present.filter {
                     ContextCompat.checkSelfPermission(context, it) !=
                         PackageManager.PERMISSION_GRANTED
                 }
@@ -740,14 +1083,22 @@ class MainActivity : FragmentActivity() {
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    if (missing.isEmpty()) {
-                        Text(
+                    when {
+                        present.isEmpty() -> Text(
+                            "不可用",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+
+                        missing.isEmpty() -> Text(
                             "已授权",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
-                    } else {
-                        TextButton(onClick = { launcher.launch(group.perms.toTypedArray()) }) {
+
+                        else -> TextButton(onClick = {
+                            runCatching { launcher.launch(missing.toTypedArray()) }
+                        }) {
                             Text("授权")
                         }
                     }

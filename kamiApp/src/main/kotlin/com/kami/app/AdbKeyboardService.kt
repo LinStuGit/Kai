@@ -8,19 +8,29 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Headless ADB-Keyboard-style IME: text arrives via the `ADB_INPUT_TEXT`
  * broadcast (same contract as the community ADBKeyBoard, so external tools
  * work unchanged) and is committed into the focused editor. Used by the
  * agent's input_text tool for non-ASCII text that `input text` can't carry.
+ *
+ * Every commit bumps [commitCount] so [ScreenControl] can wait for the
+ * commit to land instead of broadcasting blindly.
  */
 class AdbKeyboardService : InputMethodService() {
 
     companion object {
+
         /** Text parked until the input connection is bound (poller commits it). */
         @Volatile
         private var pending: String? = null
+
+        private val commits = AtomicLong(0)
+
+        /** Monotonic counter of committed texts. */
+        fun commitCount(): Long = commits.get()
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -32,6 +42,7 @@ class AdbKeyboardService : InputMethodService() {
             if (ic != null) {
                 ic.commitText(text, 1)
                 pending = null
+                commits.incrementAndGet()
             } else {
                 pending = text
             }
@@ -45,6 +56,7 @@ class AdbKeyboardService : InputMethodService() {
             if (text != null && ic != null) {
                 ic.commitText(text, 1)
                 pending = null
+                commits.incrementAndGet()
             }
             handler.postDelayed(this, 100)
         }

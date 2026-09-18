@@ -11,7 +11,9 @@ import android.os.PowerManager
  *
  * Every call holds a bright wake lock while it runs: dumps and synthetic
  * taps hit nothing on a sleeping display, so the screen is lit (and woken
- * if asleep) for the duration of the operation.
+ * if asleep) for the duration of the operation. Screen reads also hide the
+ * Kami overlay and dismiss a showing keyboard so neither occludes what
+ * the agent is about to reason over.
  */
 object ScreenControl {
 
@@ -49,28 +51,55 @@ object ScreenControl {
         }
     }
 
+    /** Hide our own overlay window for the duration of [block]. */
+    private fun <T> withOverlayHidden(block: () -> T): T {
+        val was = AgentOverlayState.suppress.value
+        AgentOverlayState.suppress.value = true
+        return try {
+            block()
+        } finally {
+            AgentOverlayState.suppress.value = was
+        }
+    }
+
     fun screenshot(): String = withScreenOn {
-        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
-        val path = "/sdcard/Download/kami-${System.currentTimeMillis()}.png"
-        val out = ShizukuRunner.run("screencap -p $path && ls -l $path")
-        if (!out.contains("kami-")) return@withScreenOn "错误：截屏失败：$out"
-        "已保存 $path（图片内容对 agent 不可见；理解屏幕内容请用 read_screen）"
+        withOverlayHidden {
+            if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
+            val path = "/sdcard/Download/kami-${System.currentTimeMillis()}.png"
+            val out = ShizukuRunner.run("screencap -p $path && ls -l $path")
+            if (!out.contains("kami-")) return@withScreenOn "错误：截屏失败：$out"
+            "已保存 $path（图片内容对 agent 不可见；理解屏幕内容请用 read_screen）"
+        }
     }
 
     /**
      * Trimmed uiautomator dump: drop noisy attributes, keep text / ids /
-     * descs / clickable / bounds so it fits the tool-result budget.
+     * descs / clickable / bounds so it fits the tool-result budget. Our
+     * overlay is hidden and a showing keyboard is dismissed first — the
+     * first BACK only closes the IME.
      */
     fun readScreen(): String = withScreenOn {
-        if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
-        val xml = ShizukuRunner.run(
-            "uiautomator dump /sdcard/kami-uidump.xml >/dev/null 2>&1; " +
-                "sed -E 's/(index|package|checkable|checked|enabled|focusable|focused|" +
-                "selected|password|NAF)=\"[^\"]*\" //g' /sdcard/kami-uidump.xml 2>/dev/null | " +
-                "head -c 8000; rm -f /sdcard/kami-uidump.xml",
-        )
-        xml.ifBlank {
-            "错误：屏幕层级获取失败（屏幕可能非空闲或目标窗口禁止 dump，稍后重试）"
+        withOverlayHidden {
+            if (!ShizukuRunner.granted()) return@withScreenOn "错误：Shizuku 未授权"
+            val imeShown = ShizukuRunner.run("dumpsys input_method | grep mInputShown")
+                .contains("mInputShown=true")
+            if (imeShown) {
+                ShizukuRunner.run("input keyevent KEYCODE_BACK")
+                try {
+                    Thread.sleep(250)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
+            val xml = ShizukuRunner.run(
+                "uiautomator dump /sdcard/kami-uidump.xml >/dev/null 2>&1; " +
+                    "sed -E 's/(index|package|checkable|checked|enabled|focusable|focused|" +
+                    "selected|password|NAF)=\"[^\"]*\" //g' /sdcard/kami-uidump.xml 2>/dev/null | " +
+                    "head -c 12000; rm -f /sdcard/kami-uidump.xml",
+            )
+            xml.ifBlank {
+                "错误：屏幕层级获取失败（屏幕可能非空闲或目标窗口禁止 dump，稍后重试）"
+            }
         }
     }
 
@@ -112,24 +141,51 @@ object ScreenControl {
             return@withScreenOn out.ifEmpty { "已输入（input text）" }
         }
 
-        // Non-ASCII (e.g. Chinese): switch to the bundled ADB-Keyboard IME,
-        // broadcast the text, then restore the previous IME.
+        // Non-ASCII (e.g. Chinese): make the bundled ADB keyboard the
+        // default IME via a direct secure-settings write (more reliable
+        // than `ime set`, which needs an active input client on some
+        // ROMs), broadcast until the IME confirms the commit, restore.
         val ime = "com.kami.app/.AdbKeyboardService"
         val original = ShizukuRunner.run("settings get secure default_input_method").trim()
         ShizukuRunner.run("ime enable $ime")
-        ShizukuRunner.run("ime set $ime")
+        ShizukuRunner.run("settings put secure default_input_method $ime")
+        val seq0 = AdbKeyboardService.commitCount()
+        var committed = false
+        var attempts = 0
         try {
-            Thread.sleep(400) // give the IME time to bind
+            Thread.sleep(400) // give the IME time to bind after the switch
             val esc = text.replace("'", "'\\''")
-            ShizukuRunner.run("am broadcast -a ADB_INPUT_TEXT --es msg '$esc'")
-            Thread.sleep(400) // give the receiver time to commit
+            while (!committed && attempts < 3) {
+                attempts++
+                ShizukuRunner.run("am broadcast -a ADB_INPUT_TEXT --es msg '$esc'")
+                committed = awaitCommit(seq0, 4000)
+            }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } finally {
-            if (original.isNotEmpty() && !original.contains("null") && original != ime) {
-                ShizukuRunner.run("ime set $original")
+            if (original.isNotEmpty() && original != "null" && original != ime) {
+                ShizukuRunner.run("settings put secure default_input_method $original")
             }
         }
-        "已发送输入（若未生效，目标界面可能没有聚焦的输入框）"
+        if (committed) {
+            "已输入（ADB Keyboard 确认提交，第 $attempts 次广播）"
+        } else {
+            "已广播输入但未收到提交确认（目标界面可能没有聚焦的输入框，请先聚焦输入框再试）"
+        }
+    }
+
+    /** Poll [AdbKeyboardService.commitCount] until it moves past [seq0]. */
+    private fun awaitCommit(seq0: Long, timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (AdbKeyboardService.commitCount() > seq0) return true
+            try {
+                Thread.sleep(100)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+        return false
     }
 }

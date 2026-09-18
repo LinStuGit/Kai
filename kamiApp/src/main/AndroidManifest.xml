@@ -70,6 +70,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- Special accesses granted via system settings screens -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -145,6 +147,15 @@
                 <action android:name="com.kami.app.ext.REMOVE" />
                 <action android:name="com.kami.app.ext.LIST" />
                 <action android:name="com.kami.app.ext.CLEAR" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Scheduled reminders: exact alarms + re-arm after boot -->
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
     </application>
