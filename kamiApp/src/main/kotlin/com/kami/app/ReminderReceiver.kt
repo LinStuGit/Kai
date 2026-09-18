@@ -43,7 +43,7 @@ class ReminderReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL, "定时任务", NotificationManager.IMPORTANCE_HIGH).apply {
-                    if (r.important) setVibrationEnabled(true)
+                    enableVibration(r.important)
                 },
             )
         }
