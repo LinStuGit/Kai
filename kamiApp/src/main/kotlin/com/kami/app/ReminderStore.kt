@@ -5,10 +5,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import java.io.File
-import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.util.Calendar
 
 /** A daily reminder (morning briefing, homework/class reminder, …). */
 data class Reminder(

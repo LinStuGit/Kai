@@ -369,7 +369,7 @@ object AgentClient {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
             // IMPORTANCE_HIGH: heads-up banner, shade, and lockscreen /
-            //焦点通知（灵动岛类）都能完整展示。
+            // 焦点通知（灵动岛类）都能完整展示。
             nm.createNotificationChannel(
                 NotificationChannel("kami_agent", "Kami Agent", NotificationManager.IMPORTANCE_HIGH),
             )

@@ -17,11 +17,10 @@ import java.util.TimeZone
  */
 object CalendarTools {
 
-    fun granted(context: Context): Boolean =
-        context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
-            PackageManager.PERMISSION_GRANTED &&
-            context.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) ==
-            PackageManager.PERMISSION_GRANTED
+    fun granted(context: Context): Boolean = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
+        PackageManager.PERMISSION_GRANTED &&
+        context.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) ==
+        PackageManager.PERMISSION_GRANTED
 
     private fun firstCalendarId(context: Context): Long? {
         context.contentResolver.query(
