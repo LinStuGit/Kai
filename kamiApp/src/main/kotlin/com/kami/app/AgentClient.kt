@@ -40,7 +40,6 @@ object AgentClient {
             "notify_user 可发系统通知（长任务完成或需要用户回来时用）。危险命令（重启/卸载/" +
             "清数据等）会触发生物验证，用户拒绝则立即放弃并说明。回答用中文，简洁直接。"
 
-    private const val MAX_STEPS = 8
     private const val MAX_TOOL_RESULT = 4000
 
     private val TOOLS: JSONArray = JSONArray(
@@ -65,9 +64,11 @@ object AgentClient {
 
     /**
      * One user turn of session [sessionId]: appends to its [history] and
-     * runs the tool-calling loop until the model answers in prose.
-     * [onEvent] reports tool activity for the transcript. Suspend so the
-     * loop honours cancellation (overlay force-stop) between steps.
+     * runs the tool-calling loop with no step cap until the model answers
+     * in prose (the only bounds are the per-result size budget and
+     * cancellation — the user can force-stop at any time). [onEvent]
+     * reports tool activity for the transcript. Suspend so the loop
+     * honours cancellation (overlay force-stop) between steps.
      */
     suspend fun turn(
         sessionId: String,
@@ -78,7 +79,7 @@ object AgentClient {
     ): TurnReply {
         val thinkings = mutableListOf<String>()
         history.put(JSONObject().put("role", "user").put("content", userText))
-        repeat(MAX_STEPS) {
+        while (true) {
             currentCoroutineContext().ensureActive()
             val resp = postChat(sessionId, history)
             val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
@@ -100,7 +101,7 @@ object AgentClient {
                 val fn = tc.getJSONObject("function")
                 val name = fn.getString("name")
                 val args = fn.optString("arguments").ifBlank { "{}" }
-                onEvent("⚙ $name($args)")
+                onEvent("$name($args)")
                 val result = try {
                     executeTool(sessionId, context, name, args)
                 } catch (t: Throwable) {
@@ -115,10 +116,6 @@ object AgentClient {
                 )
             }
         }
-        return TurnReply(
-            "（单轮工具调用已达 $MAX_STEPS 步上限，先回复到此）",
-            thinkings.joinToString("\n\n").ifBlank { null },
-        )
     }
 
     /** POST with the session's JWT; 401/403/409 → refetch the token once. */

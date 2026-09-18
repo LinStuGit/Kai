@@ -345,6 +345,8 @@ class MainActivity : FragmentActivity() {
 
                             "console" -> ConsoleScreen()
 
+                            "term" -> TerminalScreen(onBack = { screen.value = "console" })
+
                             else -> ChatScreen(
                                 onConsole = { screen.value = "console" },
                                 onSettings = { screen.value = "settings" },
@@ -395,7 +397,7 @@ class MainActivity : FragmentActivity() {
                 val out = ShizukuRunner.run(c)
                 val ms = System.currentTimeMillis() - t0
                 transcript += if (out.isEmpty()) {
-                    "✓ 无输出（${ms}ms）\n"
+                    "（无输出，${ms}ms）\n"
                 } else {
                     "$out\n"
                 }
@@ -416,16 +418,17 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
                 )
+                TextButton(onClick = { screen.value = "term" }) { Text("终端") }
                 TextButton(onClick = { screen.value = "settings" }) { Text("设置") }
             }
 
-            val (icon, statusText) = when {
-                granted -> "🟢" to "已授权 — 命令将以 shell 身份执行"
-                alive -> "🟡" to "Shizuku 在线，等待授权"
-                else -> "🔴" to "Shizuku 未运行 — 请先打开 Shizuku APP"
+            val (dot, statusText) = when {
+                granted -> Color(0xFF4CD97B) to "已授权 — 命令将以 shell 身份执行"
+                alive -> Color(0xFFFFC64D) to "Shizuku 在线，等待授权"
+                else -> Color(0xFFFF5C6C) to "Shizuku 未运行 — 请先打开 Shizuku APP"
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 16.sp)
+                Text("●", fontSize = 16.sp, color = dot)
                 Text(
                     statusText,
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
@@ -443,12 +446,12 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            // Built-ins first, then agent-added extensions (⚙ prefix), both
-            // reactive to ExtensionStore changes.
+            // Built-ins first, then agent-added extensions, both reactive
+            // to ExtensionStore changes.
             val extensionActions = if (ExtensionStore.master.value) {
                 ExtensionStore.items.value
                     .filter { it.enabled }
-                    .map { QuickAction("⚙ ${it.name}", it.cmd) }
+                    .map { QuickAction(it.name, it.cmd) }
             } else {
                 emptyList()
             }
@@ -539,7 +542,7 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { screen.value = "console" }) { Text("← 返回") }
+                TextButton(onClick = { screen.value = "chat" }) { Text("← 主页") }
                 Text("设置", style = MaterialTheme.typography.titleLarge)
             }
 
@@ -619,12 +622,12 @@ class MainActivity : FragmentActivity() {
                         val n = ExtensionStore.addFromJson(jsonInput)
                         if (n > 0) {
                             jsonInput = ""
-                            "✓ 已添加 $n 项"
+                            "已添加 $n 项"
                         } else {
-                            "⚠️ 需要 name 与 cmd 字段"
+                            "需要 name 与 cmd 字段"
                         }
                     } catch (t: Throwable) {
-                        "❌ 解析失败：${t.message}"
+                        "解析失败：${t.message}"
                     }
                 }) { Text("导入 JSON") }
 
@@ -737,7 +740,11 @@ class MainActivity : FragmentActivity() {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     if (missing.isEmpty()) {
-                        Text("✓", color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "已授权",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     } else {
                         TextButton(onClick = { launcher.launch(group.perms.toTypedArray()) }) {
                             Text("授权")
@@ -755,7 +762,11 @@ class MainActivity : FragmentActivity() {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     if (sa.granted(context)) {
-                        Text("✓", color = MaterialTheme.colorScheme.primary)
+                        Text(
+                            "已授权",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     } else {
                         TextButton(onClick = { runCatching { sa.open(context) } }) { Text("去开启") }
                     }

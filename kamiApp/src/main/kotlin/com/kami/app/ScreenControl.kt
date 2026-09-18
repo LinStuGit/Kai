@@ -61,7 +61,7 @@ object ScreenControl {
 
             else -> return "错误：未知 action：$action"
         }
-        return ShizukuRunner.run(cmd).ifEmpty { "✓ $action 完成" }
+        return ShizukuRunner.run(cmd).ifEmpty { "$action 完成" }
     }
 
     fun inputText(text: String): String {
@@ -71,7 +71,7 @@ object ScreenControl {
         // Pure ASCII: no IME dance needed, `input text` carries it directly.
         if (ASCII_ONLY.matches(text)) {
             val out = ShizukuRunner.run("input text '$text'")
-            return out.ifEmpty { "✓ 已输入（input text）" }
+            return out.ifEmpty { "已输入（input text）" }
         }
 
         // Non-ASCII (e.g. Chinese): switch to the bundled ADB-Keyboard IME,
@@ -92,6 +92,6 @@ object ScreenControl {
                 ShizukuRunner.run("ime set $original")
             }
         }
-        return "✓ 已发送输入（若未生效，目标界面可能没有聚焦的输入框）"
+        return "已发送输入（若未生效，目标界面可能没有聚焦的输入框）"
     }
 }

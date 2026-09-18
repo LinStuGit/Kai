@@ -21,8 +21,28 @@ android {
             libs.versions.android.targetSdk
                 .get()
                 .toInt()
-        versionCode = 1
-        versionName = "1.0"
+        // Bump versionCode/versionName on every release.
+        versionCode = 3
+        versionName = "1.2"
+    }
+
+    // Debug builds are signed with the keystore committed at keystore/
+    // (PKCS12, password "android", same key as Kami Manager) so each new
+    // APK installs as a direct upgrade instead of failing on a signature
+    // mismatch with the runner's ephemeral debug key.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     compileOptions {

@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,11 +43,38 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** A render item: a plain chat line, or consecutive tool events as one group. */
+private sealed interface ChatEntry {
+    data class One(val line: ChatLine) : ChatEntry
+
+    data class Tools(val start: Int, val events: List<String>) : ChatEntry
+}
+
+private fun buildEntries(lines: List<ChatLine>): List<ChatEntry> = buildList {
+    var start = -1
+    val events = mutableListOf<String>()
+    lines.forEachIndexed { i, line ->
+        if (line.role == "event") {
+            if (start < 0) start = i
+            events.add(line.text)
+        } else {
+            if (start >= 0) {
+                add(ChatEntry.Tools(start, events.toList()))
+                start = -1
+                events.clear()
+            }
+            add(ChatEntry.One(line))
+        }
+    }
+    if (start >= 0) add(ChatEntry.Tools(start, events.toList()))
+}
+
 /**
  * The app home: agent conversations running in parallel (one JWT each),
- * switchable via the chip row. Model reasoning renders as a collapsed
- * "思考过程" block, tap to expand. While a turn runs and the user leaves
- * the app, [AgentOverlayService] shows live output with a force-stop.
+ * switchable via the chip row. Reasoning renders as a collapsed "思考过程"
+ * block and tool activity as a collapsed "工具调用" block, tap either to
+ * expand. While a turn runs and the user leaves the app,
+ * [AgentOverlayService] shows live output with a force-stop.
  */
 @Composable
 internal fun ChatScreen(
@@ -77,9 +105,14 @@ internal fun ChatScreen(
     var input by remember(session.id) { mutableStateOf("") }
     val listState = rememberLazyListState()
     val lines = session.lines
+    val entries = remember(lines) { buildEntries(lines) }
+
+    // Expanded tool groups, keyed by each group's start line so state
+    // survives recomposition while events stream in.
+    val openGroups = remember { mutableStateListOf<Int>() }
 
     LaunchedEffect(session.id, lines.size) {
-        if (lines.isNotEmpty()) listState.animateScrollToItem(lines.size - 1)
+        if (entries.isNotEmpty()) listState.animateScrollToItem(entries.size - 1)
     }
 
     Column(
@@ -96,8 +129,8 @@ internal fun ChatScreen(
             TextButton(onClick = onSettings) { Text("设置") }
         }
 
-        // Parallel sessions: tap to switch (spinner = a turn is running),
-        // ✕ on the active chip closes it.
+        // Parallel sessions: tap to switch; a leading • marks the active
+        // one, a trailing … marks a running turn.
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -108,9 +141,7 @@ internal fun ChatScreen(
                     onClick = { SessionStore.activeId.value = s.id },
                     label = {
                         Text(
-                            (if (selected) "▶" else "") +
-                                (if (s.busy) "◌ " else "") +
-                                s.title,
+                            (if (selected) "• " else "") + s.title + (if (s.busy) " …" else ""),
                             fontSize = 12.sp,
                         )
                     },
@@ -123,34 +154,36 @@ internal fun ChatScreen(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(lines.size) { i ->
-                val line = lines[i]
-                when (line.role) {
-                    "user" -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Text(line.text, modifier = Modifier.padding(10.dp))
-                        }
-                    }
-
-                    "event" -> Text(
-                        line.text,
-                        modifier = Modifier.fillMaxWidth(),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            items(entries.size) { i ->
+                when (val e = entries[i]) {
+                    is ChatEntry.Tools -> ToolBlock(
+                        count = e.events.size,
+                        open = e.start in openGroups,
+                        onToggle = {
+                            if (e.start in openGroups) openGroups.remove(e.start) else openGroups.add(e.start)
+                        },
+                        events = e.events,
                     )
 
-                    else -> Column(Modifier.fillMaxWidth()) {
-                        line.thinking?.let { ThinkingBlock(it) }
-                        Row(Modifier.fillMaxWidth()) {
+                    is ChatEntry.One -> when (e.line.role) {
+                        "user" -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = MaterialTheme.colorScheme.primaryContainer,
                                 shape = RoundedCornerShape(10.dp),
                             ) {
-                                Text(line.text, modifier = Modifier.padding(10.dp))
+                                Text(e.line.text, modifier = Modifier.padding(10.dp))
+                            }
+                        }
+
+                        else -> Column(Modifier.fillMaxWidth()) {
+                            e.line.thinking?.let { ThinkingBlock(it) }
+                            Row(Modifier.fillMaxWidth()) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Text(e.line.text, modifier = Modifier.padding(10.dp))
+                                }
                             }
                         }
                     }
@@ -206,9 +239,9 @@ internal fun ChatScreen(
                             }
                         } catch (t: Throwable) {
                             val msg = if (t is CancellationException) {
-                                "⏹ 已强制终止"
+                                "已强制终止"
                             } else {
-                                "❌ ${t.message}"
+                                "错误：${t.message}"
                             }
                             SessionStore.update(sid) { s ->
                                 s.copy(busy = false, lines = s.lines + ChatLine("assistant", msg))
@@ -268,6 +301,46 @@ private fun ThinkingBlock(text: String) {
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+/** One turn's tool activity, collapsed by default; tap the header to expand. */
+@Composable
+private fun ToolBlock(
+    count: Int,
+    open: Boolean,
+    onToggle: () -> Unit,
+    events: List<String>,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+        ) {
+            Text(
+                if (open) "▼ 工具调用 ×$count" else "▸ 工具调用 ×$count",
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (open) {
+                events.forEach { ev ->
+                    Text(
+                        ev,
+                        modifier = Modifier.padding(top = 2.dp),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

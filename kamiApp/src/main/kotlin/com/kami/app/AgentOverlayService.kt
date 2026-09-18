@@ -138,7 +138,7 @@ class AgentOverlayService : Service() {
             typeface = Typeface.MONOSPACE
         }
         val stop = Button(this).apply {
-            text = "⏹ 强制终止"
+            text = "强制终止"
             textSize = 12f
             setOnClickListener { AgentOverlayState.cancelAll() }
         }
