@@ -15,6 +15,9 @@ import android.os.PowerManager
  */
 object ScreenControl {
 
+    private val ASCII_ONLY = Regex("^[A-Za-z0-9@#%+=:;._\\-/]+$")
+    private val KEY_NAME = Regex("^[A-Z0-9_]+$")
+
     private var app: Context? = null
     private const val WAKE_TIMEOUT_MS = 30_000L
 
