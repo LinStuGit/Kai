@@ -7,6 +7,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.zip.GZIPInputStream
 
 /**
  * Alpine Linux sandbox on proot. The static proot binary and the Alpine
@@ -78,8 +79,10 @@ object ProotSandbox {
         val prootFile: File
         val fsFile: File
         if (bundled) {
+            // NOTE: aapt strips the .gz suffix from bundled assets and stores
+            // them decompressed, so the asset ships as a plain rootfs.tar.
             prootFile = assetToFile("proot/$prootArch/proot", File(cacheDir, "proot-static"))
-            fsFile = assetToFile("rootfs/$prootArch/rootfs.tar.gz", File(cacheDir, "minirootfs.tar.gz"))
+            fsFile = assetToFile("rootfs/$prootArch/rootfs.tar", File(cacheDir, "minirootfs.tar"))
             log.append("已从内置资源读取（免下载）\n")
         } else {
             val pUrl = prootUrl?.trim().takeUnless { it.isNullOrEmpty() }
@@ -87,18 +90,18 @@ object ProotSandbox {
             val rUrl = rootfsUrl?.trim().takeUnless { it.isNullOrEmpty() }
                 ?: latestMinirootfs(alpineArch)
             prootFile = download(pUrl, File(cacheDir, "proot-static"), log)
-            fsFile = download(rUrl, File(cacheDir, "minirootfs.tar.gz"), log)
+            fsFile = maybeGunzip(download(rUrl, File(cacheDir, "minirootfs.tar.gz"), log))
         }
 
         ShizukuRunner.run("rm -rf $DIR/alpine && mkdir -p $DIR/alpine $DIR/tmp")
         pushFile(prootFile, "$DIR/proot", log, executable = true)
-        pushFile(fsFile, "$DIR/rootfs.tar.gz", log, executable = false)
+        pushFile(fsFile, "$DIR/rootfs.tar", log, executable = false)
 
         // toybox tar can choke on rootfs entries it dislikes (absolute-path
         // symlinks among them) and bail early — don't trust its exit code.
         // Judge by the result instead, and recreate the top-level usr
         // symlinks when the tar dropped them.
-        val tarOut = ShizukuRunner.run("tar -xzf $DIR/rootfs.tar.gz -C $DIR/alpine 2>/dev/null; echo tar-done")
+        val tarOut = ShizukuRunner.run("tar -xf $DIR/rootfs.tar -C $DIR/alpine 2>/dev/null; echo tar-done")
         val check = ShizukuRunner.run(
             "cd $DIR/alpine && { [ -e bin/sh ] || " +
                 "{ ln -sfn usr/bin bin; ln -sfn usr/sbin sbin; ln -sfn usr/lib lib; " +
@@ -112,7 +115,7 @@ object ProotSandbox {
         // the guest so apk/wget work inside.
         ShizukuRunner.run(
             "printf 'nameserver 223.5.5.5\\nnameserver 8.8.8.8\\n' > $DIR/alpine/etc/resolv.conf && " +
-                "rm -f $DIR/rootfs.tar.gz",
+                "rm -f $DIR/rootfs.tar",
         )
         val smoke = run("uname -m && head -1 /etc/os-release")
         prootFile.delete()
@@ -142,6 +145,26 @@ object ProotSandbox {
             dest.outputStream().use { output -> input.copyTo(output) }
         }
         return dest
+    }
+
+    /** The extract path expects a plain tar; gunzip a downloaded rootfs if needed. */
+    private fun maybeGunzip(src: File): File {
+        val head = ByteArray(2)
+        src.inputStream().use { ins ->
+            var read = 0
+            while (read < 2) {
+                val n = ins.read(head, read, 2 - read)
+                if (n < 0) break
+                read += n
+            }
+        }
+        if (!(head[0] == 0x1f.toByte() && head[1] == 0x8b.toByte())) return src
+        val out = File(src.parentFile, "minirootfs.tar")
+        GZIPInputStream(src.inputStream()).use { input ->
+            out.outputStream().use { output -> input.copyTo(output) }
+        }
+        src.delete()
+        return out
     }
 
     /**
