@@ -328,18 +328,25 @@ object AgentClient {
                         val iv = args.optInt("interval_min")
                         if (iv < 1) return "错误：interval 类型需要 interval_min（>=1 分钟）"
                         Reminder(
-                            id = newReminderId(), title = args.optString("title").trim(),
+                            id = newReminderId(),
+                            title = args.optString("title").trim(),
                             text = args.optString("text").trim(),
-                            important = args.optBoolean("important"), enabled = true,
-                            type = "interval", intervalMin = iv,
+                            important = args.optBoolean("important"),
+                            enabled = true,
+                            type = "interval",
+                            intervalMin = iv,
                         )
                     }
 
                     else -> Reminder(
-                        id = newReminderId(), title = args.optString("title").trim(),
+                        id = newReminderId(),
+                        title = args.optString("title").trim(),
                         text = args.optString("text").trim(),
-                        important = args.optBoolean("important"), enabled = true,
-                        type = "daily", hour = hour, minute = minute,
+                        important = args.optBoolean("important"),
+                        enabled = true,
+                        type = "daily",
+                        hour = hour,
+                        minute = minute,
                     )
                 }
                 ReminderStore.add(context.applicationContext, r)

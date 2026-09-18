@@ -942,8 +942,11 @@ class MainActivity : FragmentActivity() {
                     val badTime = type != "interval" && (h == null || min == null || h > 23 || min > 59)
                     when {
                         title.isBlank() || text.isBlank() -> feedback = "需要标题与内容"
+
                         badTime -> feedback = "时间应为合法 HH:mm"
+
                         type == "interval" && iv < 1 -> feedback = "间隔分钟需不小于 1"
+
                         else -> {
                             val r = Reminder(
                                 id = "rem-" + System.currentTimeMillis(),

@@ -169,7 +169,8 @@ object ReminderScheduler {
                 set(Calendar.SECOND, 0)
             }
 
-            else -> Calendar.getInstance().apply { // daily
+            else -> Calendar.getInstance().apply {
+                // daily
                 set(Calendar.HOUR_OF_DAY, r.hour)
                 set(Calendar.MINUTE, r.minute)
                 set(Calendar.SECOND, 0)

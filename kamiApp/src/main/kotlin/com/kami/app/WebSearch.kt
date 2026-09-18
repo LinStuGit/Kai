@@ -38,8 +38,10 @@ object WebSearch {
         for (m in re.findAll(html)) {
             val url = m.groupValues[1]
             val title = stripTags(m.groupValues[2])
-            val snippet = stripTags(Regex("<p[^>]*>(.*?)</p>", RegexOption.DOT_MATCHES_ALL)
-                .find(m.groupValues[3])?.groupValues?.get(1).orEmpty())
+            val snippet = stripTags(
+                Regex("<p[^>]*>(.*?)</p>", RegexOption.DOT_MATCHES_ALL)
+                    .find(m.groupValues[3])?.groupValues?.get(1).orEmpty(),
+            )
             out.append("${++n}. $title\n   $url\n" + if (snippet.isNotBlank()) "   $snippet\n" else "")
             if (n >= 8) break
         }
