@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -53,6 +54,13 @@ object AgentOverlayState {
     /** Console quick actions classified as screen ops force the ball on. */
     val forceWindow = mutableStateOf(false)
 
+    /**
+     * Sticky: once a run has touched the screen it keeps the ball for the
+     * rest of the run — tool gaps (model thinking between calls) must not
+     * make the ball flicker away. Reset when every job is done.
+     */
+    val screenSeen = mutableStateOf(false)
+
     val jobs = CopyOnWriteArrayList<Job>()
 
     fun add(job: Job) {
@@ -70,6 +78,7 @@ object AgentOverlayState {
     fun cancelAll() {
         jobs.forEach { it.cancel() }
         running.value = false
+        screenSeen.value = false
     }
 }
 
@@ -81,24 +90,36 @@ class AgentOverlayService : Service() {
     private var panel: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
     private var expanded = false
+
+    /** User tapped the ball open — screen reads must not collapse it. */
+    private var userExpanded = false
     private var attached = false
     private var lastNotifiedStatus: String? = null
     private lateinit var statusView: TextView
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     private val tick = object : Runnable {
         override fun run() {
             if (!AgentOverlayState.running.value) {
+                AgentOverlayState.screenSeen.value = false
                 detach()
                 stopSelf()
                 return
             }
-            // While the agent reads the screen, collapse to the ball so the
-            // dump is not occluded — the ball itself (tiny, draggable) stays.
-            if (AgentOverlayState.suppress.value) setExpanded(false)
+            val screenActive = AgentOverlayState.screenBusy.value > 0 ||
+                AgentOverlayState.forceWindow.value
+            if (screenActive) AgentOverlayState.screenSeen.value = true
+            // Sticky: once this run drove the screen, keep the ball until
+            // the run ends (no flicker between tool calls).
             val show = !AgentOverlayState.activityVisible.value &&
-                (AgentOverlayState.screenBusy.value > 0 || AgentOverlayState.forceWindow.value)
+                (screenActive || AgentOverlayState.screenSeen.value)
             if (show && !attached) attach()
             if (!show && attached) detach()
+            // Screen reads collapse the panel back to the ball — unless the
+            // user opened it themselves (they asked to see it).
+            if (AgentOverlayState.suppress.value && !userExpanded) setExpanded(false)
+            // Keep the display on for the whole screen-driving run.
+            if (show) ensureWakeLock() else releaseWakeLock()
             val active = AgentOverlayState.jobs.count { it.isActive }
             val st = (if (active > 1) "[$active 个会话] " else "") +
                 AgentOverlayState.status.value.ifEmpty { "思考中…" }
@@ -164,7 +185,10 @@ class AgentOverlayService : Service() {
             text = "收起"
             setTextColor(0xFF8A97A3.toInt())
             textSize = 12f
-            setOnClickListener { setExpanded(false) }
+            setOnClickListener {
+                userExpanded = false
+                setExpanded(false)
+            }
         }
         val head = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -275,6 +299,7 @@ class AgentOverlayService : Service() {
                         getSharedPreferences("kami_overlay", Context.MODE_PRIVATE)
                             .edit().putInt("x", p.x).putInt("y", p.y).apply()
                     } else {
+                        userExpanded = !expanded
                         setExpanded(!expanded)
                     }
                     true
@@ -292,9 +317,28 @@ class AgentOverlayService : Service() {
         ball?.visibility = if (value) View.GONE else View.VISIBLE
     }
 
+    /** SCREEN_BRIGHT for the whole screen-driving run, refreshed every tick. */
+    private fun ensureWakeLock() {
+        val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val lock = wakeLock ?: run {
+            @Suppress("DEPRECATION")
+            pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "kami:overlay-run",
+            ).also { wakeLock = it }
+        }
+        runCatching { lock.acquire(10 * 60_000L) }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let { runCatching { if (it.isHeld) it.release() } }
+        wakeLock = null
+    }
+
     private fun detach() {
         if (!attached) return
         attached = false
+        userExpanded = false
         setExpanded(false)
         runCatching {
             (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(root)
@@ -337,6 +381,8 @@ class AgentOverlayService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         detach()
+        releaseWakeLock()
+        AgentOverlayState.screenSeen.value = false
         lastNotifiedStatus = null
         super.onDestroy()
     }

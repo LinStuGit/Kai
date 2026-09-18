@@ -78,7 +78,7 @@ private fun buildEntries(lines: List<ChatLine>): List<ChatEntry> = buildList {
  */
 @Composable
 internal fun ChatScreen(
-    onConsole: () -> Unit,
+    onTerminal: () -> Unit,
     onSettings: () -> Unit,
     onArchive: () -> Unit,
 ) {
@@ -126,7 +126,7 @@ internal fun ChatScreen(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            TextButton(onClick = onConsole) { Text("控制台") }
+            TextButton(onClick = onTerminal) { Text("终端") }
             TextButton(onClick = onSettings) { Text("设置") }
         }
 
@@ -197,7 +197,10 @@ internal fun ChatScreen(
                                     color = MaterialTheme.colorScheme.surfaceVariant,
                                     shape = RoundedCornerShape(10.dp),
                                 ) {
-                                    Text(e.line.text, modifier = Modifier.padding(10.dp))
+                                    MarkdownText(
+                                        e.line.text,
+                                        modifier = Modifier.padding(10.dp),
+                                    )
                                 }
                             }
                         }

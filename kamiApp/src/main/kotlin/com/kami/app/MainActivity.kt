@@ -22,7 +22,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -69,28 +68,6 @@ import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
 private const val REQ_SHIZUKU = 7001
-
-private const val BANNER =
-    "Kami ADB console — 命令经 Shizuku 以 shell uid 执行\n" +
-        "支持 ; / && 串联与管道，无 root；agent 对话可另用 Alpine proot 沙箱\n"
-
-/** One-tap preset commands shown as chips. */
-private data class QuickAction(val label: String, val cmd: String)
-
-private val QUICK_ACTIONS = listOf(
-    QuickAction(
-        "开无线调试",
-        "settings put global adb_wifi_enabled 1 && sleep 2 && getprop service.adb.tls.port",
-    ),
-    QuickAction("查 ADB 端口", "getprop service.adb.tls.port"),
-    QuickAction("电池白名单", "dumpsys deviceidle whitelist +com.kami.app"),
-    QuickAction("后台放行", "cmd appops set com.kami.app RUN_ANY_IN_BACKGROUND allow"),
-    QuickAction(
-        "设备信息",
-        "getprop ro.product.model; getprop ro.build.version.release; getprop ro.build.version.sdk",
-    ),
-    QuickAction("WLAN IP", "ip -4 addr show wlan0 | grep inet"),
-)
 
 private const val EXT_HINT =
     "agent 用法（PC 端经 adb / Shizuku 下发，结果回读 logcat）：\n" +
@@ -312,6 +289,17 @@ private val SETTINGS_ENTRIES = listOf(
 
 private val TIME_RE = Regex("^(\\d{1,2}):(\\d{2})$")
 
+/** Calendar weekday (1=Sun..7=Sat) -> chip label. */
+private val WEEKDAY_CHIPS = listOf("日" to 1, "一" to 2, "二" to 3, "三" to 4, "四" to 5, "五" to 6, "六" to 7)
+
+/** Reminder rhythm choices for the UI. */
+private val REMINDER_TYPE_CHIPS = listOf("once" to "单次", "daily" to "每日", "weekly" to "每周", "interval" to "间隔")
+
+private val DATE_RE = Regex("^(\\d{4})-(\\d{1,2})-(\\d{1,2})$")
+
+/** Loose apk package-name check before handing it to a shell. */
+private val PKG_RE = Regex("[a-z0-9][a-z0-9._-]*")
+
 /**
  * Shizuku-backed ADB shell console + on-device agent. Home is the chat
  * screen; console / terminal / settings sub pages sit on top of it.
@@ -394,9 +382,7 @@ class MainActivity : FragmentActivity() {
                         FirstLaunchPermissions()
 
                         when (screen.value) {
-                            "console" -> ConsoleScreen()
-
-                            "term" -> TerminalScreen(onBack = { screen.value = "console" })
+                            "term" -> TerminalScreen(onBack = { screen.value = "chat" })
 
                             "settings" -> SettingsScreen()
 
@@ -415,7 +401,7 @@ class MainActivity : FragmentActivity() {
                             "set-sec" -> SubPage("安全") { BioSection() }
 
                             else -> ChatScreen(
-                                onConsole = { screen.value = "console" },
+                                onTerminal = { screen.value = "term" },
                                 onSettings = { screen.value = "settings" },
                                 onArchive = { screen.value = "archive" },
                             )
@@ -505,182 +491,6 @@ class MainActivity : FragmentActivity() {
                 Text(title, style = MaterialTheme.typography.titleLarge)
             }
             content()
-        }
-    }
-
-    @Composable
-    private fun ConsoleScreen() {
-        val alive by shizukuAlive
-        val granted by shizukuGranted
-        var input by remember { mutableStateOf("") }
-        var transcript by remember { mutableStateOf(BANNER) }
-        var running by remember { mutableStateOf(false) }
-        val history = remember { mutableListOf<String>() }
-        val scope = rememberCoroutineScope()
-        val scroll = rememberScrollState()
-
-        fun run(cmd: String) {
-            val c = cmd.trim()
-            if (c.isEmpty() || running) return
-            input = ""
-            if (history.lastOrNull() != c) history.add(c)
-            val appCtx = applicationContext
-            // Screen-driving commands (screencap/uiautomator/input) earn the
-            // floating window; the rest report via the notification shade.
-            val screenOp = listOf(
-                "screencap",
-                "uiautomator",
-                "input tap",
-                "input swipe",
-                "input keyevent",
-                "input text",
-            ).any { c.contains(it) }
-            val job = scope.launch(Dispatchers.IO) {
-                running = true
-                transcript += "\n→ $c\n"
-                try {
-                    val t0 = System.currentTimeMillis()
-                    val out = ShizukuRunner.run(c)
-                    val ms = System.currentTimeMillis() - t0
-                    transcript += if (out.isEmpty()) {
-                        "（无输出，${ms}ms）\n"
-                    } else {
-                        "$out\n"
-                    }
-                } finally {
-                    running = false
-                    AgentOverlayState.forceWindow.value = false
-                    AgentOverlayState.refresh()
-                    if (!AgentOverlayState.running.value) {
-                        runCatching {
-                            appCtx.stopService(Intent(appCtx, AgentOverlayService::class.java))
-                        }
-                    }
-                }
-            }
-            // Quick actions can drive the screen — track them so the
-            // floating window (output + force-stop) shows while the user
-            // is in another app.
-            AgentOverlayState.status.value = "控制台：$c"
-            AgentOverlayState.forceWindow.value = screenOp
-            AgentOverlayState.add(job)
-            if (Settings.canDrawOverlays(appCtx)) {
-                runCatching {
-                    ContextCompat.startForegroundService(
-                        appCtx,
-                        Intent(appCtx, AgentOverlayService::class.java),
-                    )
-                }
-            }
-        }
-
-        LaunchedEffect(transcript) { scroll.scrollTo(scroll.maxValue) }
-
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { screen.value = "chat" }) { Text("← 对话") }
-                Text(
-                    "控制台",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                TextButton(onClick = { screen.value = "term" }) { Text("终端") }
-                TextButton(onClick = { screen.value = "settings" }) { Text("设置") }
-            }
-
-            val (dot, statusText) = when {
-                granted -> Color(0xFF4CD97B) to "已授权 — 命令将以 shell 身份执行"
-                alive -> Color(0xFFFFC64D) to "Shizuku 在线，等待授权"
-                else -> Color(0xFFFF5C6C) to "Shizuku 未运行 — 请先打开 Shizuku APP"
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("●", fontSize = 16.sp, color = dot)
-                Text(
-                    statusText,
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                if (alive && !granted) {
-                    Button(onClick = {
-                        try {
-                            Shizuku.requestPermission(REQ_SHIZUKU)
-                        } catch (_: IllegalStateException) {
-                        }
-                    }) { Text("授权") }
-                } else if (!alive) {
-                    OutlinedButton(onClick = { refresh() }) { Text("重试") }
-                }
-            }
-
-            // Built-ins first, then agent-added extensions, both reactive
-            // to ExtensionStore changes.
-            val extensionActions = if (ExtensionStore.master.value) {
-                ExtensionStore.items.value
-                    .filter { it.enabled }
-                    .map { QuickAction(it.name, it.cmd) }
-            } else {
-                emptyList()
-            }
-            Text("快捷指令", style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (QUICK_ACTIONS + extensionActions).forEach { qa ->
-                    AssistChip(
-                        onClick = { run(qa.cmd) },
-                        label = { Text(qa.label) },
-                        enabled = granted && !running,
-                    )
-                }
-            }
-
-            Text(
-                transcript,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color(0xFF101418), RoundedCornerShape(10.dp))
-                    .verticalScroll(scroll)
-                    .padding(10.dp),
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                color = Color(0xFFD5E0EA),
-            )
-
-            if (history.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    history.takeLast(4).forEach { h ->
-                        AssistChip(
-                            onClick = { input = h },
-                            label = { Text(h, fontSize = 11.sp, maxLines = 1) },
-                        )
-                    }
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("如: getprop ro.product.model", fontSize = 13.sp) },
-                    singleLine = true,
-                    enabled = granted,
-                    trailingIcon = if (running) {
-                        { CircularProgressIndicator(Modifier.padding(6.dp)) }
-                    } else {
-                        null
-                    },
-                )
-                Button(
-                    onClick = { run(input) },
-                    enabled = granted && !running && input.isNotBlank(),
-                ) { Text("执行") }
-            }
         }
     }
 
@@ -816,19 +626,42 @@ class MainActivity : FragmentActivity() {
 
     @Composable
     private fun SandboxSection() {
-        val context = LocalContext.current
         val scope = rememberCoroutineScope()
         var status by remember { mutableStateOf("读取中…") }
         var running by remember { mutableStateOf(false) }
+        var pkgs by remember { mutableStateOf<List<String>>(emptyList()) }
+        var pkgName by remember { mutableStateOf("") }
+        var pkgMsg by remember { mutableStateOf("") }
 
-        LaunchedEffect(Unit) {
-            status = kotlinx.coroutines.withContext(Dispatchers.IO) { ProotSandbox.status() }
+        fun parsePkgs(out: String): List<String> = out.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("错误") }
+
+        fun refresh() {
+            scope.launch(Dispatchers.IO) {
+                status = ProotSandbox.status()
+                pkgs = parsePkgs(ProotSandbox.run("apk info 2>/dev/null | head -150"))
+            }
         }
+
+        /** Run an apk add/del, echo output tail, refresh status and list. */
+        fun apkOp(cmd: String) {
+            if (running) return
+            scope.launch(Dispatchers.IO) {
+                running = true
+                pkgMsg = ProotSandbox.run(cmd).trimEnd().take(500)
+                status = ProotSandbox.status()
+                pkgs = parsePkgs(ProotSandbox.run("apk info 2>/dev/null | head -150"))
+                running = false
+            }
+        }
+
+        LaunchedEffect(Unit) { refresh() }
 
         Text("Alpine 沙箱", style = MaterialTheme.typography.titleSmall)
         Text(
             "proot 与 Alpine rootfs 已内置（arm64/arm），安装无需下载、数秒完成。" +
-                "沙箱与手机宿主隔离，apk add 可装软件包；控制台「终端」页可直接进入命令行",
+                "沙箱与手机宿主隔离；「终端」页可直接进入命令行",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -846,20 +679,76 @@ class MainActivity : FragmentActivity() {
                         running = true
                         status = "安装中…"
                         status = ProotSandbox.setup()
+                        pkgMsg = ""
+                        pkgs = parsePkgs(ProotSandbox.run("apk info 2>/dev/null | head -150"))
                         running = false
                     }
                 },
                 enabled = !running,
             ) { Text("安装/重装沙箱") }
-            OutlinedButton(
-                onClick = {
-                    scope.launch(Dispatchers.IO) { status = ProotSandbox.status() }
-                },
-                enabled = !running,
-            ) { Text("刷新状态") }
+            OutlinedButton(onClick = { refresh() }, enabled = !running) { Text("刷新") }
         }
         if (running) {
             CircularProgressIndicator(Modifier.padding(6.dp))
+        }
+
+        Text("软件包", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "apk add / apk del 直接管理沙箱内的 Alpine 软件包",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = pkgName,
+                onValueChange = { pkgName = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("包名，如 curl / python3") },
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    val name = pkgName.trim()
+                    if (!PKG_RE.matches(name)) {
+                        pkgMsg = "包名只允许小写字母数字与 . _ -"
+                        return@Button
+                    }
+                    pkgName = ""
+                    apkOp("apk add -y $name")
+                },
+                enabled = !running && pkgName.isNotBlank(),
+            ) { Text("安装") }
+        }
+        if (pkgMsg.isNotEmpty()) {
+            Text(
+                pkgMsg,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (pkgs.isNotEmpty()) {
+            Text(
+                "已装 ${pkgs.size} 个包（base 镜像自带的勿轻易卸载）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        pkgs.forEach { p ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    p,
+                    modifier = Modifier.weight(1f),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                )
+                TextButton(onClick = { apkOp("apk del -y $p") }, enabled = !running) {
+                    Text("卸载")
+                }
+            }
         }
         Text(
             "提示：agent 也能用 sandbox_setup/sandbox_run/sandbox_status 工具操作沙箱",
@@ -901,19 +790,23 @@ class MainActivity : FragmentActivity() {
         val context = LocalContext.current
         var title by remember { mutableStateOf("") }
         var text by remember { mutableStateOf("") }
+        var type by remember { mutableStateOf("daily") }
         var time by remember { mutableStateOf("") }
+        var date by remember { mutableStateOf("") }
+        var weekday by remember { mutableStateOf(2) } // Calendar.MONDAY
+        var intervalMin by remember { mutableStateOf("30") }
         var important by remember { mutableStateOf(false) }
         var feedback by remember { mutableStateOf("") }
 
-        Text("每日提醒", style = MaterialTheme.typography.titleSmall)
+        Text("定时任务", style = MaterialTheme.typography.titleSmall)
         Text(
-            "到点发系统通知；重要任务震动并全屏直达本应用（早报、作业提醒、上课提醒等）。" +
-                "也可以直接让 agent 创建",
+            "到点由系统闹钟唤醒并发通知（重要任务震动并全屏直达），不驻留后台、低功耗。" +
+                "四种节奏：单次 / 每日 / 每周 / 每 N 分钟；也可以直接让 agent 创建",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        val items = ReminderStore.all().sortedBy { it.hour * 60 + it.minute }
+        val items = ReminderStore.all()
         if (items.isEmpty()) {
             Text(
                 "暂无任务",
@@ -925,9 +818,13 @@ class MainActivity : FragmentActivity() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "%02d:%02d  %s".format(r.hour, r.minute, r.title) +
-                            if (r.important) "  重要" else "",
+                        r.title + if (r.important) "  重要" else "",
                         style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        ReminderScheduler.describe(r),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         r.text,
@@ -958,40 +855,123 @@ class MainActivity : FragmentActivity() {
             placeholder = { Text("通知内容") },
             singleLine = true,
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            REMINDER_TYPE_CHIPS.forEach { (t, label) ->
+                AssistChip(
+                    onClick = { type = t },
+                    label = { Text((if (type == t) "• " else "") + label, fontSize = 12.sp) },
+                )
+            }
+        }
+        if (type == "once") {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = date,
+                    onValueChange = { date = it },
+                    modifier = Modifier.weight(1.4f),
+                    placeholder = { Text("日期 2026-09-20") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = time,
+                    onValueChange = { time = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("HH:mm") },
+                    singleLine = true,
+                )
+            }
+        }
+        if (type == "weekly") {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                WEEKDAY_CHIPS.forEach { (label, d) ->
+                    AssistChip(
+                        onClick = { weekday = d },
+                        label = { Text((if (weekday == d) "•" else "") + label, fontSize = 12.sp) },
+                    )
+                }
+            }
+        }
+        if (type == "daily" || type == "weekly") {
+            OutlinedTextField(
+                value = time,
+                onValueChange = { time = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("时间 HH:mm，如 07:30") },
+                singleLine = true,
+            )
+        }
+        if (type == "interval") {
+            OutlinedTextField(
+                value = intervalMin,
+                onValueChange = { intervalMin = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("每多少分钟，如 90") },
+                singleLine = true,
+            )
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
-                value = time,
-                onValueChange = { time = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("时间 HH:mm，如 07:30") },
-                singleLine = true,
-            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("重要", style = MaterialTheme.typography.bodySmall)
                 Switch(checked = important, onCheckedChange = { important = it })
             }
             Button(
                 onClick = {
-                    val m = TIME_RE.find(time.trim())
-                    val h = m?.groupValues?.get(1)?.toIntOrNull()
-                    val min = m?.groupValues?.get(2)?.toIntOrNull()
-                    if (title.isBlank() || text.isBlank() || h == null || min == null ||
-                        h > 23 || min > 59
-                    ) {
-                        feedback = "需要标题、内容与合法时间（HH:mm）"
-                        return@Button
+                    val tm = TIME_RE.find(time.trim())
+                    val h = tm?.groupValues?.get(1)?.toIntOrNull()
+                    val min = tm?.groupValues?.get(2)?.toIntOrNull()
+                    var y = 0
+                    var mo = 0
+                    var d = 0
+                    if (type == "once") {
+                        val dm = DATE_RE.find(date.trim())
+                        y = dm?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                        mo = dm?.groupValues?.get(2)?.toIntOrNull() ?: 0
+                        d = dm?.groupValues?.get(3)?.toIntOrNull() ?: 0
+                        if (mo !in 1..12 || d !in 1..31) {
+                            feedback = "日期应为 2026-09-20 这样的格式"
+                            return@Button
+                        }
                     }
-                    ReminderStore.add(context, title, text, h, min, important)
-                    title = ""
-                    text = ""
-                    time = ""
-                    important = false
-                    feedback = "已创建，每日 ${"%02d:%02d".format(h, min)} 提醒"
+                    val iv = if (type == "interval") (intervalMin.trim().toIntOrNull() ?: 0) else 0
+                    val badTime = type != "interval" && (h == null || min == null || h > 23 || min > 59)
+                    when {
+                        title.isBlank() || text.isBlank() -> feedback = "需要标题与内容"
+                        badTime -> feedback = "时间应为合法 HH:mm"
+                        type == "interval" && iv < 1 -> feedback = "间隔分钟需不小于 1"
+                        else -> {
+                            val r = Reminder(
+                                id = "rem-" + System.currentTimeMillis(),
+                                title = title.trim(),
+                                text = text.trim(),
+                                important = important,
+                                enabled = true,
+                                type = type,
+                                hour = h ?: 8,
+                                minute = min ?: 0,
+                                year = y,
+                                month = mo,
+                                day = d,
+                                weekday = weekday,
+                                intervalMin = iv,
+                            )
+                            ReminderStore.add(context, r)
+                            title = ""
+                            text = ""
+                            date = ""
+                            time = ""
+                            important = false
+                            feedback = "已创建：" + ReminderScheduler.describe(r) +
+                                (if (ReminderScheduler.nextAt(r) == null) "（时间已过，不会触发）" else "")
+                        }
+                    }
                 },
-                enabled = title.isNotBlank() || text.isNotBlank() || time.isNotBlank(),
+                enabled = title.isNotBlank() || text.isNotBlank(),
             ) { Text("添加") }
         }
         if (feedback.isNotEmpty()) {

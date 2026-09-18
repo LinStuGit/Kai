@@ -12,8 +12,8 @@ internal data class ChatLine(val role: String, val text: String, val thinking: S
 
 internal const val WELCOME =
     "我是 Kami agent——可以直接操作这台手机（Shizuku shell），也能在 Alpine Linux " +
-        "沙箱里跑命令，把常用操作固化为快捷指令。" +
-        "试试：「看看设备信息」「装好沙箱后帮我在里面装 curl」或「加一个一键截屏功能」"
+        "沙箱里跑命令，联网搜索、定时任务、日历日程都在手边。" +
+        "试试：「看看设备信息」「搜一下今天的新闻」「明早 7 点提醒我早读」或「在沙箱里装 curl」"
 
 /** One parallel agent session: its own chat history and its own JWT key. */
 internal data class AgentSession(

@@ -31,21 +31,24 @@ object AgentClient {
 
     private const val SYSTEM_PROMPT =
         "你是 Kami，运行在用户 Android 手机上的助手。工具：run_shell 以 shell uid 执行" +
-            "命令（Shizuku 免 root，可调用 am/pm/settings/dumpsys）；read_screen 读取屏幕" +
-            "控件层级（bounds 给出坐标），screen_touch 点击/滑动/长按/按键，input_text 输入" +
-            "文本（需输入框已聚焦），take_screenshot 截图保存给用户（图片对 agent 不可见）；" +
+            "命令（Shizuku 免 root，可调用 am/pm/settings/dumpsys）；web_search 联网搜索" +
+            "（必应/学校网络可达），web_fetch 抓取网页正文；read_screen 读取屏幕控件层级" +
+            "（bounds 给出坐标），screen_touch 点击/滑动/长按/按键，input_text 输入文本" +
+            "（需输入框已聚焦），take_screenshot 截图保存给用户（图片对 agent 不可见）；" +
             "sandbox_run 在 Alpine Linux 沙箱内执行（与宿主隔离，apk add 可装包；未安装时先调 " +
             "sandbox_setup，装好后编译/网络/脚本类任务优先在沙箱里做）；add_extension 把 " +
-            "shell 命令固化成用户主界面一键功能——当用户要求新能力时优先注册拓展，而不是只执行一次；" +
+            "shell 命令固化为可复用功能——当用户要求新能力时优先注册拓展，而不是只执行一次；" +
             "notify_user 可发系统通知（长任务完成或需要用户回来时用）。" +
             "跨会话持久记忆可用：用户的偏好、背景、长期约定与重要结论用 memory_save 主动记录" +
-            "（不必询问），memory_recall 可检索；add_reminder 可创建每日定时提醒（重要提醒会" +
-            "震动并全屏弹出到应用，适合早报/作业/上课提醒），list_reminders/remove_reminder 管理；" +
+            "（不必询问），memory_recall 可检索；add_reminder 创建定时任务，支持四种类型：" +
+            "once（指定日期时间）/daily（每日 HH:mm）/weekly（每周几 HH:mm）/interval" +
+            "（每 N 分钟），到点发通知，important 时震动并全屏唤醒进应用（早报用 daily、" +
+            "作业/上课用 weekly、短暂倒计时用 interval）；list_reminders/remove_reminder 管理；" +
             "calendar_add/calendar_list 读写系统日历日程；list_skills/skill_run 调用用户自定义" +
-            "技能模板。屏幕操作要点：先 read_screen 定位（它会自动隐藏 Kami 悬浮窗并收起键盘，" +
+            "技能模板。屏幕操作要点：先 read_screen 定位（它会收起 Kami 悬浮球面板并收起键盘，" +
             "不会遮挡目标界面），随后凭一次读取的 bounds 连续执行多个点击/输入，不要每步都重读；" +
-            "完成后再读一次确认结果。危险命令（重启/卸载/清数据等）会触发生物验证，用户拒绝则" +
-            "立即放弃并说明。回答用中文，简洁直接。"
+            "完成后再读一次确认结果。危险操作（重启/卸载/删文件/发短信/打开支付类应用/删提醒等）" +
+            "会触发生物验证，用户拒绝则立即放弃并说明。回答用中文，简洁直接。"
 
     private const val MAX_TOOL_RESULT = 6000
 
@@ -53,6 +56,8 @@ object AgentClient {
         """
         [
           {"type":"function","function":{"name":"run_shell","description":"在手机上以 shell uid（Shizuku，免 root）执行命令；支持 ; && 串联与管道","parameters":{"type":"object","properties":{"command":{"type":"string","description":"shell 命令"}},"required":["command"]}}},
+          {"type":"function","function":{"name":"web_search","description":"联网搜索（Bing，DuckDuckGo 兜底），返回标题/链接/摘要。查资料、新闻、文档时用","parameters":{"type":"object","properties":{"query":{"type":"string","description":"搜索关键词"}},"required":["query"]}}},
+          {"type":"function","function":{"name":"web_fetch","description":"抓取网页正文文本（去标签，截 4k）。配合 web_search 深入阅读某个结果","parameters":{"type":"object","properties":{"url":{"type":"string","description":"http(s) 地址"}},"required":["url"]}}},
           {"type":"function","function":{"name":"sandbox_setup","description":"安装 Alpine Linux proot 沙箱：proot 与 rootfs 已内置（arm64/arm，免下载，数秒完成）；其它架构或自定义源时用可传 URL 下载。重复执行会重装","parameters":{"type":"object","properties":{"proot_url":{"type":"string","description":"可选，自定义 proot 静态二进制下载地址"},"rootfs_url":{"type":"string","description":"可选，自定义 Alpine rootfs tar.gz 地址"}}}}},
           {"type":"function","function":{"name":"sandbox_run","description":"在 Alpine Linux 沙箱内执行命令（与宿主隔离，apk add 可装软件包，适合编译、网络工具、文件处理）","parameters":{"type":"object","properties":{"command":{"type":"string","description":"在 Alpine 内执行的 sh 命令"}},"required":["command"]}}},
           {"type":"function","function":{"name":"sandbox_status","description":"查看沙箱安装状态","parameters":{"type":"object","properties":{}}}},
@@ -67,7 +72,7 @@ object AgentClient {
           {"type":"function","function":{"name":"device_info","description":"设备概况：型号/系统版本/无线调试开关与端口","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"memory_save","description":"把重要事实写入持久记忆（跨会话有效）：用户偏好、项目背景、长期约定、重要结论。值得记的主动存，不必询问","parameters":{"type":"object","properties":{"text":{"type":"string","description":"要记住的事实，一句话"}},"required":["text"]}}},
           {"type":"function","function":{"name":"memory_recall","description":"检索持久记忆；不带 query 返回最近记忆","parameters":{"type":"object","properties":{"query":{"type":"string","description":"关键词，可省略"}}}}},
-          {"type":"function","function":{"name":"add_reminder","description":"创建每日定时提醒，到点发系统通知；important=true 时震动并全屏弹出到应用。适合每日早报、作业提醒、上课提醒等","parameters":{"type":"object","properties":{"title":{"type":"string","description":"提醒标题，要短"},"text":{"type":"string","description":"通知内容"},"hour":{"type":"integer","description":"小时 0-23"},"minute":{"type":"integer","description":"分钟 0-59"},"important":{"type":"boolean","description":"重要：震动+全屏直达，默认 false"}},"required":["title","text","hour","minute"]}}},
+          {"type":"function","function":{"name":"add_reminder","description":"创建定时任务，到点发系统通知（important 时震动并全屏唤醒进应用）。四种类型：once 单次（date=2026-09-20）、daily 每日、weekly 每周（weekday 1=周日 2=周一…7=周六）、interval 每 N 分钟。适合早报（daily）、作业/上课（weekly）、稍后提醒（once/interval）","parameters":{"type":"object","properties":{"title":{"type":"string","description":"提醒标题，要短"},"text":{"type":"string","description":"通知内容"},"type":{"type":"string","enum":["once","daily","weekly","interval"],"description":"类型，默认 daily"},"hour":{"type":"integer","description":"小时 0-23（once/daily/weekly 必填）"},"minute":{"type":"integer","description":"分钟 0-59"},"date":{"type":"string","description":"once 的日期，如 2026-09-20"},"weekday":{"type":"integer","description":"weekly 的周几：1=周日 2=周一 … 7=周六"},"interval_min":{"type":"integer","description":"interval 的间隔分钟"},"important":{"type":"boolean","description":"重要：震动+全屏直达，默认 false"}},"required":["title","text"]}}},
           {"type":"function","function":{"name":"remove_reminder","description":"删除定时提醒","parameters":{"type":"object","properties":{"id":{"type":"string","description":"提醒 id 或精确标题"}},"required":["id"]}}},
           {"type":"function","function":{"name":"list_reminders","description":"列出全部定时提醒","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"calendar_add","description":"在系统日历新建日程事件","parameters":{"type":"object","properties":{"title":{"type":"string"},"start_ms":{"type":"integer","description":"开始时间 epoch 毫秒"},"duration_min":{"type":"integer","description":"持续分钟，默认 60"},"desc":{"type":"string","description":"描述，可省略"}},"required":["title","start_ms"]}}},
@@ -258,6 +263,10 @@ object AgentClient {
             }
 
             "remove_extension" -> {
+                val allowed = runBlocking {
+                    SensitiveGate.await("删除拓展", args.optString("id").take(120))
+                }
+                if (!allowed) return "用户拒绝删除（或生物验证失败）——不要重试"
                 val before = ExtensionStore.items.value.size
                 ExtensionStore.remove(args.optString("id"))
                 "已删除 ${before - ExtensionStore.items.value.size} 项"
@@ -279,35 +288,96 @@ object AgentClient {
                 if (found.isEmpty()) "（无匹配记忆）" else found.joinToString("\n")
             }
 
+            "web_search" -> WebSearch.search(args.optString("query"))
+
+            "web_fetch" -> WebSearch.fetch(args.optString("url"))
+
             "add_reminder" -> {
-                val r = ReminderStore.add(
-                    context.applicationContext,
-                    args.optString("title"),
-                    args.optString("text"),
-                    args.optInt("hour").coerceIn(0, 23),
-                    args.optInt("minute").coerceIn(0, 59),
-                    args.optBoolean("important"),
-                )
-                "已创建每日提醒 ${r.hour}:${"%02d".format(r.minute)} 「${r.title}」" +
-                    if (r.important) "（重要：震动+全屏直达）" else ""
+                val type = args.optString("type").ifBlank { "daily" }
+                val hour = args.optInt("hour").coerceIn(0, 23)
+                val minute = args.optInt("minute").coerceIn(0, 59)
+                val r = when (type) {
+                    "once" -> {
+                        val m = Regex("(\\d{4})-(\\d{1,2})-(\\d{1,2})").find(args.optString("date"))
+                        if (m == null) {
+                            return "错误：once 类型需要 date（格式 2026-09-20）"
+                        }
+                        Reminder(
+                            id = newReminderId(), title = args.optString("title").trim(),
+                            text = args.optString("text").trim(),
+                            important = args.optBoolean("important"), enabled = true,
+                            type = "once", hour = hour, minute = minute,
+                            year = m.groupValues[1].toInt(),
+                            month = m.groupValues[2].toInt(),
+                            day = m.groupValues[3].toInt(),
+                        )
+                    }
+
+                    "weekly" -> {
+                        val wd = args.optInt("weekday")
+                        if (wd < 1 || wd > 7) return "错误：weekly 类型需要 weekday（1=周日 … 7=周六）"
+                        Reminder(
+                            id = newReminderId(), title = args.optString("title").trim(),
+                            text = args.optString("text").trim(),
+                            important = args.optBoolean("important"), enabled = true,
+                            type = "weekly", hour = hour, minute = minute, weekday = wd,
+                        )
+                    }
+
+                    "interval" -> {
+                        val iv = args.optInt("interval_min")
+                        if (iv < 1) return "错误：interval 类型需要 interval_min（>=1 分钟）"
+                        Reminder(
+                            id = newReminderId(), title = args.optString("title").trim(),
+                            text = args.optString("text").trim(),
+                            important = args.optBoolean("important"), enabled = true,
+                            type = "interval", intervalMin = iv,
+                        )
+                    }
+
+                    else -> Reminder(
+                        id = newReminderId(), title = args.optString("title").trim(),
+                        text = args.optString("text").trim(),
+                        important = args.optBoolean("important"), enabled = true,
+                        type = "daily", hour = hour, minute = minute,
+                    )
+                }
+                ReminderStore.add(context.applicationContext, r)
+                val nextCal = ReminderScheduler.nextAt(r)
+                val next = nextCal?.let {
+                    "%04d-%02d-%02d %02d:%02d".format(
+                        it.get(java.util.Calendar.YEAR),
+                        it.get(java.util.Calendar.MONTH) + 1,
+                        it.get(java.util.Calendar.DAY_OF_MONTH),
+                        it.get(java.util.Calendar.HOUR_OF_DAY),
+                        it.get(java.util.Calendar.MINUTE),
+                    )
+                } ?: "（已过期，不会触发）"
+                "已创建定时任务：${ReminderScheduler.describe(r)}「${r.title}」" +
+                    (if (r.important) "（重要：震动+全屏直达）" else "") + "，下次触发 $next"
             }
 
             "remove_reminder" -> {
-                val removed = ReminderStore.remove(context.applicationContext, args.optString("id"))
-                if (removed) "已删除提醒" else "未找到该提醒（list_reminders 可查 id）"
+                val id = args.optString("id")
+                val target = ReminderStore.get(id)?.title ?: id
+                val allowed = runBlocking {
+                    SensitiveGate.await("删除定时任务", target.take(120))
+                }
+                if (!allowed) return "用户拒绝删除（或生物验证失败）——不要重试"
+                val removed = ReminderStore.remove(context.applicationContext, id)
+                if (removed) "已删除定时任务" else "未找到该提醒（list_reminders 可查 id）"
             }
 
             "list_reminders" -> {
                 val all = ReminderStore.all()
                 if (all.isEmpty()) {
-                    "（暂无定时提醒）"
+                    "（暂无定时任务）"
                 } else {
                     all.joinToString("\n") {
-                        "%s id=%s %02d:%02d%s%s".format(
+                        "%s id=%s %s%s%s".format(
                             it.title,
                             it.id,
-                            it.hour,
-                            it.minute,
+                            ReminderScheduler.describe(it),
                             if (it.important) " [重要]" else "",
                             if (!it.enabled) " [已停用]" else "",
                         )
@@ -358,6 +428,8 @@ object AgentClient {
             else -> ExtraToolRegistry.get(name)?.execute(argsJson) ?: "未知工具: $name"
         }
     }
+
+    private fun newReminderId(): String = "rem-" + System.currentTimeMillis()
 
     private fun notifyUser(context: Context, args: JSONObject): String {
         if (Build.VERSION.SDK_INT >= 33 &&

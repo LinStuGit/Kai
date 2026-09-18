@@ -77,14 +77,21 @@ object SensitiveGate {
     /** Host-mutating operations that deserve a biometric check. */
     private val DANGEROUS = listOf(
         "reboot", "shutdown", "poweroff",
-        "rm -rf", "rm -r ", " rm -r",
-        "pm uninstall", "pm clear", "pm disable", "pm suspend",
+        "rm -rf", "rm -r ", " rm -r", " rm ", "unlink ", "shred ",
+        "pm uninstall", "pm clear", "pm disable", "pm suspend", "pm install",
         "am force-stop", "am kill", "am crash",
         "settings put", "settings delete",
         "cmd appops", "cmd package", "cmd deviceidle",
         "svc ", "dd if=", "mkfs", "flash_image", "fastboot",
         "content delete", "content update", "content insert",
         "wm ", "setprop",
+        // Messaging: sending texts / opening share or send intents
+        "sendto", "sms:", " sms ", "sms send", "telephony.sms", "action.send",
+        // Payment & major messaging apps: launching them always needs approval
+        "alipay", "com.eg.android.alipaygphone", "com.tencent.mm", "wechat",
+        "weixin", "micromsg", "com.unionpay", "com.tencent.mobileqq",
+        "com.icbc", "com.chinamworld", "com.android.bankabc", "cmb.pb",
+        "com.chinamobile", "bankofchina", "com.cebbank", "com.chinapay",
     )
 
     fun isDangerous(cmd: String): Boolean {

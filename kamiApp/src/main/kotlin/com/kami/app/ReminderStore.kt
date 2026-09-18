@@ -10,18 +10,30 @@ import org.json.JSONObject
 import java.io.File
 import java.util.Calendar
 
-/** A daily reminder (morning briefing, homework/class reminder, …). */
+/**
+ * A scheduled task. Four shapes — "once" (a date+time), "daily" (HH:mm),
+ * "weekly" (weekday+HH:mm) and "interval" (every N minutes). Everything is
+ * alarm-driven: nothing runs in the background, the alarm wakes the app to
+ * post a notification (important ones buzz and full-screen into the app),
+ * then the next occurrence is armed.
+ */
 data class Reminder(
     val id: String,
     val title: String,
     val text: String,
-    val hour: Int,
-    val minute: Int,
     val important: Boolean,
     val enabled: Boolean,
+    val type: String = "daily", // once | daily | weekly | interval
+    val hour: Int = 8,
+    val minute: Int = 0,
+    val year: Int = 0,
+    val month: Int = 0, // 1-12
+    val day: Int = 0, // 1-31
+    val weekday: Int = 0, // java.util.Calendar.DAY_OF_WEEK (1=Sun .. 7=Sat)
+    val intervalMin: Int = 0,
 )
 
-/** Compose-state store persisted to filesDir/reminders.json. */
+/** Store persisted to filesDir/reminders.json. */
 object ReminderStore {
 
     private val items = mutableListOf<Reminder>()
@@ -39,10 +51,16 @@ object ReminderStore {
                         id = o.getString("id"),
                         title = o.getString("title"),
                         text = o.getString("text"),
-                        hour = o.getInt("hour"),
-                        minute = o.getInt("minute"),
                         important = o.optBoolean("important"),
                         enabled = o.optBoolean("enabled", true),
+                        type = o.optString("type", "daily"),
+                        hour = o.optInt("hour", 8),
+                        minute = o.optInt("minute", 0),
+                        year = o.optInt("year"),
+                        month = o.optInt("month"),
+                        day = o.optInt("day"),
+                        weekday = o.optInt("weekday"),
+                        intervalMin = o.optInt("intervalMin"),
                     ),
                 )
             }
@@ -55,17 +73,8 @@ object ReminderStore {
 
     fun get(id: String): Reminder? = items.firstOrNull { it.id == id }
 
-    fun add(context: Context, title: String, text: String, hour: Int, minute: Int, important: Boolean): Reminder {
+    fun add(context: Context, r: Reminder): Reminder {
         init(context)
-        val r = Reminder(
-            id = "rem-" + System.currentTimeMillis(),
-            title = title.trim(),
-            text = text.trim(),
-            hour = hour,
-            minute = minute,
-            important = important,
-            enabled = true,
-        )
         items.add(r)
         persist()
         ReminderScheduler.scheduleAll(context)
@@ -99,10 +108,16 @@ object ReminderStore {
                         .put("id", it.id)
                         .put("title", it.title)
                         .put("text", it.text)
+                        .put("important", it.important)
+                        .put("enabled", it.enabled)
+                        .put("type", it.type)
                         .put("hour", it.hour)
                         .put("minute", it.minute)
-                        .put("important", it.important)
-                        .put("enabled", it.enabled),
+                        .put("year", it.year)
+                        .put("month", it.month)
+                        .put("day", it.day)
+                        .put("weekday", it.weekday)
+                        .put("intervalMin", it.intervalMin),
                 )
             }
             requireFile().writeText(arr.toString())
@@ -115,6 +130,15 @@ object ReminderScheduler {
 
     const val ACTION_FIRE = "com.kami.app.REMINDER_FIRE"
 
+    private const val WEEKDAYS = "日一二三四五六"
+
+    fun describe(r: Reminder): String = when (r.type) {
+        "once" -> "单次 %04d-%02d-%02d %02d:%02d".format(r.year, r.month, r.day, r.hour, r.minute)
+        "weekly" -> "每周周${WEEKDAYS[(r.weekday - 1).mod(7)]} %02d:%02d".format(r.hour, r.minute)
+        "interval" -> "每 ${r.intervalMin} 分钟"
+        else -> "每日 %02d:%02d".format(r.hour, r.minute)
+    }
+
     fun pendingIntent(context: Context, id: String): PendingIntent = PendingIntent.getBroadcast(
         context,
         id.hashCode(),
@@ -122,13 +146,37 @@ object ReminderScheduler {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    /** Next occurrence of a daily reminder (today if still ahead, else tomorrow). */
-    fun nextAt(r: Reminder): Calendar = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, r.hour)
-        set(Calendar.MINUTE, r.minute)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+    /** Next occurrence, or null when nothing is coming (past one-shot). */
+    fun nextAt(r: Reminder): Calendar? {
+        val now = System.currentTimeMillis()
+        return when (r.type) {
+            "once" -> Calendar.getInstance().apply {
+                set(r.year, r.month - 1, r.day, r.hour, r.minute, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.takeIf { it.timeInMillis > now }
+
+            "weekly" -> Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, r.hour)
+                set(Calendar.MINUTE, r.minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                set(Calendar.DAY_OF_WEEK, r.weekday)
+                if (timeInMillis <= now) add(Calendar.DAY_OF_YEAR, 7)
+            }
+
+            "interval" -> Calendar.getInstance().apply {
+                timeInMillis = now + r.intervalMin * 60_000L
+                set(Calendar.SECOND, 0)
+            }
+
+            else -> Calendar.getInstance().apply { // daily
+                set(Calendar.HOUR_OF_DAY, r.hour)
+                set(Calendar.MINUTE, r.minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                if (timeInMillis <= now) add(Calendar.DAY_OF_YEAR, 1)
+            }
+        }
     }
 
     /** Re-arm every reminder from scratch (idempotent). */
@@ -140,7 +188,7 @@ object ReminderScheduler {
             val pi = pendingIntent(appCtx, r.id)
             am.cancel(pi)
             if (!r.enabled) return@forEach
-            val at = nextAt(r).timeInMillis
+            val at = nextAt(r)?.timeInMillis ?: return@forEach
             if (inexact) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
             } else {
