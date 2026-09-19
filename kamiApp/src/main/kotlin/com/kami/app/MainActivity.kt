@@ -354,7 +354,7 @@ class MainActivity : FragmentActivity() {
         SessionStore.init(applicationContext)
         ArchiveStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
-        KeepAlive.applyIfEnabled(applicationContext)
+        KeepAliveService.applyIfEnabled(applicationContext)
         // Back at the foreground the agent is not driving the screen any
         // more — hand the user's own keyboard back if we borrowed it.
         lifecycle.addObserver(

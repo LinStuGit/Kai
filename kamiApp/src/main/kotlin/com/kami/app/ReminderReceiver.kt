@@ -26,7 +26,7 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderScheduler.scheduleAll(appCtx)
             // Wake the optional watchdog back up after a reboot, and re-apply
             // the Shizuku doze/background exemptions in case they were cleared.
-            KeepAlive.applyIfEnabled(appCtx)
+            KeepAliveService.applyIfEnabled(appCtx)
             Thread { runCatching { KeepAlive.apply() } }.start()
             return
         }
