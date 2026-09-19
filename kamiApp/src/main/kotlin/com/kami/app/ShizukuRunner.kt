@@ -2,8 +2,8 @@ package com.kami.app
 
 import android.content.pm.PackageManager
 import android.os.ParcelFileDescriptor
+import moe.shizuku.server.IRemoteProcess
 import moe.shizuku.server.IShizukuService
-import rikka.shizuku.IRemoteProcess
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import java.util.concurrent.ConcurrentHashMap
