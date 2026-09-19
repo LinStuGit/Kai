@@ -14,6 +14,7 @@ import java.io.File
 object MemoryStore {
 
     private const val CAP = 200
+
     // Snapshot-backed so the management UI recomposes on every change.
     private val mem = mutableStateListOf<String>()
     private var file: File? = null

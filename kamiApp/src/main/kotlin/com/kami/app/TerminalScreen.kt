@@ -67,8 +67,7 @@ private val COMMANDS = listOf(
 private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 
 /** Longest common prefix of a non-empty list. */
-private fun commonPrefix(cands: List<String>): String =
-    cands.reduce { a, b -> a.commonPrefixWith(b) }
+private fun commonPrefix(cands: List<String>): String = cands.reduce { a, b -> a.commonPrefixWith(b) }
 
 /**
  * The terminal, termux-style: one dark TTY block where output and the
@@ -150,7 +149,9 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                     .sorted()
                 when {
                     cands.isEmpty() -> Unit
+
                     cands.size == 1 -> apply(cands[0] + " ", null)
+
                     else -> {
                         val cp = commonPrefix(cands)
                         apply(
@@ -171,7 +172,9 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                     .filter { it.isNotBlank() && !it.startsWith("错误") && !it.startsWith("shizuku") }
                 when {
                     cands.isEmpty() -> Unit
+
                     cands.size == 1 -> apply(cands[0], null)
+
                     else -> {
                         val cp = commonPrefix(cands)
                         apply(

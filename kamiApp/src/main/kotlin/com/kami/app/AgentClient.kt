@@ -205,11 +205,9 @@ object AgentClient {
         }
     }
 
-    private fun toolPrefs(context: Context) =
-        context.getSharedPreferences("kami_tools", Context.MODE_PRIVATE)
+    private fun toolPrefs(context: Context) = context.getSharedPreferences("kami_tools", Context.MODE_PRIVATE)
 
-    fun isToolDisabled(name: String, context: Context): Boolean =
-        toolPrefs(context).getBoolean(name, false)
+    fun isToolDisabled(name: String, context: Context): Boolean = toolPrefs(context).getBoolean(name, false)
 
     fun setToolDisabled(context: Context, name: String, disabled: Boolean) {
         toolPrefs(context).edit().putBoolean(name, disabled).apply()

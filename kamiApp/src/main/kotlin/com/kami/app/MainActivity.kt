@@ -396,6 +396,7 @@ class MainActivity : FragmentActivity() {
                             "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
+
                             "set-memory" -> SubPage("记忆管理") { MemorySection() }
 
                             "set-perms" -> SubPage("权限管理") { PermissionsSection() }
