@@ -128,7 +128,7 @@
         <service
             android:name=".AdbKeyboardService"
             android:exported="true"
-            android:label="Kami ADB Keyboard"
+            android:label="Kami 输入法"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

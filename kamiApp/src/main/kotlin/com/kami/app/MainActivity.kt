@@ -327,6 +327,9 @@ class MainActivity : FragmentActivity() {
     private val permissionListener =
         Shizuku.OnRequestPermissionResultListener { _, _ -> refresh() }
 
+    /** Doze exemptions persist in the system — apply once per process. */
+    private var keepAliveApplied = false
+
     private fun refresh() {
         shizukuAlive.value = try {
             Shizuku.pingBinder()
@@ -334,6 +337,10 @@ class MainActivity : FragmentActivity() {
             false
         }
         shizukuGranted.value = ShizukuRunner.granted()
+        if (shizukuGranted.value && !keepAliveApplied) {
+            keepAliveApplied = true
+            Thread { runCatching { KeepAlive.apply() } }.start()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -347,6 +354,15 @@ class MainActivity : FragmentActivity() {
         SessionStore.init(applicationContext)
         ArchiveStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
+        // Back at the foreground the agent is not driving the screen any
+        // more — hand the user's own keyboard back if we borrowed it.
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
+                }
+            },
+        )
         // targetSdk 35+ enforces edge-to-edge; draw edge to edge on purpose
         // and pad content with safeDrawing (status bar + nav + IME) below.
         enableEdgeToEdge()
@@ -1257,6 +1273,31 @@ class MainActivity : FragmentActivity() {
                 enabled = BioGate.available(context),
             )
         }
+
+        Text("后台保活（定时任务可靠触发）", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "经 Shizuku 把本应用加入 Doze 白名单并允许后台运行，闹钟不再被系统限流；" +
+                "持久生效、无任何后台进程。Shizuku 授权后也会自动应用一次",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        var keepMsg by remember { mutableStateOf("") }
+        val scope = rememberCoroutineScope()
+        if (keepMsg.isNotEmpty()) {
+            Text(
+                keepMsg,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+            )
+        }
+        Button(
+            onClick = {
+                scope.launch(Dispatchers.IO) {
+                    keepMsg = KeepAlive.apply()
+                }
+            },
+            enabled = shizukuGranted,
+        ) { Text("应用保活白名单") }
     }
 
     @Composable

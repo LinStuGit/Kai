@@ -12,6 +12,7 @@ class StopReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         AgentOverlayState.cancelAll()
+        Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
         context.stopService(Intent(context, AgentOverlayService::class.java))
     }
 

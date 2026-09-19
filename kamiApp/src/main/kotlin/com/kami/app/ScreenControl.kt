@@ -28,6 +28,40 @@ object ScreenControl {
         app = context.applicationContext
     }
 
+    private const val IME_ID = "com.kami.app/.AdbKeyboardService"
+
+    /** Previous default IME while ours is temporarily the default. */
+    @Volatile
+    private var pendingIme: String? = null
+
+    @Volatile
+    private var pendingImeAt: Long = 0L
+
+    /**
+     * Put the user's previous IME back. Deferred on purpose: restoring
+     * right after input re-binds their keyboard, which pops it over the
+     * screen so later taps land on the keyboard. Restores when the run
+     * ends / the app resumes / after a long gap, and collapses the
+     * keyboard if the switch brought one up.
+     */
+    fun restoreImeIfNeeded(force: Boolean = false) {
+        val orig = pendingIme ?: return
+        if (!force && System.currentTimeMillis() - pendingImeAt < 60_000) return
+        synchronized(this) {
+            val o = pendingIme ?: return
+            pendingIme = null
+            if (o.isNotEmpty() && o != "null" && o != IME_ID && ShizukuRunner.granted()) {
+                ShizukuRunner.run("settings put secure default_input_method $o")
+            }
+            if (ShizukuRunner.run("dumpsys input_method")
+                    .lineSequence()
+                    .any { it.contains("mInputShown=true") }
+            ) {
+                ShizukuRunner.run("input keyevent 4") // BACK: first press only dismisses the IME
+            }
+        }
+    }
+
     /**
      * Run [block] with the screen on: a SCREEN_BRIGHT wake lock that also
      * wakes a sleeping display, released as soon as the call returns
@@ -35,6 +69,7 @@ object ScreenControl {
      * may return out of the whole tool call.
      */
     private inline fun <T> withScreenOn(block: () -> T): T {
+        restoreImeIfNeeded()
         AgentOverlayState.screenBusy.value += 1
         var lock: PowerManager.WakeLock? = null
         try {
@@ -148,10 +183,18 @@ object ScreenControl {
         // default IME via a direct secure-settings write (more reliable
         // than `ime set`, which needs an active input client on some
         // ROMs), broadcast until the IME confirms the commit, restore.
-        val ime = "com.kami.app/.AdbKeyboardService"
+        val ime = IME_ID
         val original = ShizukuRunner.run("settings get secure default_input_method").trim()
+        synchronized(this) {
+            if (pendingIme == null) {
+                pendingIme = original
+                pendingImeAt = System.currentTimeMillis()
+            }
+        }
         ShizukuRunner.run("ime enable $ime")
         ShizukuRunner.run("settings put secure default_input_method $ime")
+        // On ROMs with a live input client, `ime set` switches immediately too.
+        ShizukuRunner.run("ime set $ime")
         val seq0 = AdbKeyboardService.commitCount()
         var committed = false
         var attempts = 0
@@ -166,12 +209,10 @@ object ScreenControl {
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } finally {
-            if (original.isNotEmpty() && original != "null" && original != ime) {
-                ShizukuRunner.run("settings put secure default_input_method $original")
-            }
+            pendingImeAt = System.currentTimeMillis() // restore later — see restoreImeIfNeeded
         }
         if (committed) {
-            "已输入（ADB Keyboard 确认提交，第 $attempts 次广播）"
+            "已输入（Kami 输入法确认提交，第 $attempts 次广播）"
         } else {
             "已广播输入但未收到提交确认（目标界面可能没有聚焦的输入框，请先聚焦输入框再试）"
         }

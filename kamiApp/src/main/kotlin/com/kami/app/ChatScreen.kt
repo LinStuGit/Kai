@@ -267,6 +267,7 @@ internal fun ChatScreen(
                         } finally {
                             AgentOverlayState.refresh()
                             if (!AgentOverlayState.running.value) {
+                                Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
                                 runCatching {
                                     appCtx.stopService(Intent(appCtx, AgentOverlayService::class.java))
                                 }

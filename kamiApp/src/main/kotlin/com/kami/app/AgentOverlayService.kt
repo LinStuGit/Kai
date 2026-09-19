@@ -106,6 +106,7 @@ class AgentOverlayService : Service() {
             if (!AgentOverlayState.running.value) {
                 AgentOverlayState.screenSeen.value = false
                 detach()
+                Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
                 stopSelf()
                 return
             }

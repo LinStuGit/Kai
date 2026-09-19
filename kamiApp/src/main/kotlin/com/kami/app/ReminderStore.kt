@@ -186,17 +186,22 @@ object ReminderScheduler {
     fun scheduleAll(context: Context) {
         val appCtx = context.applicationContext
         val am = appCtx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val inexact = Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()
+        // Tapping the alarm icon lands back in the app.
+        val showPi = PendingIntent.getActivity(
+            appCtx,
+            0,
+            Intent(appCtx, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         ReminderStore.all().forEach { r ->
             val pi = pendingIntent(appCtx, r.id)
             am.cancel(pi)
             if (!r.enabled) return@forEach
             val at = nextAt(r)?.timeInMillis ?: return@forEach
-            if (inexact) {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            } else {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi)
-            }
+            // setAlarmClock = clock-app grade: fires in Doze, exempt from
+            // standby buckets, no SCHEDULE_EXACT_ALARM grant needed. The
+            // status bar shows an alarm icon while anything is armed.
+            am.setAlarmClock(AlarmManager.AlarmClockInfo(at, showPi), pi)
         }
     }
 }
