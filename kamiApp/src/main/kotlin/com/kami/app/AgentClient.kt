@@ -213,8 +213,7 @@ object AgentClient {
         toolPrefs(context).edit().putBoolean(name, disabled).apply()
     }
 
-    private fun disabledToolNames(context: Context): Set<String> =
-        BUILTIN_INFO.map { it.first }.filter { isToolDisabled(it, context) }.toSet()
+    private fun disabledToolNames(context: Context): Set<String> = BUILTIN_INFO.map { it.first }.filter { isToolDisabled(it, context) }.toSet()
 
     /** Built-in tools (minus user-disabled ones) merged with the registry (MCP). */
     private fun toolSchemas(disabled: Set<String>): JSONArray {
