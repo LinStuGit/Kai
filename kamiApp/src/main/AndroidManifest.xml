@@ -124,6 +124,17 @@
                 android:value="Show live agent output with a force-stop button while the user is outside the app" />
         </service>
 
+        <!-- Optional watchdog: optional foreground service that stays resident
+             in the notification bar so scheduled work always has a warm process -->
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Optional watchdog: keep the process alive so scheduled reminders fire reliably" />
+        </service>
+
         <!-- ADB-Keyboard-style IME for agent text input (non-ASCII) -->
         <service
             android:name=".AdbKeyboardService"

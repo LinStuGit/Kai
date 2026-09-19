@@ -354,6 +354,7 @@ class MainActivity : FragmentActivity() {
         SessionStore.init(applicationContext)
         ArchiveStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
+        KeepAlive.applyIfEnabled(applicationContext)
         // Back at the foreground the agent is not driving the screen any
         // more — hand the user's own keyboard back if we borrowed it.
         lifecycle.addObserver(
@@ -1302,6 +1303,38 @@ class MainActivity : FragmentActivity() {
             },
             enabled = shizukuGranted.value,
         ) { Text("应用保活白名单") }
+
+        // Optional watchdog: a real foreground service that stays in the
+        // notification bar once switched on. Unlike the whitelist above it
+        // keeps an actual process warm so scheduled work always has a home.
+        var watchdogOn by remember { mutableStateOf(KeepAliveService.enabled(context)) }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("看门狗（通知栏常驻）", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "开启后以后台前台服务驻留通知栏，进程保持唤醒，" +
+                        "定时任务与后台操作随时可触发；关闭即退出、默认不开启",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = watchdogOn,
+                onCheckedChange = { watchdogOn = it; KeepAliveService.setEnabled(context, it) },
+            )
+        }
+        // On re-entering this page reflect the real (possibly externally
+        // changed) watchdog state and re-query the whitelist status.
+        LaunchedEffect(Unit) {
+            watchdogOn = KeepAliveService.enabled(context)
+            scope.launch(Dispatchers.IO) {
+                keepMsg = if (KeepAliveService.enabled(context)) "看门狗已启用"
+                else KeepAlive.status()
+            }
+        }
     }
 
     @Composable

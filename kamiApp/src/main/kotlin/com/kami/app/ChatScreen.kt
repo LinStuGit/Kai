@@ -130,38 +130,52 @@ internal fun ChatScreen(
             TextButton(onClick = onSettings) { Text("设置") }
         }
 
-        // Parallel sessions: tap to switch; a leading • marks the active
-        // one, a trailing … marks a running turn.
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            sessions.forEach { s ->
-                val selected = s.id == session.id
+        // Parallel sessions: collapsed by default into one chip showing the
+        // active session; tap to fold/unfold the full selector.
+        var sessionsOpen by remember { mutableStateOf(false) }
+        AssistChip(
+            onClick = { sessionsOpen = !sessionsOpen },
+            label = {
+                Text(
+                    (if (sessionsOpen) "▾ " else "▸ ") +
+                        "会话(${sessions.size}) · " + session.title +
+                        (if (session.busy) " …" else ""),
+                    fontSize = 12.sp,
+                )
+            },
+        )
+        if (sessionsOpen) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                sessions.forEach { s ->
+                    val selected = s.id == session.id
+                    AssistChip(
+                        onClick = { SessionStore.activeId.value = s.id },
+                        label = {
+                            Text(
+                                (if (selected) "• " else "") + s.title + (if (s.busy) " …" else ""),
+                                fontSize = 12.sp,
+                            )
+                        },
+                    )
+                }
                 AssistChip(
-                    onClick = { SessionStore.activeId.value = s.id },
-                    label = {
-                        Text(
-                            (if (selected) "• " else "") + s.title + (if (s.busy) " …" else ""),
-                            fontSize = 12.sp,
-                        )
-                    },
+                    onClick = { SessionStore.newSession() },
+                    label = { Text("＋ 新会话", fontSize = 12.sp) },
+                )
+                if (sessions.any { it.busy }) {
+                    AssistChip(
+                        onClick = { AgentOverlayState.cancelAll() },
+                        label = { Text("■ 终止", fontSize = 12.sp) },
+                    )
+                }
+                AssistChip(
+                    onClick = onArchive,
+                    label = { Text("历史", fontSize = 12.sp) },
                 )
             }
-            AssistChip(
-                onClick = { SessionStore.newSession() },
-                label = { Text("＋ 新会话", fontSize = 12.sp) },
-            )
-            if (sessions.any { it.busy }) {
-                AssistChip(
-                    onClick = { AgentOverlayState.cancelAll() },
-                    label = { Text("■ 终止", fontSize = 12.sp) },
-                )
-            }
-            AssistChip(
-                onClick = onArchive,
-                label = { Text("历史", fontSize = 12.sp) },
-            )
         }
 
         LazyColumn(
@@ -236,6 +250,7 @@ internal fun ChatScreen(
                     SessionStore.update(sid) {
                         it.copy(busy = true, lines = it.lines + ChatLine("user", text))
                     }
+                    SessionStore.retitlePlaceholder(sid, text)
                     val job = scope.launch(Dispatchers.IO) {
                         try {
                             val reply = AgentClient.turn(

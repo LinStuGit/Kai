@@ -32,7 +32,7 @@ internal data class AgentSession(
  */
 internal object SessionStore {
 
-    val sessions = mutableStateOf(listOf(newSession("s1", 1)))
+    val sessions = mutableStateOf(listOf(newSession("s1")))
     val activeId = mutableStateOf("s1")
 
     private var seq = 1
@@ -67,11 +67,32 @@ internal object SessionStore {
 
     fun newSession(): String {
         seq += 1
-        val s = newSession("s$seq", seq)
+        val s = newSession("s$seq")
         sessions.value = sessions.value + s
         activeId.value = s.id
         persist()
         return s.id
+    }
+
+    /**
+     * Short conversations get a summary name from their content — the
+     * first user message — instead of a numbered "会话 N". Nothing to
+     * summarize before the first message, so a fresh session stays
+     * "新会话" until [retitlePlaceholder] renames it.
+     */
+    fun summarize(text: String, max: Int = 14): String {
+        var t = text.replace(Regex("\\s+"), " ")
+            .trim('？', '！', '。', '?', '!', '，', ',', '、', '.', '；', ';', ' ')
+        if (t.length > max) t = t.substring(0, max).trim() + "…"
+        return t.ifEmpty { "对话" }
+    }
+
+    /** Rename the session to its first-message summary if it's still unnamed. */
+    fun retitlePlaceholder(id: String, text: String) {
+        val s = sessions.value.firstOrNull { it.id == id } ?: return
+        if (s.title == "新会话") {
+            update(id) { it.copy(title = summarize(text)) }
+        }
     }
 
     fun remove(id: String) {
@@ -79,7 +100,7 @@ internal object SessionStore {
             ArchiveStore.archive(it.title, it.lines, history = it.history)
         }
         val rest = sessions.value.filterNot { it.id == id }
-        val next = rest.ifEmpty { listOf(newSession("s${++seq}", seq)) }
+        val next = rest.ifEmpty { listOf(newSession("s${++seq}")) }
         sessions.value = next
         if (activeId.value == id) activeId.value = next.first().id
         JwtKeyPool.drop("chat:$id")
@@ -96,9 +117,15 @@ internal object SessionStore {
         val id = "s$seq"
         val hist = history?.let { h -> runCatching { JSONArray(h.toString()) }.getOrNull() }
             ?: historyFromLines(lines)
+        // Restored conversations are re-named from their own content so the
+        // history list never fills with duplicates.
+        val restored = lines.asSequence().firstOrNull { it.role == "user" }?.text
+            ?.let { summarize(it) }
+            ?: title.takeIf { it.isNotBlank() && it != "恢复的会话" && !it.startsWith("会话 ") }
+            ?: "对话"
         sessions.value = sessions.value + AgentSession(
             id = id,
-            title = title.ifBlank { "恢复的会话" },
+            title = restored,
             history = hist,
             lines = lines,
         )
@@ -166,5 +193,5 @@ internal object SessionStore {
         }
     }
 
-    private fun newSession(id: String, n: Int) = AgentSession(id = id, title = "会话 $n")
+    private fun newSession(id: String) = AgentSession(id = id, title = "新会话")
 }
