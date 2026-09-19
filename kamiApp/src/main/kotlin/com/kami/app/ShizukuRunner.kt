@@ -54,7 +54,8 @@ object ShizukuRunner {
             val kill = "p=\$(cat $PID_FILE 2>/dev/null)" +
                 " && { kill -9 \$p 2>/dev/null; pkill -9 -P \$p 2>/dev/null; }; true"
             val p = service.newProcess(arrayOf("sh", "-c", kill), null, null)
-            ParcelFileDescriptor.AutoCloseInputStream(p.inputStream).readText()
+            ParcelFileDescriptor.AutoCloseInputStream(p.inputStream)
+                .bufferedReader().readText()
             p.waitFor()
         } catch (t: Throwable) {
             // best effort — cancelling must never throw

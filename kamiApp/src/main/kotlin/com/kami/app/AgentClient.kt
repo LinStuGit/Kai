@@ -140,22 +140,26 @@ object AgentClient {
     }
 
     /** POST with the session's JWT; 401/403/409 → refetch the token once. */
-    private fun postChat(session: String, history: JSONArray, disabled: Set<String>): JSONObject {
+    private fun postChat(
+        session: String,
+        history: JSONArray,
+        disabled: Set<String>,
+    ): JSONObject {
         val key = JwtKeyPool.acquire("chat:$session")
-        val first = send(key, history)
+        val first = send(key, history, disabled)
         if (first.code in 200..299) return first.body
         if (first.code !in setOf(401, 403, 409)) {
             throw IOException("HTTP ${first.code}: ${first.text.take(300)}")
         }
         JwtKeyPool.drop("chat:$session")
-        val refreshed = send(JwtKeyPool.acquire("chat:$session"), history)
+        val refreshed = send(JwtKeyPool.acquire("chat:$session"), history, disabled)
         if (refreshed.code !in 200..299) {
             throw IOException("HTTP ${refreshed.code}: ${refreshed.text.take(300)}")
         }
         return refreshed.body
     }
 
-    private fun send(key: String, history: JSONArray): SendResult {
+    private fun send(key: String, history: JSONArray, disabled: Set<String>): SendResult {
         val msgs = JSONArray().put(
             JSONObject().put("role", "system").put("content", systemContent()),
         )
