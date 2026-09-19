@@ -125,7 +125,7 @@ object ProotSandbox {
 
     fun run(cmd: String): String {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
-        if (!installed()) return "错误：沙箱未安装，先调用 sandbox_setup"
+        if (!installed()) return "错误：沙箱未安装 — 到 设置→沙箱管理 安装"
         val esc = "export PATH=/bin:/sbin:/usr/bin:/usr/sbin; " +
             cmd.trim().replace("'", "'\\''")
         // -r, not -R: -R also binds $HOME, and Android shells have HOME=/

@@ -282,7 +282,8 @@ private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("Agent 模型", "固定 madmodel 端点 · JWT 池状态", "set-agent"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
     SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
-    SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板", "set-ext"),
+    SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板 · 内置能力", "set-ext"),
+    SettingsEntry("记忆管理", "agent 持久记忆 · 查看/删除", "set-memory"),
     SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
     SettingsEntry("安全", "敏感操作生物验证", "set-sec"),
 )
@@ -395,6 +396,7 @@ class MainActivity : FragmentActivity() {
                             "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
+                            "set-memory" -> SubPage("记忆管理") { MemorySection() }
 
                             "set-perms" -> SubPage("权限管理") { PermissionsSection() }
 
@@ -983,6 +985,50 @@ class MainActivity : FragmentActivity() {
     }
 
     @Composable
+    private fun MemorySection() {
+        var query by remember { mutableStateOf("") }
+        val items = if (query.isBlank()) MemoryStore.recent(200) else MemoryStore.search(query)
+
+        Text("持久记忆", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "agent 自己沉淀的跨会话记忆（每轮自动注入提示词），可删除或清空",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("搜索记忆", fontSize = 13.sp) },
+            singleLine = true,
+        )
+        Text(
+            "共 ${MemoryStore.all().size} 条",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (items.isEmpty()) {
+            Text(
+                "暂无记忆 — 对话里告诉 agent 的偏好/背景会被自动记住",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items.forEach { m ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    m,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                TextButton(onClick = { MemoryStore.remove(m) }) { Text("删") }
+            }
+        }
+        if (MemoryStore.all().isNotEmpty()) {
+            OutlinedButton(onClick = { MemoryStore.clear() }) { Text("清空全部") }
+        }
+    }
+
     private fun ExtensionsSection() {
         val context = LocalContext.current
         val activity = context as? FragmentActivity
@@ -991,6 +1037,35 @@ class MainActivity : FragmentActivity() {
         var feedback by remember { mutableStateOf("") }
         var skillInput by remember { mutableStateOf("") }
         var skillFeedback by remember { mutableStateOf("") }
+
+        // Built-in native tools, user-manageable.
+        Text("内置原生能力", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "agent 可直接调用的本机工具，关闭后 agent 提示不可用",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        AgentClient.BUILTIN_INFO.forEach { (name, desc) ->
+            var on by remember { mutableStateOf(!AgentClient.isToolDisabled(name, context)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(name, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    Text(
+                        desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
+                }
+                Switch(
+                    checked = on,
+                    onCheckedChange = {
+                        AgentClient.setToolDisabled(context, name, !it)
+                        on = it
+                    },
+                )
+            }
+        }
 
         // Master switch for the whole extension interface.
         Row(verticalAlignment = Alignment.CenterVertically) {

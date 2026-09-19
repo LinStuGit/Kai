@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.compose.runtime.mutableStateListOf
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -36,7 +37,8 @@ data class Reminder(
 /** Store persisted to filesDir/reminders.json. */
 object ReminderStore {
 
-    private val items = mutableListOf<Reminder>()
+    // Snapshot-backed so settings UI recomposes the moment a row changes.
+    private val items = mutableStateListOf<Reminder>()
     private var file: File? = null
 
     fun init(context: Context) {

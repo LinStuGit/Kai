@@ -163,7 +163,7 @@ object AgentClient {
         val body = JSONObject()
             .put("model", MadModel.MODEL)
             .put("messages", msgs)
-            .put("tools", toolSchemas())
+            .put("tools", toolSchemas(context))
 
         val conn = URL(MadModel.BASE.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
@@ -197,10 +197,32 @@ object AgentClient {
         }
     }
 
-    /** Built-in tools merged with anything registered in the registry (MCP). */
-    private fun toolSchemas(): JSONArray {
+    /** name + description of every built-in tool, for the management UI. */
+    val BUILTIN_INFO: List<Pair<String, String>> by lazy {
+        (0 until TOOLS.length()).map { i ->
+            val f = TOOLS.getJSONObject(i).getJSONObject("function")
+            f.getString("name") to f.getString("description")
+        }
+    }
+
+    private fun toolPrefs(context: Context) =
+        context.getSharedPreferences("kami_tools", Context.MODE_PRIVATE)
+
+    fun isToolDisabled(name: String, context: Context): Boolean =
+        toolPrefs(context).getBoolean(name, false)
+
+    fun setToolDisabled(context: Context, name: String, disabled: Boolean) {
+        toolPrefs(context).edit().putBoolean(name, disabled).apply()
+    }
+
+    /** Built-in tools (minus user-disabled ones) merged with the registry (MCP). */
+    private fun toolSchemas(context: Context): JSONArray {
         val all = JSONArray()
-        for (i in 0 until TOOLS.length()) all.put(TOOLS.getJSONObject(i))
+        for (i in 0 until TOOLS.length()) {
+            val t = TOOLS.getJSONObject(i)
+            val name = t.getJSONObject("function").getString("name")
+            if (!isToolDisabled(name, context)) all.put(t)
+        }
         val extra = ExtraToolRegistry.schemas()
         for (i in 0 until extra.length()) all.put(extra.getJSONObject(i))
         return all
@@ -216,6 +238,9 @@ object AgentClient {
             JSONObject(argsJson)
         } catch (t: Throwable) {
             JSONObject()
+        }
+        if (BUILTIN_INFO.any { it.first == name } && isToolDisabled(name, context)) {
+            return "该内置能力已被用户在设置中停用：$name（告知用户后改用其他方式）"
         }
         return when (name) {
             "run_shell" -> {

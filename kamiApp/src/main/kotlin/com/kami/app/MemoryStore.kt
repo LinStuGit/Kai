@@ -1,6 +1,7 @@
 package com.kami.app
 
 import android.content.Context
+import androidx.compose.runtime.mutableStateListOf
 import org.json.JSONArray
 import java.io.File
 
@@ -13,7 +14,8 @@ import java.io.File
 object MemoryStore {
 
     private const val CAP = 200
-    private val mem = mutableListOf<String>()
+    // Snapshot-backed so the management UI recomposes on every change.
+    private val mem = mutableStateListOf<String>()
     private var file: File? = null
 
     fun init(context: Context) {
@@ -41,6 +43,12 @@ object MemoryStore {
     fun recent(n: Int): List<String> = mem.takeLast(n)
 
     fun search(query: String): List<String> = mem.filter { it.contains(query, ignoreCase = true) }
+
+    fun remove(text: String): Boolean {
+        val removed = mem.removeAll { it == text }
+        if (removed) persist()
+        return removed
+    }
 
     fun clear() {
         mem.clear()

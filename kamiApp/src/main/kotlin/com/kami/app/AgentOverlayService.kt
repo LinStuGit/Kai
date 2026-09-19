@@ -74,11 +74,14 @@ object AgentOverlayState {
         running.value = jobs.isNotEmpty()
     }
 
-    /** Force-stop every running session (ball panel / notification / home). */
+    /** Force-stop every running session (ball panel / notification / home).
+     *  Unconditional: cancelled cooperatively AND the in-flight Shizuku
+     *  command is killed right away — no waiting for it to finish. */
     fun cancelAll() {
         jobs.forEach { it.cancel() }
         running.value = false
         screenSeen.value = false
+        Thread { ShizukuRunner.killCurrent() }.start()
     }
 }
 
