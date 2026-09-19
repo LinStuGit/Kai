@@ -2,6 +2,9 @@ package com.kami.app
 
 import android.content.Context
 import android.os.PowerManager
+import android.util.Xml
+import org.xmlpull.v1.XmlPullParser
+import java.io.StringReader
 
 /**
  * Agent-facing host screen control, all through Shizuku shell:
@@ -106,15 +109,23 @@ object ScreenControl {
             val path = "/sdcard/Download/kami-${System.currentTimeMillis()}.png"
             val out = ShizukuRunner.run("screencap -p $path && ls -l $path")
             if (!out.contains("kami-")) return@withScreenOn "错误：截屏失败：$out"
+            // Shots exist for the user to open, but they pile up — keep only
+            // the newest five.
+            ShizukuRunner.run(
+                "ls -t /sdcard/Download/kami-*.png 2>/dev/null | tail -n +6 | xargs -r rm -f",
+            )
             "已保存 $path（图片内容对 agent 不可见；理解屏幕内容请用 read_screen）"
         }
     }
 
     /**
-     * Trimmed uiautomator dump: drop noisy attributes, keep text / ids /
-     * descs / clickable / bounds so it fits the tool-result budget. Our
-     * overlay is hidden and a showing keyboard is dismissed first — the
-     * first BACK only closes the IME.
+     * The agent's "eyes": uiautomator dump re-rendered as a compact
+     * one-node-per-line tree — indented plain lines run a fraction of the
+     * raw XML's size, cutting both the tool-result budget and how much the
+     * model has to read before it can act. The dump goes to a hidden temp
+     * file that is removed in the same shell roundtrip (older versions'
+     * leftover in /sdcard is swept too); screenshots aside, no screen
+     * operation leaves intermediate files behind.
      */
     fun readScreen(): String = withScreenOn {
         withOverlayHidden {
@@ -130,15 +141,75 @@ object ScreenControl {
                 }
             }
             val xml = ShizukuRunner.run(
-                "uiautomator dump /sdcard/kami-uidump.xml >/dev/null 2>&1; " +
-                    "sed -E 's/(index|package|checkable|checked|enabled|focusable|focused|" +
-                    "selected|password|NAF)=\"[^\"]*\" //g' /sdcard/kami-uidump.xml 2>/dev/null | " +
-                    "head -c 12000; rm -f /sdcard/kami-uidump.xml",
+                "F=/data/local/tmp/.kami-ui.xml; rm -f \$F /sdcard/kami-uidump.xml; " +
+                    "uiautomator dump --compressed \$F >/dev/null 2>&1; " +
+                    "[ -s \$F ] || uiautomator dump \$F >/dev/null 2>&1; " +
+                    "cat \$F 2>/dev/null; rm -f \$F",
             )
-            xml.ifBlank {
-                "错误：屏幕层级获取失败（屏幕可能非空闲或目标窗口禁止 dump，稍后重试）"
+            if (xml.isBlank()) {
+                return@withScreenOn "错误：屏幕层级获取失败（屏幕可能非空闲或目标窗口禁止 dump，稍后重试）"
             }
+            "屏幕控件树（类名 \"文本\" (描述) @id，*=可点 ^=可滚 #=选中；坐标 [x1,y1][x2,y2]）\n" +
+                renderUiTree(xml)
         }
+    }
+
+    /** One line per dump node; null = pure container, skip but keep children. */
+    private fun uiLine(p: XmlPullParser, depth: Int): String? {
+        fun a(name: String): String = p.getAttributeValue(null, name) ?: ""
+        val text = a("text").replace(Regex("\\s+"), " ").replace("\"", "'").trim()
+        val desc = a("content-desc").replace(Regex("\\s+"), " ").replace("\"", "'").trim()
+        val rawId = a("resource-id")
+        val rid = if (rawId.contains("/id/")) "@" + rawId.substringAfterLast("/id/") else ""
+        val clickable = a("clickable") == "true"
+        val scrollable = a("scrollable") == "true"
+        val bounds = a("bounds")
+        if (text.isEmpty() && desc.isEmpty() && rid.isEmpty() && !clickable && !scrollable) {
+            return null
+        }
+        val sb = StringBuilder("  ".repeat(depth))
+        sb.append(a("class").substringAfterLast('.').ifEmpty { "View" })
+        if (text.isNotEmpty()) sb.append(" \"").append(text.take(80)).append('"')
+        if (desc.isNotEmpty()) sb.append(" (").append(desc.take(60)).append(')')
+        if (rid.isNotEmpty()) sb.append(' ').append(rid)
+        if (clickable) sb.append(" *")
+        if (scrollable) sb.append(" ^")
+        if (a("selected") == "true") sb.append(" #")
+        if (bounds.isNotEmpty()) sb.append(' ').append(bounds)
+        return sb.toString()
+    }
+
+    /**
+     * Flatten the uiautomator XML into compact indented lines — same
+     * bounds the model taps by, a fraction of the characters. Pure-wrapper
+     * nodes vanish; if parsing fails the raw XML is shown as fallback.
+     */
+    private fun renderUiTree(xml: String, maxChars: Int = 12_000): String {
+        val sb = StringBuilder()
+        try {
+            val p = Xml.newPullParser()
+            p.setInput(StringReader(xml))
+            var depth = 0
+            var ev = p.eventType
+            while (ev != XmlPullParser.END_DOCUMENT && sb.length <= maxChars) {
+                when (ev) {
+                    XmlPullParser.START_TAG -> if (p.name == "node") {
+                        uiLine(p, depth.coerceAtMost(24))?.let { sb.append(it).append('\n') }
+                        depth++
+                    }
+
+                    XmlPullParser.END_TAG -> if (p.name == "node") {
+                        depth = (depth - 1).coerceAtLeast(0)
+                    }
+                }
+                ev = p.next()
+            }
+        } catch (_: Throwable) {
+            // Malformed/truncated dump: keep whatever parsed.
+        }
+        if (sb.isBlank()) return xml.take(maxChars)
+        if (sb.length > maxChars) sb.append("…（已截断）\n")
+        return sb.toString()
     }
 
     fun touch(
