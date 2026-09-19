@@ -102,7 +102,7 @@ object AgentClient {
         history.put(JSONObject().put("role", "user").put("content", userText))
         while (true) {
             currentCoroutineContext().ensureActive()
-            val resp = postChat(sessionId, history)
+            val resp = postChat(sessionId, history, disabledToolNames(context))
             val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
             val reasoning = msg.optString("reasoning_content")
             if (reasoning.isNotBlank()) thinkings.add(reasoning.trim())
@@ -140,7 +140,7 @@ object AgentClient {
     }
 
     /** POST with the session's JWT; 401/403/409 → refetch the token once. */
-    private fun postChat(session: String, history: JSONArray): JSONObject {
+    private fun postChat(session: String, history: JSONArray, disabled: Set<String>): JSONObject {
         val key = JwtKeyPool.acquire("chat:$session")
         val first = send(key, history)
         if (first.code in 200..299) return first.body
@@ -163,7 +163,7 @@ object AgentClient {
         val body = JSONObject()
             .put("model", MadModel.MODEL)
             .put("messages", msgs)
-            .put("tools", toolSchemas(context))
+            .put("tools", toolSchemas(disabled))
 
         val conn = URL(MadModel.BASE.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
@@ -213,13 +213,16 @@ object AgentClient {
         toolPrefs(context).edit().putBoolean(name, disabled).apply()
     }
 
+    private fun disabledToolNames(context: Context): Set<String> =
+        BUILTIN_INFO.map { it.first }.filter { isToolDisabled(it, context) }.toSet()
+
     /** Built-in tools (minus user-disabled ones) merged with the registry (MCP). */
-    private fun toolSchemas(context: Context): JSONArray {
+    private fun toolSchemas(disabled: Set<String>): JSONArray {
         val all = JSONArray()
         for (i in 0 until TOOLS.length()) {
             val t = TOOLS.getJSONObject(i)
             val name = t.getJSONObject("function").getString("name")
-            if (!isToolDisabled(name, context)) all.put(t)
+            if (name !in disabled) all.put(t)
         }
         val extra = ExtraToolRegistry.schemas()
         for (i in 0 until extra.length()) all.put(extra.getJSONObject(i))

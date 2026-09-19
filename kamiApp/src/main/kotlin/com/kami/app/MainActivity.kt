@@ -1030,6 +1030,7 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    @Composable
     private fun ExtensionsSection() {
         val context = LocalContext.current
         val activity = context as? FragmentActivity
