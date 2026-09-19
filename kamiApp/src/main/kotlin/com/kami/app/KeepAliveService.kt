@@ -62,9 +62,8 @@ class KeepAliveService : Service() {
         private const val PREFS = "kami_watchdog"
         private const val KEY = "on"
 
-        fun enabled(ctx: Context): Boolean =
-            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean(KEY, false)
+        fun enabled(ctx: Context): Boolean = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY, false)
 
         /** Toggle: start the foreground watchdog on, or stop it and forget. */
         fun setEnabled(ctx: Context, on: Boolean) {

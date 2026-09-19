@@ -1323,7 +1323,10 @@ class MainActivity : FragmentActivity() {
             }
             Switch(
                 checked = watchdogOn,
-                onCheckedChange = { watchdogOn = it; KeepAliveService.setEnabled(context, it) },
+                onCheckedChange = {
+                    watchdogOn = it
+                    KeepAliveService.setEnabled(context, it)
+                },
             )
         }
         // On re-entering this page reflect the real (possibly externally
@@ -1331,8 +1334,11 @@ class MainActivity : FragmentActivity() {
         LaunchedEffect(Unit) {
             watchdogOn = KeepAliveService.enabled(context)
             scope.launch(Dispatchers.IO) {
-                keepMsg = if (KeepAliveService.enabled(context)) "看门狗已启用"
-                else KeepAlive.status()
+                keepMsg = if (KeepAliveService.enabled(context)) {
+                    "看门狗已启用"
+                } else {
+                    KeepAlive.status()
+                }
             }
         }
     }
