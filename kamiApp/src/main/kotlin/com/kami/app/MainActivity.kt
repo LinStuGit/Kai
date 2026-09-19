@@ -1296,7 +1296,7 @@ class MainActivity : FragmentActivity() {
                     keepMsg = KeepAlive.apply()
                 }
             },
-            enabled = shizukuGranted,
+            enabled = shizukuGranted.value,
         ) { Text("应用保活白名单") }
     }
 
