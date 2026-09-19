@@ -75,13 +75,17 @@ object AgentOverlayState {
     }
 
     /** Force-stop every running session (ball panel / notification / home).
-     *  Unconditional: cancelled cooperatively AND the in-flight Shizuku
-     *  command is killed right away — no waiting for it to finish. */
+     *  Unconditional: cancelled cooperatively AND whatever they are blocked
+     *  on is torn down at once — the in-flight HTTP read is disconnected,
+     *  pending biometric prompts settle as denied, and the in-flight
+     *  Shizuku command trees are SIGKILLed. */
     fun cancelAll() {
         jobs.forEach { it.cancel() }
         running.value = false
         screenSeen.value = false
-        Thread { ShizukuRunner.killCurrent() }.start()
+        AgentClient.abortAll()
+        SensitiveGate.cancelPending()
+        Thread { ShizukuRunner.killAll() }.start()
     }
 }
 

@@ -619,6 +619,10 @@ class MainActivity : FragmentActivity() {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                            TextButton(onClick = {
+                                SessionStore.restore(a.title, a.lines, a.history)
+                                screen.value = "chat"
+                            }) { Text("恢复") }
                             TextButton(onClick = { ArchiveStore.remove(a.id) }) { Text("删") }
                         }
                         if (open) {

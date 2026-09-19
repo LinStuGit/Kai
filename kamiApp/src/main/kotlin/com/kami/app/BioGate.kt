@@ -124,4 +124,15 @@ object SensitiveGate {
     fun decide(id: Long, allowed: Boolean) {
         synchronized(this) { deferreds[id] }?.complete(allowed)
     }
+
+    /**
+     * Force-stop hook: settle every pending request as denied, so a
+     * cancelled turn stops waiting on the biometric prompt and cannot run
+     * its sensitive command afterwards if the user taps allow later.
+     */
+    fun cancelPending() {
+        val all = synchronized(this) { deferreds.values.toList() }
+        all.forEach { runCatching { it.complete(false) } }
+        pending.value = emptyList()
+    }
 }

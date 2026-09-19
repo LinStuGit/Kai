@@ -171,6 +171,7 @@ object AgentClient {
 
         val conn = URL(MadModel.BASE.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
+        liveConns.add(conn)
         try {
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
@@ -185,11 +186,24 @@ object AgentClient {
             val payload = if (code in 200..299) JSONObject(text) else JSONObject()
             return SendResult(code, text, payload)
         } finally {
+            liveConns.remove(conn)
             conn.disconnect()
         }
     }
 
     private class SendResult(val code: Int, val text: String, val body: JSONObject)
+
+    /** Chat requests currently on the wire, for hard abort. */
+    private val liveConns = java.util.concurrent.CopyOnWriteArrayList<HttpURLConnection>()
+
+    /**
+     * Force-stop hook: disconnect every in-flight chat request so cancelled
+     * jobs stop waiting on the socket read instead of blocking until the
+     * 120s read timeout.
+     */
+    fun abortAll() {
+        liveConns.toList().forEach { runCatching { it.disconnect() } }
+    }
 
     /** System prompt plus the latest persisted memories for this turn. */
     private fun systemContent(): String {

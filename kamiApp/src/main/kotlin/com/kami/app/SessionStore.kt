@@ -47,14 +47,18 @@ internal object SessionStore {
     }
 
     /** Sessions persisted by a previous process; deletes the store file. */
-    fun drainPersisted(): List<Pair<String, List<ChatLine>>> {
+    fun drainPersisted(): List<Triple<String, List<ChatLine>, JSONArray?>> {
         val f = file ?: return emptyList()
         if (!f.exists()) return emptyList()
         val out = runCatching {
             val arr = JSONArray(f.readText())
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
-                o.getString("title") to chatLinesFrom(o.optJSONArray("lines"))
+                Triple(
+                    o.getString("title"),
+                    chatLinesFrom(o.optJSONArray("lines")),
+                    o.optJSONArray("history"),
+                )
             }
         }.getOrElse { emptyList() }
         f.delete()
@@ -72,7 +76,7 @@ internal object SessionStore {
 
     fun remove(id: String) {
         sessions.value.firstOrNull { it.id == id }?.let {
-            ArchiveStore.archive(it.title, it.lines)
+            ArchiveStore.archive(it.title, it.lines, history = it.history)
         }
         val rest = sessions.value.filterNot { it.id == id }
         val next = rest.ifEmpty { listOf(newSession("s${++seq}", seq)) }
@@ -80,6 +84,42 @@ internal object SessionStore {
         if (activeId.value == id) activeId.value = next.first().id
         JwtKeyPool.drop("chat:$id")
         persist()
+    }
+
+    /**
+     * Bring an archived conversation back as a fresh active session —
+     * transcript lines and (when archived with it) the API history, so the
+     * agent keeps its context and the chat continues where it left off.
+     */
+    fun restore(title: String, lines: List<ChatLine>, history: JSONArray?): String {
+        seq += 1
+        val id = "s$seq"
+        val hist = history?.let { h -> runCatching { JSONArray(h.toString()) }.getOrNull() }
+            ?: historyFromLines(lines)
+        sessions.value = sessions.value + AgentSession(
+            id = id,
+            title = title.ifBlank { "恢复的会话" },
+            history = hist,
+            lines = lines,
+        )
+        activeId.value = id
+        persist()
+        return id
+    }
+
+    /** Fallback for old archives that were saved without API history. */
+    private fun historyFromLines(lines: List<ChatLine>): JSONArray {
+        val arr = JSONArray()
+        lines.forEach { l ->
+            when (l.role) {
+                "user" -> arr.put(JSONObject().put("role", "user").put("content", l.text))
+
+                "assistant" -> if (l.text != WELCOME) {
+                    arr.put(JSONObject().put("role", "assistant").put("content", l.text))
+                }
+            }
+        }
+        return arr
     }
 
     fun update(id: String, transform: (AgentSession) -> AgentSession) {
@@ -118,6 +158,7 @@ internal object SessionStore {
                     JSONObject()
                         .put("id", s.id)
                         .put("title", s.title)
+                        .put("history", s.history)
                         .put("lines", chatLinesTo(s.lines)),
                 )
             }

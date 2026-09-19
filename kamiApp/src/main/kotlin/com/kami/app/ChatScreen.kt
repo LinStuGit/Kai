@@ -256,7 +256,7 @@ internal fun ChatScreen(
                                 )
                             }
                         } catch (t: Throwable) {
-                            val msg = if (t is CancellationException) {
+                            val msg = if (t is CancellationException || !AgentOverlayState.running.value) {
                                 "已强制终止"
                             } else {
                                 "错误：${t.message}"

@@ -18,6 +18,8 @@ internal object ArchiveStore {
         val title: String,
         val ts: Long,
         val lines: List<ChatLine>,
+        /** API message history, so 恢复 can continue with full context. */
+        val history: JSONArray? = null,
     )
 
     val items = mutableStateOf<List<ArchivedSession>>(emptyList())
@@ -30,14 +32,22 @@ internal object ArchiveStore {
         load()
         // Sessions persisted by a previous process never got removed
         // properly — archive them now.
-        SessionStore.drainPersisted().forEach { (title, lines) -> archive(title, lines) }
+        SessionStore.drainPersisted().forEach { (title, lines, hist) ->
+            archive(title, lines, history = hist)
+        }
     }
 
     /** Archive one conversation; welcome-only sessions are dropped. */
-    fun archive(title: String, lines: List<ChatLine>, ts: Long = System.currentTimeMillis()) {
+    fun archive(
+        title: String,
+        lines: List<ChatLine>,
+        ts: Long = System.currentTimeMillis(),
+        history: JSONArray? = null,
+    ) {
         if (lines.size <= 1) return
-        items.value = listOf(ArchivedSession("a$ts-$title".hashCode().toString(), title, ts, lines)) +
-            items.value
+        items.value = listOf(
+            ArchivedSession("a$ts-$title".hashCode().toString(), title, ts, lines, history),
+        ) + items.value
         if (items.value.size > 50) items.value = items.value.take(50)
         persist()
     }
@@ -63,6 +73,7 @@ internal object ArchiveStore {
                     o.getString("title"),
                     o.optLong("ts"),
                     SessionStore.chatLinesFrom(o.optJSONArray("lines")),
+                    o.optJSONArray("history"),
                 )
             }
         }
@@ -78,6 +89,7 @@ internal object ArchiveStore {
                         .put("id", a.id)
                         .put("title", a.title)
                         .put("ts", a.ts)
+                        .put("history", a.history ?: JSONObject.NULL)
                         .put("lines", SessionStore.chatLinesTo(a.lines)),
                 )
             }
