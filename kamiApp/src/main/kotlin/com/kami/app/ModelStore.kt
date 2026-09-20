@@ -27,16 +27,14 @@ object ModelStore {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun mode(context: Context): String =
-        prefs(context).getString("mode", MODE_MADMODEL)?.takeIf { it == MODE_CUSTOM } ?: MODE_MADMODEL
+    fun mode(context: Context): String = prefs(context).getString("mode", MODE_MADMODEL)?.takeIf { it == MODE_CUSTOM } ?: MODE_MADMODEL
 
     fun setMode(context: Context, mode: String) {
         prefs(context).edit().putString("mode", if (mode == MODE_CUSTOM) MODE_CUSTOM else MODE_MADMODEL).apply()
     }
 
-    fun madmodelModel(context: Context): String =
-        prefs(context).getString("madmodel_model", null)
-            ?.takeIf { it in MADMODEL_MODELS } ?: MadModel.MODEL
+    fun madmodelModel(context: Context): String = prefs(context).getString("madmodel_model", null)
+        ?.takeIf { it in MADMODEL_MODELS } ?: MadModel.MODEL
 
     fun setMadmodelModel(context: Context, model: String) {
         prefs(context).edit().putString("madmodel_model", model).apply()
