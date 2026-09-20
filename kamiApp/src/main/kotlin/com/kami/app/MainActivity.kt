@@ -1086,8 +1086,7 @@ class MainActivity : FragmentActivity() {
 
         if (mode == ModelStore.MODE_MADMODEL) {
             Text(
-                "端点  " + MadModel.BASE + "
-key = check 端点签发的 JWT，5 小时自动换新，每会话独立一条",
+                "端点  " + MadModel.BASE + "\nkey = check 端点签发的 JWT，5 小时自动换新，每会话独立一条",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1140,8 +1139,7 @@ key = check 端点签发的 JWT，5 小时自动换新，每会话独立一条",
         }
 
         Text(
-            "当前生效：
-" + ModelStore.describe(context),
+            "当前生效：\n" + ModelStore.describe(context),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
