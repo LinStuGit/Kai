@@ -32,7 +32,7 @@ internal object LearnClient {
     /** Pour "k=v; k2=v2" strings (from the WebView CookieManager) into the jar. */
     private fun pour(str: String, host: String) {
         if (str.isBlank()) return
-        val m = jar.getOrPut(host) { mutableMapOf() }
+        val m = jar.getOrPut(host) { mutableMapOf<String, String>() }
         for (pair in str.split(";")) {
             val i = pair.indexOf('=')
             if (i > 0) m[pair.take(i).trim()] = pair.substring(i + 1).trim()
@@ -80,7 +80,7 @@ internal object LearnClient {
     private fun cookieHeader(host: String): String = jar[host]?.entries?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
 
     private fun absorb(conn: HttpURLConnection, host: String) {
-        val m = jar.getOrPut(host) { mutableMapOf() }
+        val m = jar.getOrPut(host) { mutableMapOf<String, String>() }
         for (h in conn.headerFields["Set-Cookie"].orEmpty()) {
             val nv = h.split(";").firstOrNull() ?: continue
             val i = nv.indexOf('=')
@@ -170,7 +170,9 @@ internal object LearnClient {
 
     private fun courseNameMap(): Map<String, String> {
         val map = mutableMapOf<String, String>()
-        for (c in courseRows(currentSemesterId())) {
+        val rows = courseRows(currentSemesterId())
+        for (ci in 0 until rows.length()) {
+            val c = rows.getJSONObject(ci)
             map[c.optString("wlkcid")] = c.optString("kcm").ifBlank { c.optString("zywkcm") }
         }
         return map
@@ -191,7 +193,8 @@ internal object LearnClient {
         val rows = courseRows(currentSemesterId())
         if (rows.length() == 0) return "（本学期无课程）"
         val out = StringBuilder("共 ${rows.length()} 门课：\n")
-        for (c in rows) {
+        for (ci in 0 until rows.length()) {
+            val c = rows.getJSONObject(ci)
             out.append(
                 "• " + html(c.optString("kcm")) +
                     "｜教师 " + c.optString("jsm", "").ifBlank { "?" } +
@@ -229,7 +232,8 @@ internal object LearnClient {
                 try {
                     val obj = requireOk(postJson(url, pageListForm(id))) ?: continue
                     val arr = obj.optJSONArray("aaData") ?: continue
-                    for (h in arr) {
+                    for (hi in 0 until arr.length()) {
+                        val h = arr.getJSONObject(hi)
                         val grade = if (h.isNull("cj")) "" else "｜成绩 ${h.opt("cj")}"
                         out.add(
                             html(h.optString("bt")) + "｜" + status +
@@ -253,7 +257,8 @@ internal object LearnClient {
                     val url = "$LEARN/b/wlxt/kcgg/wlkc_ggb/student/pageListXsby$suffix"
                     val obj = requireOk(postJson(url, pageListForm(id))) ?: continue
                     val arr = obj.optJSONArray("aaData") ?: continue
-                    for (n in arr) {
+                    for (ni in 0 until arr.length()) {
+                        val n = arr.getJSONObject(ni)
                         val important = if (n.optString("sfqd") == "1") "｜★重要" else ""
                         out.add(
                             html(n.optString("bt")) + "｜发布 " +
@@ -276,7 +281,8 @@ internal object LearnClient {
                 val url = "$LEARN/b/wlxt/kj/wlkc_kjxxb/student/kjxxbByWlkcidAndSizeForStudent?wlkcid=$id&size=$MAX_SIZE"
                 val obj = requireOk(getJson(url))
                 val arr = obj?.optJSONArray("resultsList") ?: obj?.optJSONArray("object") ?: JSONArray()
-                for (f in arr) {
+                for (fi in 0 until arr.length()) {
+                    val f = arr.getJSONObject(fi)
                     val kb = f.optLong("wjdx") / 1024
                     out.add(html(f.optString("bt")) + "｜${kb}KB｜上传 " + f.optString("scsj", "?"))
                 }
