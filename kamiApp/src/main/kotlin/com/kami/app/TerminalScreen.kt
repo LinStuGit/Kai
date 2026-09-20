@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,7 +32,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +40,9 @@ import kotlinx.coroutines.launch
 
 private const val SHELL_PROMPT = "shell$ "
 private const val ALPINE_PROMPT = "alpine$ "
+
+/** Keep the tty buffer bounded; drop oldest bytes when exceeded. */
+private const val TTY_MAX = 40_000
 
 private val EXTRA_KEYS = listOf(
     "TAB", "↑", "↓", "←", "→", "/", "|", "\\", "\"", "'", ":",
@@ -69,40 +69,79 @@ private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 /** Longest common prefix of a non-empty list. */
 private fun commonPrefix(cands: List<String>): String = cands.reduce { a, b -> a.commonPrefixWith(b) }
 
+/** One tty buffer: the whole stream plus the index where the editable
+ *  prompt line starts (everything before it is frozen output/history). */
+private class Tty(initial: String) {
+    var value by mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
+    var liveStart by mutableStateOf(initial.length)
+}
+
 /**
- * The terminal, termux-style: one dark TTY block where output and the
- * prompt line live together (no separate input box) — send with the IME
- * action. TAB completes command names and paths, arrows move through
- * history and the cursor, everything on screen is selectable.
+ * The terminal, modelled on a linux tty: ONE text buffer holds the whole
+ * session — past output, the prompt and the command being typed live in the
+ * same flow with a real cursor, exactly like a console. Typed characters go
+ * to the line after the prompt; executed lines and their output freeze into
+ * the buffer above (edits there are rejected like on a real terminal);
+ * TAB completes, ↑/↓ walk history; Enter runs the line.
  */
 @Composable
 internal fun TerminalScreen(onBack: () -> Unit) {
     var mode by remember { mutableStateOf("shell") }
-    var shellOut by remember { mutableStateOf(SHELL_PROMPT) }
-    var alpineOut by remember { mutableStateOf(ALPINE_PROMPT) }
-    var input by remember { mutableStateOf(TextFieldValue("")) }
+    val shellTty = remember { Tty(SHELL_PROMPT) }
+    val alpineTty = remember { Tty(ALPINE_PROMPT) }
+    val tty = if (mode == "shell") shellTty else alpineTty
+    val prompt = if (mode == "shell") SHELL_PROMPT else ALPINE_PROMPT
     var running by remember { mutableStateOf(false) }
     val history = remember { mutableListOf<Pair<String, String>>() } // mode to cmd
     var histIdx by remember { mutableStateOf(-1) }
     val scope = rememberCoroutineScope()
     val scroll = rememberScrollState()
 
-    val transcript = if (mode == "shell") shellOut else alpineOut
-    val prompt = if (mode == "shell") SHELL_PROMPT else ALPINE_PROMPT
+    /** The current (editable) input line. */
+    fun liveText(): String = tty.value.text.substring(tty.liveStart)
 
-    fun append(text: String) {
-        if (mode == "shell") shellOut += text else alpineOut += text
+    /** Replace the live line, cursor at its end. */
+    fun setLive(newLive: String) {
+        val t = tty.value.text.take(tty.liveStart) + newLive
+        tty.value = TextFieldValue(t, TextRange(t.length))
+    }
+
+    /** Append to the stream end (used while edits are frozen). */
+    fun append(s: String) {
+        var txt = tty.value.text + s
+        var ls = tty.liveStart
+        if (txt.length > TTY_MAX) {
+            val drop = txt.length - TTY_MAX
+            txt = txt.substring(drop)
+            ls = (ls - drop).coerceAtLeast(0)
+        }
+        tty.value = TextFieldValue(txt, TextRange(txt.length))
+        tty.liveStart = ls
+    }
+
+    /** Print above the prompt line (bash-style completion listings). */
+    fun printAbove(s: String) {
+        val v = tty.value
+        val txt = v.text.substring(0, tty.liveStart) + s + v.text.substring(tty.liveStart)
+        val sel = if (v.selection.end >= tty.liveStart) v.selection.end + s.length else v.selection.end
+        tty.value = TextFieldValue(txt, TextRange(sel.coerceIn(0, txt.length)))
+        tty.liveStart += s.length
     }
 
     fun exec(raw: String) {
+        if (running) return
         val c = raw.trim()
-        if (c.isEmpty() || running) return
+        // The typed line is already on screen — freeze it and print below.
+        tty.liveStart = tty.value.text.length
+        if (c.isEmpty()) {
+            append("\n" + prompt)
+            return
+        }
         if (history.lastOrNull() != (mode to c)) history.add(mode to c)
         histIdx = -1
-        input = TextFieldValue("")
+        running = true
         scope.launch(Dispatchers.IO) {
-            running = true
-            append("\n$prompt$c\n")
+            append("\n")
             val out = if (mode == "shell") {
                 if (ShizukuRunner.granted()) {
                     ShizukuRunner.run(c)
@@ -114,6 +153,8 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             }
             // Keep the device's own output verbatim; only mark true silence.
             append(if (out.isBlank()) "（无输出）\n" else out + "\n")
+            append(prompt)
+            tty.liveStart = tty.value.text.length
             running = false
         }
     }
@@ -121,9 +162,10 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     /** TAB: complete the word at the cursor (command name or path). */
     fun complete() {
         if (running) return
-        val text = input.text
-        val cur = input.selection.end.coerceIn(0, text.length)
-        val before = text.substring(0, cur)
+        val text = tty.value.text
+        val lineStart = tty.liveStart
+        val cur = tty.value.selection.end.coerceIn(lineStart, text.length)
+        val before = text.substring(lineStart, cur)
         val after = text.substring(cur)
         val sp = before.lastIndexOf(' ')
         val token = if (sp < 0) before else before.substring(sp + 1)
@@ -131,11 +173,9 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         val tokenStart = cur - token.length
 
         fun apply(newToken: String, hint: String?) {
-            input = TextFieldValue(
-                before.substring(0, tokenStart) + newToken + after,
-                selection = TextRange(tokenStart + newToken.length),
-            )
-            if (!hint.isNullOrEmpty()) append(hint)
+            val t = text.substring(0, tokenStart) + newToken + after
+            tty.value = TextFieldValue(t, TextRange(tokenStart + newToken.length))
+            if (!hint.isNullOrEmpty()) printAbove(hint)
         }
 
         scope.launch(Dispatchers.IO) {
@@ -187,31 +227,22 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         }
     }
 
-    fun insertKey(s: String) {
-        val sel = input.selection
-        val start = sel.min.coerceIn(0, input.text.length)
-        val end = sel.max.coerceIn(0, input.text.length)
-        input = TextFieldValue(
-            input.text.substring(0, start) + s + input.text.substring(end),
-            selection = TextRange(start + s.length),
-        )
-    }
-
+    /** Move within the live line only (like a real tty cursor). */
     fun moveCursor(delta: Int) {
-        val cur = input.selection.end.coerceIn(0, input.text.length)
-        val next = (cur + delta).coerceIn(0, input.text.length)
-        input = TextFieldValue(input.text, selection = TextRange(next))
+        val cur = tty.value.selection.end.coerceIn(tty.liveStart, tty.value.text.length)
+        val next = (cur + delta).coerceIn(tty.liveStart, tty.value.text.length)
+        tty.value = TextFieldValue(tty.value.text, TextRange(next))
     }
 
     /** ↑/↓ walk this mode's history. */
     fun historyStep(delta: Int) {
+        if (running) return
         val mine = history.mapIndexed { i, (m, cmd) -> if (m == mode) i to cmd else null }
             .filterNotNull()
         if (mine.isEmpty()) return
         val next = (histIdx + delta).coerceIn(-1, mine.size - 1)
         histIdx = next
-        val text = if (next < 0) "" else mine[next].second
-        input = TextFieldValue(text, selection = TextRange(text.length))
+        setLive(if (next < 0) "" else mine[next].second)
     }
 
     fun onKey(k: String) {
@@ -221,11 +252,15 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             "↓" -> historyStep(1)
             "←" -> moveCursor(-1)
             "→" -> moveCursor(1)
-            else -> insertKey(k)
+            else -> {
+                if (running) return
+                val cur = tty.value.selection.end.coerceIn(tty.liveStart, tty.value.text.length)
+                setLive(liveText().let { it.substring(0, (cur - tty.liveStart)) + k + it.substring(cur - tty.liveStart) })
+            }
         }
     }
 
-    LaunchedEffect(transcript) { scroll.scrollTo(scroll.maxValue) }
+    LaunchedEffect(tty.value.text) { scroll.scrollTo(scroll.maxValue) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -249,52 +284,61 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             }
         }
 
-        // One TTY block: transcript and the prompt line live in the same box.
+        // The tty: one editable buffer — output, prompt and input in the same
+        // flow. Editing is only possible after the last prompt, like on a
+        // real console; everything above is frozen.
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .background(Color(0xFF101418), RoundedCornerShape(10.dp))
-                .padding(10.dp),
+                .padding(10.dp)
+                .verticalScroll(scroll),
         ) {
-            SelectionContainer(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                Text(
-                    transcript,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(scroll),
+            BasicTextField(
+                value = tty.value,
+                onValueChange = { new ->
+                    val oldText = tty.value.text
+                    val frozen = oldText.take(tty.liveStart)
+                    if (running) return@BasicTextField
+                    if (new.text == oldText) {
+                        tty.value = new // cursor move / selection only
+                        return@BasicTextField
+                    }
+                    if (new.text.contains('\n')) {
+                        // Enter: run the line (a tty never inserts a newline
+                        // into the command; pasted newlines are collapsed).
+                        val cmd = if (new.text.startsWith(frozen) && new.text.length >= tty.liveStart) {
+                            new.text.substring(tty.liveStart)
+                        } else {
+                            liveText()
+                        }
+                        exec(cmd.replace("\n", " ").trim())
+                        return@BasicTextField
+                    }
+                    if (new.text.startsWith(frozen) && new.text.length >= tty.liveStart) {
+                        tty.value = new // normal edit inside the live line
+                        return@BasicTextField
+                    }
+                    // Editing frozen history: redirect insertions to the live
+                    // line end (keystrokes always go to the prompt), reject
+                    // deletions there (a tty can't unprint).
+                    val p = new.text.commonPrefixWith(oldText).length
+                    val diff = new.text.length - oldText.length
+                    if (diff > 0 && new.text.endsWith(oldText.substring(p))) {
+                        setLive(liveText() + new.text.substring(p, p + diff))
+                    } else {
+                        tty.value = TextFieldValue(oldText, TextRange(oldText.length))
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = TextStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
                     color = Color(0xFFD5E0EA),
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    prompt,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    color = Color(0xFF9BD1FF),
-                )
-                BasicTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    enabled = !running,
-                    textStyle = TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = Color(0xFFD5E0EA),
-                    ),
-                    cursorBrush = SolidColor(Color(0xFF9BD1FF)),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { exec(input.text) }),
-                )
-            }
+                ),
+                cursorBrush = SolidColor(Color(0xFF9BD1FF)),
+            )
         }
 
         // Extra keys row (termux-style): TAB completes, arrows navigate.

@@ -174,17 +174,26 @@ class AgentOverlayService : Service() {
                 ),
             )
         }
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIF_ID, buildNotification("运行进度在此通知更新"), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIF_ID, buildNotification("运行进度在此通知更新"))
-        }
+        goForeground()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // A startForegroundService call while the service is already running
+        // (new run starting during the completion-linger window) must still
+        // be answered with startForeground or the system crashes the app.
+        goForeground()
         handler.removeCallbacks(tick)
         handler.post(tick)
         return START_NOT_STICKY
+    }
+
+    private fun goForeground() {
+        val notif = buildNotification("运行进度在此通知更新")
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
     }
 
     private fun dp(v: Float): Int = (v * resources.displayMetrics.density).toInt()

@@ -41,6 +41,18 @@ class KeepAliveService : Service() {
                 ),
             )
         }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Must follow EVERY startForegroundService call — when the service is
+        // already running (e.g. user reopens the app while the watchdog FGS
+        // from earlier is alive) onCreate is not invoked again, and skipping
+        // this crashes with ForegroundServiceDidNotStartInTime.
+        goForeground()
+        return START_STICKY
+    }
+
+    private fun goForeground() {
         val notif = buildNotification()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -48,8 +60,6 @@ class KeepAliveService : Service() {
             startForeground(NOTIF_ID, notif)
         }
     }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
