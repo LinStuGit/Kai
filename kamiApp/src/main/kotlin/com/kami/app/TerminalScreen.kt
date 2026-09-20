@@ -120,9 +120,10 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     val cwds = remember { mutableStateMapOf("shell" to "/", "alpine" to "/") }
 
     /** Prompt reflecting the tracked cwd, evaluated live. */
-    fun curPrompt(): String =
-        (if (mode == "shell") "shell" else "alpine") + ":" +
-            (cwds[mode] ?: "/").trimEnd('/') + "$ "
+    fun curPrompt(): String {
+        val p = (cwds[mode] ?: "/").trimEnd('/')
+        return (if (mode == "shell") "shell" else "alpine") + ":" + p.ifEmpty { "/" } + "$ "
+    }
 
     var running by remember { mutableStateOf(false) }
     val history = remember { mutableListOf<Pair<String, String>>() } // mode to cmd
