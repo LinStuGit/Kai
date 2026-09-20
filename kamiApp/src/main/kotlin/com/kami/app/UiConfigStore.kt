@@ -105,9 +105,11 @@ object UiConfigStore {
     }
 
     /** Raw JSON text; the default sample when nothing was saved yet. */
-    fun raw(): String =
-        if (!::appContext.isInitialized || !file().exists()) DEFAULT_SAMPLE
-        else file().readText()
+    fun raw(): String = if (!::appContext.isInitialized || !file().exists()) {
+        DEFAULT_SAMPLE
+    } else {
+        file().readText()
+    }
 
     /** Validate + save; returns a user-facing result message. */
     fun setJson(text: String): String {
@@ -130,8 +132,7 @@ object UiConfigStore {
         return "已恢复默认界面"
     }
 
-    fun switchOn(key: String, default: Boolean): Boolean =
-        appContext.getSharedPreferences(SWITCH_PREFS, Context.MODE_PRIVATE).getBoolean(key, default)
+    fun switchOn(key: String, default: Boolean): Boolean = appContext.getSharedPreferences(SWITCH_PREFS, Context.MODE_PRIVATE).getBoolean(key, default)
 
     fun setSwitch(key: String, on: Boolean) {
         appContext.getSharedPreferences(SWITCH_PREFS, Context.MODE_PRIVATE)

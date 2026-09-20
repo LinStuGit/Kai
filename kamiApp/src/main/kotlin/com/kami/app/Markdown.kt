@@ -93,8 +93,7 @@ internal fun MarkdownText(
                 line.contains('|') && i + 1 < lines.size &&
                     Regex("^\\s*\\|?[\\s:|-]+\\|?\\s*$").matches(lines[i + 1]) &&
                     lines[i + 1].contains('-') -> {
-                    fun cells(s: String): List<String> =
-                        s.trim().removePrefix("|").removeSuffix("|").split('|').map { it.trim() }
+                    fun cells(s: String): List<String> = s.trim().removePrefix("|").removeSuffix("|").split('|').map { it.trim() }
                     val header = cells(line)
                     i += 2
                     val rows = mutableListOf<List<String>>()

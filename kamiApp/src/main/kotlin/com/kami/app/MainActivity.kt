@@ -35,8 +35,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -296,14 +296,13 @@ private val SETTINGS_ENTRIES = listOf(
 private val TIME_RE = Regex("^(\\d{1,2}):(\\d{2})$")
 
 /** "#RRGGBB" / "#AARRGGBB" → Color; null when blank or invalid. */
-private fun parseHexColor(s: String): Color? =
-    s.trim().takeIf { it.isNotEmpty() }?.let {
-        try {
-            Color(android.graphics.Color.parseColor(it))
-        } catch (t: Throwable) {
-            null
-        }
+private fun parseHexColor(s: String): Color? = s.trim().takeIf { it.isNotEmpty() }?.let {
+    try {
+        Color(android.graphics.Color.parseColor(it))
+    } catch (t: Throwable) {
+        null
     }
+}
 
 /** Default light scheme overlaid with the configured theme colors (if any). */
 private fun themedScheme(cfg: UiConfigStore.Config): ColorScheme {
