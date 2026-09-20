@@ -199,7 +199,7 @@ internal class TermSession(val id: Int) {
 }
 
 /** Process-global session registry: sessions survive navigation, like chat. */
-object TerminalHub {
+internal object TerminalHub {
     val sessions = mutableStateListOf<TermSession>()
     private var nextId = 1
 
