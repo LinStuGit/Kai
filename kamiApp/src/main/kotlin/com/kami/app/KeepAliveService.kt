@@ -143,19 +143,18 @@ class KeepAliveService : Service() {
          * (they do not always survive reboot/OEM cleanup) and revives the
          * app's foreground service if the whole process disappeared.
          */
-        private fun scriptText(): String =
-            "#!/system/bin/sh\n" +
-                "if [ -f $PID_FILE ] && kill -0 \"\$(cat $PID_FILE 2>/dev/null)\" 2>/dev/null; " +
-                "then exit 0; fi\n" +
-                "echo \$\$ > $PID_FILE\n" +
-                "while true; do\n" +
-                "  if [ ! -f $MARKER ]; then rm -f $PID_FILE; exit 0; fi\n" +
-                "  dumpsys deviceidle whitelist +$PKG >/dev/null 2>&1\n" +
-                "  cmd appops set $PKG RUN_ANY_IN_BACKGROUND ignore >/dev/null 2>&1\n" +
-                "  if ! pidof $PKG >/dev/null 2>&1; then\n" +
-                "    am start-foreground-service -n $PKG/.KeepAliveService >/dev/null 2>&1\n" +
-                "  fi\n" +
-                "  sleep 15\n" +
-                "done\n"
+        private fun scriptText(): String = "#!/system/bin/sh\n" +
+            "if [ -f $PID_FILE ] && kill -0 \"\$(cat $PID_FILE 2>/dev/null)\" 2>/dev/null; " +
+            "then exit 0; fi\n" +
+            "echo \$\$ > $PID_FILE\n" +
+            "while true; do\n" +
+            "  if [ ! -f $MARKER ]; then rm -f $PID_FILE; exit 0; fi\n" +
+            "  dumpsys deviceidle whitelist +$PKG >/dev/null 2>&1\n" +
+            "  cmd appops set $PKG RUN_ANY_IN_BACKGROUND ignore >/dev/null 2>&1\n" +
+            "  if ! pidof $PKG >/dev/null 2>&1; then\n" +
+            "    am start-foreground-service -n $PKG/.KeepAliveService >/dev/null 2>&1\n" +
+            "  fi\n" +
+            "  sleep 15\n" +
+            "done\n"
     }
 }
