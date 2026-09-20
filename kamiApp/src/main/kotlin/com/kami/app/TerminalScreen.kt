@@ -21,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,8 +39,33 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-private const val SHELL_PROMPT = "shell$ "
-private const val ALPINE_PROMPT = "alpine$ "
+private const val SHELL_PROMPT = "shell:/$ "
+private const val ALPINE_PROMPT = "alpine:/$ "
+
+/**
+ * Every executed command is a fresh shell process (Shizuku exec / proot), so
+ * `cd` alone would never persist. We prefix each command with a `cd` to the
+ * tracked cwd and append a pwd probe; the probe's value is parsed back out of
+ * the output and the prompt follows it — emulating a persistent cwd.
+ */
+private const val CWD_MARKER = "__KAMI_CWD__"
+
+/** Wrap [cmd] so it starts in [cwd] and reports the resulting cwd. */
+private fun wrapCwd(cwd: String, cmd: String): String = buildString {
+    if (cwd.isNotEmpty()) {
+        append("cd ").append(shellQuote(cwd)).append(" 2>/dev/null\n")
+    }
+    append(cmd)
+    append("\nprintf '").append(CWD_MARKER).append("%s' \"$(pwd)\"")
+}
+
+/** Split raw output into (display text, new cwd). */
+private fun splitCwd(out: String): Pair<String, String> {
+    val i = out.lastIndexOf(CWD_MARKER)
+    if (i < 0) return out to ""
+    val newCwd = out.substring(i + CWD_MARKER.length).trim()
+    return out.substring(0, i).trimEnd('\n') to newCwd
+}
 
 /** Keep the tty buffer bounded; drop oldest bytes when exceeded. */
 private const val TTY_MAX = 40_000
@@ -90,7 +116,14 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     val shellTty = remember { Tty(SHELL_PROMPT) }
     val alpineTty = remember { Tty(ALPINE_PROMPT) }
     val tty = if (mode == "shell") shellTty else alpineTty
-    val prompt = if (mode == "shell") SHELL_PROMPT else ALPINE_PROMPT
+    // Tracked working directory per mode (see wrapCwd); shown in the prompt.
+    val cwds = remember { mutableStateMapOf("shell" to "/", "alpine" to "/") }
+
+    /** Prompt reflecting the tracked cwd, evaluated live. */
+    fun curPrompt(): String =
+        (if (mode == "shell") "shell" else "alpine") + ":" +
+            (cwds[mode] ?: "/").trimEnd('/') + "$ "
+
     var running by remember { mutableStateOf(false) }
     val history = remember { mutableListOf<Pair<String, String>>() } // mode to cmd
     var histIdx by remember { mutableStateOf(-1) }
@@ -134,7 +167,7 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         // The typed line is already on screen — freeze it and print below.
         tty.liveStart = tty.value.text.length
         if (c.isEmpty()) {
-            append("\n" + prompt)
+            append("\n" + curPrompt())
             return
         }
         if (history.lastOrNull() != (mode to c)) history.add(mode to c)
@@ -144,16 +177,18 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             append("\n")
             val out = if (mode == "shell") {
                 if (ShizukuRunner.granted()) {
-                    ShizukuRunner.run(c)
+                    ShizukuRunner.run(wrapCwd(cwds[mode] ?: "", c))
                 } else {
                     "错误：Shizuku 未授权 — 回主页完成授权"
                 }
             } else {
-                ProotSandbox.run(c)
+                ProotSandbox.run(wrapCwd(cwds[mode] ?: "", c))
             }
             // Keep the device's own output verbatim; only mark true silence.
-            append(if (out.isBlank()) "（无输出）\n" else out + "\n")
-            append(prompt)
+            val (shown, newCwd) = splitCwd(out)
+            if (newCwd.isNotEmpty()) cwds[mode] = newCwd
+            append(if (shown.isBlank()) "（无输出）\n" else shown + "\n")
+            append(curPrompt())
             tty.liveStart = tty.value.text.length
             running = false
         }
@@ -205,8 +240,14 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                 val slash = token.lastIndexOf('/')
                 val dir = if (slash < 0) "" else token.substring(0, slash + 1)
                 val prefix = token.substring(slash + 1)
-                val cmd = "ls -d ${shellQuote(dir)}${shellQuote(prefix)}* 2>/dev/null | head -60"
-                val out = if (mode == "shell") ShizukuRunner.run(cmd) else ProotSandbox.run(cmd)
+                // Run the listing in the tracked cwd so relative paths complete
+                // correctly (proot has no persistent cwd of its own).
+                val cmd = wrapCwd(
+                    cwds[mode] ?: "",
+                    "ls -d ${shellQuote(dir)}${shellQuote(prefix)}* 2>/dev/null | head -60",
+                )
+                val raw = if (mode == "shell") ShizukuRunner.run(cmd) else ProotSandbox.run(cmd)
+                val out = splitCwd(raw).first
                 val cands = out.lines()
                     .map { it.trimEnd('\r') }
                     .filter { it.isNotBlank() && !it.startsWith("错误") && !it.startsWith("shizuku") }

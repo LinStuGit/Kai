@@ -280,6 +280,7 @@ private data class SettingsEntry(val title: String, val subtitle: String, val ta
 
 private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("Agent 模型", "固定 madmodel 端点 · JWT 池状态", "set-agent"),
+    SettingsEntry("系统提示词", "自定义 agent 人设与规则 · 留空恢复默认", "set-prompt"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
     SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
     SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板 · 内置能力", "set-ext"),
@@ -353,6 +354,7 @@ class MainActivity : FragmentActivity() {
         ReminderStore.init(applicationContext)
         SessionStore.init(applicationContext)
         ArchiveStore.init(applicationContext)
+        SystemPromptStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
         KeepAliveService.applyIfEnabled(applicationContext)
         // Back at the foreground the agent is not driving the screen any
@@ -407,6 +409,8 @@ class MainActivity : FragmentActivity() {
                             "archive" -> ArchiveSection()
 
                             "set-agent" -> SubPage("Agent 模型") { AgentSection() }
+
+                            "set-prompt" -> SubPage("系统提示词") { PromptSection() }
 
                             "set-tasks" -> SubPage("定时任务") { ReminderSection() }
 
@@ -779,6 +783,66 @@ class MainActivity : FragmentActivity() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+
+    @Composable
+    private fun PromptSection() {
+        var text by remember { mutableStateOf(SystemPromptStore.get()) }
+        var status by remember { mutableStateOf("") }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "agent 每轮对话都会以此作为 system 提示词（持久记忆仍会追加在" +
+                    "其后）。保存留空或与默认相同即恢复内置提示词。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    status = ""
+                },
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 18.sp,
+                ),
+                label = { Text("系统提示词") },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    enabled = text.trim() != SystemPromptStore.get(),
+                    onClick = {
+                        SystemPromptStore.set(text)
+                        text = SystemPromptStore.get()
+                        status = if (SystemPromptStore.isCustom()) "已保存（下轮对话生效）" else "已恢复默认提示词"
+                    },
+                ) { Text("保存") }
+                OutlinedButton(
+                    enabled = SystemPromptStore.isCustom(),
+                    onClick = {
+                        SystemPromptStore.set("")
+                        text = SystemPromptStore.get()
+                        status = "已恢复默认提示词"
+                    },
+                ) { Text("恢复默认") }
+            }
+            if (status.isNotEmpty()) {
+                Text(
+                    status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Text(
+                "当前：" + if (SystemPromptStore.isCustom()) "自定义提示词" else "内置默认提示词",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 
     @Composable

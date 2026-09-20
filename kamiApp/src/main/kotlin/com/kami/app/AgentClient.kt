@@ -29,7 +29,8 @@ data class TurnReply(val text: String, val thinking: String?)
  */
 object AgentClient {
 
-    private const val SYSTEM_PROMPT =
+    /** Built-in system prompt — also the reset baseline for Settings → 系统提示词. */
+    const val SYSTEM_PROMPT =
         "你是 Kami，运行在用户 Android 手机上的助手。工具：run_shell 以 shell uid 执行" +
             "命令（Shizuku 免 root，可调用 am/pm/settings/dumpsys）；web_search 联网搜索" +
             "（必应/学校网络可达），web_fetch 抓取网页正文；read_screen 读取屏幕控件层级" +
@@ -205,13 +206,15 @@ object AgentClient {
         liveConns.toList().forEach { runCatching { it.disconnect() } }
     }
 
-    /** System prompt plus the latest persisted memories for this turn. */
+    /** System prompt (user-editable, see Settings → 系统提示词) plus the
+     *  latest persisted memories for this turn. */
     private fun systemContent(): String {
         val mem = MemoryStore.recent(30)
+        val base = SystemPromptStore.get()
         return if (mem.isEmpty()) {
-            SYSTEM_PROMPT
+            base
         } else {
-            SYSTEM_PROMPT + "\n\n[持久记忆]\n" + mem.joinToString("\n") { "- $it" }
+            base + "\n\n[持久记忆]\n" + mem.joinToString("\n") { "- $it" }
         }
     }
 
