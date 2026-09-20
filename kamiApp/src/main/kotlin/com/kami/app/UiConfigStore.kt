@@ -187,7 +187,8 @@ object UiConfigStore {
         val home = widgets(root.optJSONArray("home"))
         val hidden = root.optJSONArray("hidden")?.let { ha ->
             (0 until ha.length()).map { ha.optString(it) }.filter { it.isNotBlank() }
-        } ?: emptyList()        val pages = root.optJSONArray("pages")?.let { arr: JSONArray ->
+        } ?: emptyList()
+        val pages = root.optJSONArray("pages")?.let { arr: JSONArray ->
             (0 until arr.length()).map { i ->
                 val p = arr.getJSONObject(i)
                 Page(

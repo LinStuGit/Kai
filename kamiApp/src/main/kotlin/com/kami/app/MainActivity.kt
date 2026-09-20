@@ -306,17 +306,18 @@ private fun parseHexColor(s: String): Color? = s.trim().takeIf { it.isNotEmpty()
 }
 
 /**
- * Base scheme (light or dark, following the system) overlaid with the
- * configured theme colors (if any). Dark mode is the default behaviour —
- * `isSystemInDarkTheme()` — and the config's `darkTheme` can force one way.
+ * Base scheme (light or dark) overlaid with the configured theme colors (if
+ * any). Dark mode follows the system by default — [dark] comes from
+ * `isSystemInDarkTheme()` at the call site — and the config's `darkTheme`
+ * can force one way.
  */
-private fun themedScheme(cfg: UiConfigStore.Config): ColorScheme {
-    val dark = when (cfg.darkTheme) {
+private fun themedScheme(cfg: UiConfigStore.Config, dark: Boolean): ColorScheme {
+    val forcedDark = when (cfg.darkTheme) {
         "light" -> false
         "dark" -> true
-        else -> isSystemInDarkTheme()
+        else -> dark
     }
-    val base = if (dark) darkColorScheme() else lightColorScheme()
+    val base = if (forcedDark) darkColorScheme() else lightColorScheme()
     val t = cfg.theme ?: return base
     return base.copy(
         primary = parseHexColor(t.primary) ?: base.primary,
@@ -456,7 +457,8 @@ class MainActivity : FragmentActivity() {
             }
 
             val cfg = remember(uiRev.value) { UiConfigStore.get() }
-            val scheme = remember(cfg) { themedScheme(cfg) }
+            val systemDark = isSystemInDarkTheme()
+            val scheme = remember(cfg, systemDark) { themedScheme(cfg, systemDark) }
             MaterialTheme(colorScheme = scheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(
