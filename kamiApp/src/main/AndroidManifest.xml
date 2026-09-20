@@ -125,10 +125,12 @@
         </service>
 
         <!-- Optional watchdog: optional foreground service that stays resident
-             in the notification bar so scheduled work always has a warm process -->
+             in the notification bar so scheduled work always has a warm process.
+             exported=true on purpose: the detached shell daemon (shell uid,
+             like adb) must be able to relaunch it after a force-stop/swipe. -->
         <service
             android:name=".KeepAliveService"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
