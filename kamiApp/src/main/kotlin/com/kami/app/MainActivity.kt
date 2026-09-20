@@ -19,6 +19,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -58,8 +61,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -304,9 +305,18 @@ private fun parseHexColor(s: String): Color? = s.trim().takeIf { it.isNotEmpty()
     }
 }
 
-/** Default light scheme overlaid with the configured theme colors (if any). */
+/**
+ * Base scheme (light or dark, following the system) overlaid with the
+ * configured theme colors (if any). Dark mode is the default behaviour —
+ * `isSystemInDarkTheme()` — and the config's `darkTheme` can force one way.
+ */
 private fun themedScheme(cfg: UiConfigStore.Config): ColorScheme {
-    val base = androidx.compose.material3.lightColorScheme()
+    val dark = when (cfg.darkTheme) {
+        "light" -> false
+        "dark" -> true
+        else -> isSystemInDarkTheme()
+    }
+    val base = if (dark) darkColorScheme() else lightColorScheme()
     val t = cfg.theme ?: return base
     return base.copy(
         primary = parseHexColor(t.primary) ?: base.primary,
@@ -493,6 +503,8 @@ class MainActivity : FragmentActivity() {
                                         onTerminal = { screen.value = "term" },
                                         onSettings = { screen.value = "settings" },
                                         onArchive = { screen.value = "archive" },
+                                        homeWidgets = cfg.home,
+                                        onTarget = { screen.value = it },
                                     )
                                 }
                             }
@@ -604,6 +616,7 @@ class MainActivity : FragmentActivity() {
             }
 
             SETTINGS_ENTRIES.forEach { entry ->
+                if (entry.target in UiConfigStore.get().hidden) return@forEach
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -615,6 +628,35 @@ class MainActivity : FragmentActivity() {
                         Text(entry.title, style = MaterialTheme.typography.bodyLarge)
                         Text(
                             entry.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        "›",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // Config-defined sub pages (kami_ui.json "pages") show up here;
+            // "hidden" can suppress any entry by route or page id.
+            UiConfigStore.get().pages.forEach { p ->
+                if (p.id in UiConfigStore.get().hidden || "dyn:${p.id}" in UiConfigStore.get().hidden) {
+                    return@forEach
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { screen.value = "dyn:${p.id}" }
+                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(p.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "自定义子页",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -859,55 +901,7 @@ class MainActivity : FragmentActivity() {
      *  with unbounded height crashes the measure pass). */
     @Composable
     private fun DynPageSection(page: UiConfigStore.Page) {
-        val ctx = LocalContext.current
-        Column(
-            Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            for (w in page.widgets) {
-                when (w.type) {
-                    "header" -> Text(
-                        w.text,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-
-                    "text" -> Text(w.text, style = MaterialTheme.typography.bodyMedium)
-
-                    "link" -> Text(
-                        w.text.ifEmpty { w.url },
-                        modifier = Modifier.clickable {
-                            if (w.url.isNotBlank()) WebViewer.open?.invoke(w.url)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
-                    )
-
-                    "button" -> Button(onClick = {
-                        if (w.target.isNotBlank()) screen.value = w.target
-                        if (w.toast.isNotBlank()) {
-                            Toast.makeText(ctx, w.toast, Toast.LENGTH_SHORT).show()
-                        }
-                    }) { Text(w.text.ifEmpty { "按钮" }) }
-
-                    "switch" -> {
-                        var on by remember(w.key) { mutableStateOf(UiConfigStore.switchOn(w.key, w.default)) }
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(w.text, style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = on, onCheckedChange = {
-                                on = it
-                                UiConfigStore.setSwitch(w.key, it)
-                            })
-                        }
-                    }
-                }
-            }
-        }
+        ConfigWidgets(widgets = page.widgets, onTarget = { screen.value = it })
     }
 
     /** Settings → 界面配置: JSON editor for the config-driven UI. */
@@ -920,7 +914,7 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                "kami_ui.json：theme 配主题色（hex），pages 增删设置子页（widgets 支持 header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。",
+                "kami_ui.json：theme 配主题色（hex）；darkTheme=dark/light/空（空=跟随系统黑夜模式）；home 主页控件；hidden 隐藏设置项；pages 增删子页（widgets: header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -3,7 +3,6 @@ package com.kami.app
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -81,6 +78,8 @@ internal fun ChatScreen(
     onTerminal: () -> Unit,
     onSettings: () -> Unit,
     onArchive: () -> Unit,
+    homeWidgets: List<UiConfigStore.Widget> = emptyList(),
+    onTarget: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? FragmentActivity
@@ -130,52 +129,34 @@ internal fun ChatScreen(
             TextButton(onClick = onSettings) { Text("设置") }
         }
 
-        // Parallel sessions: collapsed by default into one chip showing the
-        // active session; tap to fold/unfold the full selector.
+        // Parallel sessions: the shared selector bar (same as the terminal).
         var sessionsOpen by remember { mutableStateOf(false) }
-        AssistChip(
-            onClick = { sessionsOpen = !sessionsOpen },
-            label = {
-                Text(
-                    (if (sessionsOpen) "▾ " else "▸ ") +
-                        "会话(${sessions.size}) · " + session.title +
-                        (if (session.busy) " …" else ""),
-                    fontSize = 12.sp,
-                )
+        SessionBar(
+            title = "会话(${sessions.size}) · " + session.title + if (session.busy) " …" else "",
+            open = sessionsOpen,
+            onToggle = { sessionsOpen = !sessionsOpen },
+            chips = buildList {
+                sessions.forEach { s ->
+                    add(
+                        SessionChip(
+                            label = s.title + if (s.busy) " …" else "",
+                            selected = s.id == session.id,
+                            onClick = { SessionStore.activeId.value = s.id },
+                        ),
+                    )
+                }
+                add(SessionChip("＋ 新会话") { SessionStore.newSession() })
+                if (sessions.any { it.busy }) {
+                    add(SessionChip("■ 终止") { AgentOverlayState.cancelAll() })
+                }
+                add(SessionChip("历史") { onArchive() })
             },
         )
-        if (sessionsOpen) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                sessions.forEach { s ->
-                    val selected = s.id == session.id
-                    AssistChip(
-                        onClick = { SessionStore.activeId.value = s.id },
-                        label = {
-                            Text(
-                                (if (selected) "• " else "") + s.title + (if (s.busy) " …" else ""),
-                                fontSize = 12.sp,
-                            )
-                        },
-                    )
-                }
-                AssistChip(
-                    onClick = { SessionStore.newSession() },
-                    label = { Text("＋ 新会话", fontSize = 12.sp) },
-                )
-                if (sessions.any { it.busy }) {
-                    AssistChip(
-                        onClick = { AgentOverlayState.cancelAll() },
-                        label = { Text("■ 终止", fontSize = 12.sp) },
-                    )
-                }
-                AssistChip(
-                    onClick = onArchive,
-                    label = { Text("历史", fontSize = 12.sp) },
-                )
-            }
+
+        // Config-defined home widgets (kami_ui.json "home") — the editable
+        // slice of the home screen.
+        if (homeWidgets.isNotEmpty()) {
+            ConfigWidgets(widgets = homeWidgets, onTarget = onTarget)
         }
 
         LazyColumn(

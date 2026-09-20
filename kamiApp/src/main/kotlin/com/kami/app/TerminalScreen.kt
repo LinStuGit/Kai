@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -301,6 +300,9 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         tty.liveStart = tty.value.text.length
         if (c.isEmpty()) {
             appendTty(tty, "\n" + prompt())
+            // The new prompt starts a fresh live line — everything before it
+            // (old output) must be frozen, or Enter would re-send it.
+            tty.liveStart = tty.value.text.length
             return
         }
         if (modeT.history.lastOrNull() != c) modeT.history.add(c)
@@ -310,20 +312,31 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             if (c == "clear") {
                 modeT.tty.value = TextFieldValue("", TextRange(0))
                 appendTty(modeT.tty, prompt())
+                modeT.tty.liveStart = modeT.tty.value.text.length
                 modeT.running = false
                 return@Thread
             }
             appendTty(tty, "\n")
             when (val r = execOnProc(c)) {
-                null -> appendTty(tty, "错误：会话进程启动失败（检查 Shizuku 授权；沙箱需先安装）\n")
+                null -> {
+                    appendTty(tty, "错误：会话进程启动失败（检查 Shizuku 授权；沙箱需先安装）\n" + prompt())
+                    tty.liveStart = tty.value.text.length
+                }
 
-                is LiveProc.Result.Dead -> appendTty(tty, "（会话已退出 — 输入任意命令将重新启动）\n" + prompt())
+                is LiveProc.Result.Dead -> {
+                    appendTty(tty, "（会话已退出 — 输入任意命令将重新启动）\n" + prompt())
+                    tty.liveStart = tty.value.text.length
+                }
 
                 is LiveProc.Result.Ok -> {
                     val shown = r.display.trimEnd('\n')
                     if (shown.isNotBlank()) appendTty(tty, shown + "\n")
                     if (r.pwd.isNotBlank()) modeT.cwd = r.pwd
                     appendTty(tty, prompt())
+                    // Freeze the output + new prompt: the live region must
+                    // hold ONLY what the user types next, otherwise Enter
+                    // would exec the whole region as one command.
+                    tty.liveStart = tty.value.text.length
                 }
             }
             modeT.running = false
@@ -467,41 +480,32 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             }
         }
 
-        // Session selector: collapsed chip + expandable list, like the chat.
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { sessionsOpen = !sessionsOpen }) {
-                Text(
-                    if (sessionsOpen) {
-                        "▼ 会话(${TerminalHub.sessions.size})"
-                    } else {
-                        "▸ ${session.name}"
-                    },
-                )
-            }
-            TextButton(onClick = {
-                TerminalHub.remove(session)
-                if (TerminalHub.sessions.isEmpty()) TerminalHub.create()
-                activeIdx = activeIdx.coerceIn(0, TerminalHub.sessions.size - 1)
-            }) { Text("✕ 关闭") }
-        }
-        if (sessionsOpen) {
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+        // Session selector: the same shared bar as the chat home — one chip
+        // with a fold indicator, expanding into equal chips.
+        SessionBar(
+            title = "终端(${TerminalHub.sessions.size}) · " + session.name,
+            open = sessionsOpen,
+            onToggle = { sessionsOpen = !sessionsOpen },
+            chips = buildList {
                 TerminalHub.sessions.forEachIndexed { i, s ->
-                    Text(
-                        (if (i == activeIdx) "• " else "") + s.name,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
-                            .clickable { activeIdx = i }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        fontSize = 12.sp,
+                    add(
+                        SessionChip(
+                            label = s.name,
+                            selected = i == activeIdx,
+                            onClick = { activeIdx = i },
+                        ),
                     )
                 }
-                OutlinedButton(onClick = { TerminalHub.create() }) { Text("＋ 新会话") }
-            }
-        }
+                add(SessionChip("＋ 新会话") { TerminalHub.create() })
+                add(
+                    SessionChip("✕ 关闭") {
+                        TerminalHub.remove(session)
+                        if (TerminalHub.sessions.isEmpty()) TerminalHub.create()
+                        activeIdx = activeIdx.coerceIn(0, TerminalHub.sessions.size - 1)
+                    },
+                )
+            },
+        )
 
         // The tty: one editable buffer — output, prompt and input in the same
         // flow. Editing is only possible after the last prompt, like on a

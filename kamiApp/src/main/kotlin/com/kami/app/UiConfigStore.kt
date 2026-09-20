@@ -17,6 +17,9 @@ import java.io.File
  * {
  *   "theme": {"primary":"#7C4DFF","onPrimary":"","background":"",
  *             "onBackground":"","surface":"","onSurface":"","surfaceVariant":""},
+ *   "home": [{"type":"header","text":"主页自定义区"},
+ *            {"type":"link","text":"文档","url":"https://…"}],
+ *   "hidden": ["set-perms"],
  *   "pages": [{"id":"demo","title":"示例页","widgets":[
  *       {"type":"header","text":"标题"},
  *       {"type":"text","text":"正文"},
@@ -25,6 +28,10 @@ import java.io.File
  *       {"type":"switch","text":"开关","key":"demo","default":false}]}]
  * }
  * ```
+ *
+ * `home` renders the same widget list on the chat home (below the session
+ * bar); `hidden` hides built-in settings entries (by route, e.g.
+ * "set-perms") or custom pages (by id).
  */
 object UiConfigStore {
 
@@ -54,7 +61,14 @@ object UiConfigStore {
         val surfaceVariant: String = "",
     )
 
-    data class Config(val theme: Theme? = null, val pages: List<Page> = emptyList())
+    data class Config(
+        val theme: Theme? = null,
+        /** ""/follow = follow the system; "dark"/"light" force one. */
+        val darkTheme: String = "",
+        val home: List<Widget> = emptyList(),
+        val hidden: List<String> = emptyList(),
+        val pages: List<Page> = emptyList(),
+    )
 
     private const val FILE = "kami_ui.json"
     private const val SWITCH_PREFS = "kami_ui_switch"
@@ -63,6 +77,9 @@ object UiConfigStore {
     const val DEFAULT_SAMPLE =
         "{\n" +
             "  \"theme\": {\"primary\": \"\", \"onPrimary\": \"\", \"background\": \"\", \"onBackground\": \"\", \"surface\": \"\", \"onSurface\": \"\", \"surfaceVariant\": \"\"},\n" +
+            "  \"darkTheme\": \"\",\n" +
+            "  \"home\": [],\n" +
+            "  \"hidden\": [],\n" +
             "  \"pages\": [\n" +
             "    {\"id\": \"demo\", \"title\": \"示例页\", \"widgets\": [\n" +
             "      {\"type\": \"header\", \"text\": \"由配置驱动的子页\"},\n" +
@@ -119,7 +136,8 @@ object UiConfigStore {
             require(cfg.pages.size <= 50) { "子页过多（>50）" }
             file().writeText(text)
             cachedMtime = -1L
-            "已保存：${cfg.pages.size} 个自定义子页" + if (cfg.theme != null) " + 主题色" else ""
+            "已保存：${cfg.pages.size} 个子页 · 主页 ${cfg.home.size} 个控件" +
+                if (cfg.theme != null) " · 主题色" else ""
         } catch (t: Throwable) {
             "错误：JSON 无效 — ${t.message}"
         }
@@ -152,29 +170,39 @@ object UiConfigStore {
                 surfaceVariant = t.optString("surfaceVariant"),
             )
         }
-        val pages = root.optJSONArray("pages")?.let { arr: JSONArray ->
+        fun widgets(arr: JSONArray?): List<Widget> = arr?.let { wa ->
+            (0 until wa.length()).map { j ->
+                val w = wa.getJSONObject(j)
+                Widget(
+                    type = w.optString("type", "text"),
+                    text = w.optString("text"),
+                    url = w.optString("url"),
+                    target = w.optString("target"),
+                    toast = w.optString("toast"),
+                    key = w.optString("key"),
+                    default = w.optBoolean("default", false),
+                )
+            }
+        } ?: emptyList()
+        val home = widgets(root.optJSONArray("home"))
+        val hidden = root.optJSONArray("hidden")?.let { ha ->
+            (0 until ha.length()).map { ha.optString(it) }.filter { it.isNotBlank() }
+        } ?: emptyList()        val pages = root.optJSONArray("pages")?.let { arr: JSONArray ->
             (0 until arr.length()).map { i ->
                 val p = arr.getJSONObject(i)
                 Page(
                     id = p.optString("id").ifBlank { "p$i" },
                     title = p.optString("title").ifBlank { "自定义页" },
-                    widgets = p.optJSONArray("widgets")?.let { wa ->
-                        (0 until wa.length()).map { j ->
-                            val w = wa.getJSONObject(j)
-                            Widget(
-                                type = w.optString("type", "text"),
-                                text = w.optString("text"),
-                                url = w.optString("url"),
-                                target = w.optString("target"),
-                                toast = w.optString("toast"),
-                                key = w.optString("key"),
-                                default = w.optBoolean("default", false),
-                            )
-                        }
-                    } ?: emptyList(),
+                    widgets = widgets(p.optJSONArray("widgets")),
                 )
             }
         } ?: emptyList()
-        return Config(theme, pages)
+        return Config(
+            theme,
+            root.optString("darkTheme").let { if (it == "dark" || it == "light") it else "" },
+            home,
+            hidden,
+            pages,
+        )
     }
 }
