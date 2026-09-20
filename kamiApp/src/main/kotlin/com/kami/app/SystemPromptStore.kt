@@ -19,14 +19,13 @@ object SystemPromptStore {
         appContext = context.applicationContext
     }
 
-    fun get(): String =
-        if (!::appContext.isInitialized) {
-            AgentClient.SYSTEM_PROMPT
-        } else {
-            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getString(KEY, null)?.trim().orEmpty()
-                .ifEmpty { AgentClient.SYSTEM_PROMPT }
-        }
+    fun get(): String = if (!::appContext.isInitialized) {
+        AgentClient.SYSTEM_PROMPT
+    } else {
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY, null)?.trim().orEmpty()
+            .ifEmpty { AgentClient.SYSTEM_PROMPT }
+    }
 
     /** True when the user has a custom prompt in effect. */
     fun isCustom(): Boolean = ::appContext.isInitialized &&
