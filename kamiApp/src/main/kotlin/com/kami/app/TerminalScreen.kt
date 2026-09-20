@@ -1,5 +1,6 @@
 package com.kami.app
 
+import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -16,15 +17,14 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,39 +36,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
-private const val SHELL_PROMPT = "shell:/$ "
-private const val ALPINE_PROMPT = "alpine:/$ "
-
-/**
- * Every executed command is a fresh shell process (Shizuku exec / proot), so
- * `cd` alone would never persist. We prefix each command with a `cd` to the
- * tracked cwd and append a pwd probe; the probe's value is parsed back out of
- * the output and the prompt follows it — emulating a persistent cwd.
- */
-private const val CWD_MARKER = "__KAMI_CWD__"
-
-/** Wrap [cmd] so it starts in [cwd] and reports the resulting cwd. */
-private fun wrapCwd(cwd: String, cmd: String): String = buildString {
-    if (cwd.isNotEmpty()) {
-        append("cd ").append(shellQuote(cwd)).append(" 2>/dev/null\n")
-    }
-    append(cmd)
-    append("\nprintf '").append(CWD_MARKER).append("%s' \"$(pwd)\"")
-}
-
-/** Split raw output into (display text, new cwd). */
-private fun splitCwd(out: String): Pair<String, String> {
-    val i = out.lastIndexOf(CWD_MARKER)
-    if (i < 0) return out to ""
-    val newCwd = out.substring(i + CWD_MARKER.length).trim()
-    return out.substring(0, i).trimEnd('\n') to newCwd
-}
+import moe.shizuku.server.IRemoteProcess
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 /** Keep the tty buffer bounded; drop oldest bytes when exceeded. */
 private const val TTY_MAX = 40_000
+
+/**
+ * The single-buffer tty state: the whole session text plus the index where
+ * the live (editable) region after the last prompt starts.
+ */
+private class Tty(initial: String) {
+    var value by mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
+    var liveStart by mutableStateOf(initial.length)
+}
 
 private val EXTRA_KEYS = listOf(
     "TAB", "↑", "↓", "←", "→", "/", "|", "\\", "\"", "'", ":",
@@ -95,71 +77,221 @@ private fun shellQuote(s: String): String = "'" + s.replace("'", "'\\''") + "'"
 /** Longest common prefix of a non-empty list. */
 private fun commonPrefix(cands: List<String>): String = cands.reduce { a, b -> a.commonPrefixWith(b) }
 
-/** One tty buffer: the whole stream plus the index where the editable
- *  prompt line starts (everything before it is frozen output/history). */
-private class Tty(initial: String) {
-    var value by mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
-    var liveStart by mutableStateOf(initial.length)
+/**
+ * A single persistent shell process behind a terminal session. Commands are
+ * fed to its stdin and each is followed by a marker probe; the reader thread
+ * accumulates output until the marker shows up, which yields the command's
+ * output, its exit code and the live cwd — a REAL continuous session, so
+ * `cd`, env vars and everything else persist naturally.
+ */
+private class LiveProc(argv: Array<String>, firstInput: String) {
+
+    private val proc: IRemoteProcess = ShizukuRunner.spawn(argv)
+    private val outPfd = proc.inputStream
+    private val inPfd = proc.outputStream
+    private val stdin = FileOutputStream(inPfd.fileDescriptor)
+    private val pending = StringBuilder()
+
+    /** Set by the reader thread when the process closes its stdout. */
+    @Volatile
+    var dead = false
+        private set
+
+    private var nonce = 0
+
+    init {
+        // Merge stderr into stdout so interleaved error text lands in order.
+        Thread {
+            try {
+                FileInputStream(outPfd.fileDescriptor).reader().use { r ->
+                    val buf = CharArray(2048)
+                    while (true) {
+                        val n = r.read(buf)
+                        if (n < 0) break
+                        synchronized(pending) { pending.append(buf, 0, n) }
+                    }
+                }
+            } catch (_: Throwable) {
+            }
+            dead = true
+        }.apply { isDaemon = true }.start()
+        if (firstInput.isNotEmpty()) write(firstInput)
+    }
+
+    fun alive(): Boolean = !dead && try {
+        proc.alive()
+    } catch (t: Throwable) {
+        false
+    }
+
+    fun destroy() {
+        try {
+            proc.destroy()
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun write(s: String) {
+        stdin.write(s.toByteArray())
+        stdin.flush()
+    }
+
+    sealed class Result {
+        data class Ok(val display: String, val code: String, val pwd: String) : Result()
+        object Dead : Result()
+    }
+
+    /**
+     * Run [cmd] in this shell and wait for the marker. The pending buffer is
+     * drained of everything the shell printed for this command; output the
+     * process produces later (background jobs) stays there for the next one.
+     */
+    fun exec(cmd: String): Result {
+        if (dead) return Result.Dead
+        val n = ++nonce
+        val marker = "__KAMI_END_${n}_"
+        synchronized(pending) { pending.setLength(0) }
+        write(
+            cmd + "\n" +
+                "printf '${marker}%s@%s@' \"\$?\" \"\$(pwd)\"\n",
+        )
+        while (alive()) {
+            var res: Result? = null
+            synchronized(pending) {
+                val i = pending.indexOf(marker)
+                if (i >= 0) {
+                    val rest = pending.substring(i + marker.length)
+                    val c1 = rest.indexOf('@')
+                    val c2 = if (c1 >= 0) rest.indexOf('@', c1 + 1) else -1
+                    if (c1 >= 0 && c2 > c1) {
+                        val display = pending.substring(0, i)
+                        val leftover = pending.substring(c2 + 1)
+                        pending.setLength(0)
+                        pending.append(leftover)
+                        res = Result.Ok(display, rest.substring(0, c1), rest.substring(c1 + 1, c2))
+                    }
+                }
+            }
+            res?.let { return it }
+            Thread.sleep(40)
+        }
+        return Result.Dead
+    }
+}
+
+/** Per-mode state of a terminal session: tty buffer, process, history. */
+private class TermMode(initialPrompt: String) {
+    val tty = Tty(initialPrompt)
+    var running by mutableStateOf(false)
+    var cwd by mutableStateOf("/")
+    val history = mutableListOf<String>()
+    var histIdx = -1
+    var proc: LiveProc? = null
+    var firstInputSent = false
+}
+
+/** One terminal session — named, with independent shell/alpine consoles. */
+class TermSession(val id: Int) {
+    var name by mutableStateOf("终端 $id")
+    val shell = TermMode("shell:/$ ")
+    val alpine = TermMode("alpine:/$ ")
+}
+
+/** Process-global session registry: sessions survive navigation, like chat. */
+object TerminalHub {
+    val sessions = mutableStateListOf<TermSession>()
+    private var nextId = 1
+
+    fun create(): TermSession = TermSession(nextId++).also { sessions.add(it) }
+
+    fun remove(s: TermSession) {
+        sessions.remove(s)
+        s.shell.proc?.destroy()
+        s.alpine.proc?.destroy()
+    }
+
+    fun destroyAll() {
+        sessions.toList().forEach { remove(it) }
+    }
+}
+
+/** The current (editable) input line of a tty buffer. */
+private fun liveText(t: Tty): String = t.value.text.substring(t.liveStart)
+
+private fun setLive(t: Tty, newLive: String) {
+    val txt = t.value.text.take(t.liveStart) + newLive
+    t.value = TextFieldValue(txt, TextRange(txt.length))
+}
+
+/** Append to the stream end (frozen region grows, live line stays last). */
+private fun appendTty(t: Tty, s: String) {
+    var txt = t.value.text + s
+    var ls = t.liveStart
+    if (txt.length > TTY_MAX) {
+        val drop = txt.length - TTY_MAX
+        txt = txt.substring(drop)
+        ls = (ls - drop).coerceAtLeast(0)
+    }
+    t.value = TextFieldValue(txt, TextRange(txt.length))
+    t.liveStart = ls
+}
+
+/** Print above the prompt line (bash-style completion listings). */
+private fun printAbove(t: Tty, s: String) {
+    val v = t.value
+    val txt = v.text.substring(0, t.liveStart) + s + v.text.substring(t.liveStart)
+    val sel = if (v.selection.end >= t.liveStart) v.selection.end + s.length else v.selection.end
+    t.value = TextFieldValue(txt, TextRange(sel.coerceIn(0, txt.length)))
+    t.liveStart += s.length
 }
 
 /**
- * The terminal, modelled on a linux tty: ONE text buffer holds the whole
- * session — past output, the prompt and the command being typed live in the
- * same flow with a real cursor, exactly like a console. Typed characters go
- * to the line after the prompt; executed lines and their output freeze into
- * the buffer above (edits there are rejected like on a real terminal);
- * TAB completes, ↑/↓ walk history; Enter runs the line.
+ * The terminal: multiple named sessions, each a REAL persistent shell
+ * process (Shizuku) — the host shell, or one long-lived proot for Alpine —
+ * so `cd` and state persist like a real tty. One text buffer per mode holds
+ * the whole flow; editing is only possible after the last prompt; TAB
+ * completes, ↑/↓ walk history, Enter runs the line.
  */
 @Composable
 internal fun TerminalScreen(onBack: () -> Unit) {
+    if (TerminalHub.sessions.isEmpty()) TerminalHub.create()
+    var activeIdx by remember { mutableStateOf(0) }
+    var sessionsOpen by remember { mutableStateOf(false) }
+    val session = TerminalHub.sessions[activeIdx.coerceIn(0, TerminalHub.sessions.size - 1)]
+
     var mode by remember { mutableStateOf("shell") }
-    val shellTty = remember { Tty(SHELL_PROMPT) }
-    val alpineTty = remember { Tty(ALPINE_PROMPT) }
-    val tty = if (mode == "shell") shellTty else alpineTty
-    // Tracked working directory per mode (see wrapCwd); shown in the prompt.
-    val cwds = remember { mutableStateMapOf("shell" to "/", "alpine" to "/") }
-
-    /** Prompt reflecting the tracked cwd, evaluated live. */
-    fun curPrompt(): String {
-        val p = (cwds[mode] ?: "/").trimEnd('/')
-        return (if (mode == "shell") "shell" else "alpine") + ":" + p.ifEmpty { "/" } + "$ "
-    }
-
-    var running by remember { mutableStateOf(false) }
-    val history = remember { mutableListOf<Pair<String, String>>() } // mode to cmd
-    var histIdx by remember { mutableStateOf(-1) }
-    val scope = rememberCoroutineScope()
+    val modeT = if (mode == "shell") session.shell else session.alpine
+    val tty = modeT.tty
+    val running = modeT.running
     val scroll = rememberScrollState()
 
-    /** The current (editable) input line. */
-    fun liveText(): String = tty.value.text.substring(tty.liveStart)
+    fun prompt(): String =
+        (if (mode == "shell") "shell" else "alpine") + ":" + modeT.cwd.trimEnd('/').ifEmpty { "/" } + "$ "
 
-    /** Replace the live line, cursor at its end. */
-    fun setLive(newLive: String) {
-        val t = tty.value.text.take(tty.liveStart) + newLive
-        tty.value = TextFieldValue(t, TextRange(t.length))
-    }
-
-    /** Append to the stream end (used while edits are frozen). */
-    fun append(s: String) {
-        var txt = tty.value.text + s
-        var ls = tty.liveStart
-        if (txt.length > TTY_MAX) {
-            val drop = txt.length - TTY_MAX
-            txt = txt.substring(drop)
-            ls = (ls - drop).coerceAtLeast(0)
+    /** Spawn (or reuse) the persistent process for this mode. */
+    fun procFor(): LiveProc? {
+        modeT.proc?.takeIf { it.alive() }?.let { return it }
+        modeT.proc?.destroy()
+        modeT.proc = null
+        val p = try {
+            if (mode == "shell") {
+                LiveProc(arrayOf("sh", "-c", "exec sh 2>&1"), "")
+            } else {
+                val cmd = ProotSandbox.persistentShellCmd() ?: return null
+                LiveProc(arrayOf("sh", "-c", cmd), "export PATH=/bin:/sbin:/usr/bin:/usr/sbin\n")
+            }
+        } catch (t: Throwable) {
+            null
         }
-        tty.value = TextFieldValue(txt, TextRange(txt.length))
-        tty.liveStart = ls
+        modeT.proc = p
+        modeT.firstInputSent = mode != "alpine"
+        return p
     }
 
-    /** Print above the prompt line (bash-style completion listings). */
-    fun printAbove(s: String) {
-        val v = tty.value
-        val txt = v.text.substring(0, tty.liveStart) + s + v.text.substring(tty.liveStart)
-        val sel = if (v.selection.end >= tty.liveStart) v.selection.end + s.length else v.selection.end
-        tty.value = TextFieldValue(txt, TextRange(sel.coerceIn(0, txt.length)))
-        tty.liveStart += s.length
+    /** Send one command, wait for the marker; never touches the tty. */
+    fun execOnProc(cmd: String): LiveProc.Result? {
+        val p = procFor() ?: return null
+        return p.exec(cmd)
     }
 
     fun exec(raw: String) {
@@ -168,31 +300,32 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         // The typed line is already on screen — freeze it and print below.
         tty.liveStart = tty.value.text.length
         if (c.isEmpty()) {
-            append("\n" + curPrompt())
+            appendTty(tty, "\n" + prompt())
             return
         }
-        if (history.lastOrNull() != (mode to c)) history.add(mode to c)
-        histIdx = -1
-        running = true
-        scope.launch(Dispatchers.IO) {
-            append("\n")
-            val out = if (mode == "shell") {
-                if (ShizukuRunner.granted()) {
-                    ShizukuRunner.run(wrapCwd(cwds[mode] ?: "", c))
-                } else {
-                    "错误：Shizuku 未授权 — 回主页完成授权"
-                }
-            } else {
-                ProotSandbox.run(wrapCwd(cwds[mode] ?: "", c))
+        if (modeT.history.lastOrNull() != c) modeT.history.add(c)
+        modeT.histIdx = -1
+        modeT.running = true
+        Thread {
+            if (c == "clear") {
+                modeT.tty.value = TextFieldValue("", TextRange(0))
+                appendTty(modeT.tty, prompt())
+                modeT.running = false
+                return@Thread
             }
-            // Keep the device's own output verbatim; only mark true silence.
-            val (shown, newCwd) = splitCwd(out)
-            if (newCwd.isNotEmpty()) cwds[mode] = newCwd
-            append(if (shown.isBlank()) "（无输出）\n" else shown + "\n")
-            append(curPrompt())
-            tty.liveStart = tty.value.text.length
-            running = false
-        }
+            appendTty(tty, "\n")
+            when (val r = execOnProc(c)) {
+                null -> appendTty(tty, "错误：会话进程启动失败（检查 Shizuku 授权；沙箱需先安装）\n")
+                is LiveProc.Result.Dead -> appendTty(tty, "（会话已退出 — 输入任意命令将重新启动）\n" + prompt())
+                is LiveProc.Result.Ok -> {
+                    val shown = r.display.trimEnd('\n')
+                    if (shown.isNotBlank()) appendTty(tty, shown + "\n")
+                    if (r.pwd.isNotBlank()) modeT.cwd = r.pwd
+                    appendTty(tty, prompt())
+                }
+            }
+            modeT.running = false
+        }.apply { isDaemon = true }.start()
     }
 
     /** TAB: complete the word at the cursor (command name or path). */
@@ -205,22 +338,20 @@ internal fun TerminalScreen(onBack: () -> Unit) {
         val after = text.substring(cur)
         val sp = before.lastIndexOf(' ')
         val token = if (sp < 0) before else before.substring(sp + 1)
-        if (token.isEmpty()) return
         val tokenStart = cur - token.length
 
         fun apply(newToken: String, hint: String?) {
             val t = text.substring(0, tokenStart) + newToken + after
             tty.value = TextFieldValue(t, TextRange(tokenStart + newToken.length))
-            if (!hint.isNullOrEmpty()) printAbove(hint)
+            if (!hint.isNullOrEmpty()) printAbove(tty, hint)
         }
 
-        scope.launch(Dispatchers.IO) {
+        Thread {
             if (sp < 0) {
                 val cands = (
-                    COMMANDS + history.filter { it.first == mode }
-                        .map { it.second.trim().substringBefore(' ') }
+                    COMMANDS + modeT.history.map { it.trim().substringBefore(' ') }
                     )
-                    .filter { it.startsWith(token) }
+                    .filter { it.startsWith(token) && token.isNotEmpty() }
                     .distinct()
                     .sorted()
                 when {
@@ -237,21 +368,23 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                     }
                 }
             } else {
-                if (token.startsWith("-")) return@launch
+                if (token.startsWith("-")) return@Thread
                 val slash = token.lastIndexOf('/')
                 val dir = if (slash < 0) "" else token.substring(0, slash + 1)
                 val prefix = token.substring(slash + 1)
-                // Run the listing in the tracked cwd so relative paths complete
-                // correctly (proot has no persistent cwd of its own).
-                val cmd = wrapCwd(
-                    cwds[mode] ?: "",
-                    "ls -d ${shellQuote(dir)}${shellQuote(prefix)}* 2>/dev/null | head -60",
-                )
-                val raw = if (mode == "shell") ShizukuRunner.run(cmd) else ProotSandbox.run(cmd)
-                val out = splitCwd(raw).first
+                // The listing runs inside the SAME persistent shell — so it
+                // resolves relative paths against the live cwd, like bash.
+                // Empty token: list the cwd itself.
+                val probe = if (prefix.isEmpty() && dir.isEmpty()) {
+                    "ls -A 2>/dev/null | head -60"
+                } else {
+                    "ls -d ${shellQuote(dir)}${shellQuote(prefix)}* 2>/dev/null | head -60"
+                }
+                val r = execOnProc(probe) ?: return@Thread
+                val out = (r as? LiveProc.Result.Ok)?.display ?: return@Thread
                 val cands = out.lines()
                     .map { it.trimEnd('\r') }
-                    .filter { it.isNotBlank() && !it.startsWith("错误") && !it.startsWith("shizuku") }
+                    .filter { it.isNotBlank() && !it.contains("__KAMI_END_") }
                 when {
                     cands.isEmpty() -> Unit
 
@@ -266,7 +399,7 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                     }
                 }
             }
-        }
+        }.apply { isDaemon = true }.start()
     }
 
     /** Move within the live line only (like a real tty cursor). */
@@ -279,12 +412,10 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     /** ↑/↓ walk this mode's history. */
     fun historyStep(delta: Int) {
         if (running) return
-        val mine = history.mapIndexed { i, (m, cmd) -> if (m == mode) i to cmd else null }
-            .filterNotNull()
-        if (mine.isEmpty()) return
-        val next = (histIdx + delta).coerceIn(-1, mine.size - 1)
-        histIdx = next
-        setLive(if (next < 0) "" else mine[next].second)
+        if (modeT.history.isEmpty()) return
+        val next = (modeT.histIdx + delta).coerceIn(-1, modeT.history.size - 1)
+        modeT.histIdx = next
+        setLive(tty, if (next < 0) "" else modeT.history[next])
     }
 
     fun onKey(k: String) {
@@ -302,7 +433,10 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             else -> {
                 if (running) return
                 val cur = tty.value.selection.end.coerceIn(tty.liveStart, tty.value.text.length)
-                setLive(liveText().let { it.substring(0, (cur - tty.liveStart)) + k + it.substring(cur - tty.liveStart) })
+                setLive(
+                    tty,
+                    liveText(tty).let { it.substring(0, (cur - tty.liveStart)) + k + it.substring(cur - tty.liveStart) },
+                )
             }
         }
     }
@@ -331,6 +465,42 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             }
         }
 
+        // Session selector: collapsed chip + expandable list, like the chat.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { sessionsOpen = !sessionsOpen }) {
+                Text(
+                    if (sessionsOpen) {
+                        "▼ 会话(${TerminalHub.sessions.size})"
+                    } else {
+                        "▸ ${session.name}"
+                    },
+                )
+            }
+            TextButton(onClick = {
+                TerminalHub.remove(session)
+                if (TerminalHub.sessions.isEmpty()) TerminalHub.create()
+                activeIdx = activeIdx.coerceIn(0, TerminalHub.sessions.size - 1)
+            }) { Text("✕ 关闭") }
+        }
+        if (sessionsOpen) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TerminalHub.sessions.forEachIndexed { i, s ->
+                    Text(
+                        (if (i == activeIdx) "• " else "") + s.name,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+                            .clickable { activeIdx = i }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        fontSize = 12.sp,
+                    )
+                }
+                OutlinedButton(onClick = { TerminalHub.create() }) { Text("＋ 新会话") }
+            }
+        }
+
         // The tty: one editable buffer — output, prompt and input in the same
         // flow. Editing is only possible after the last prompt, like on a
         // real console; everything above is frozen.
@@ -342,47 +512,49 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                 .padding(10.dp)
                 .verticalScroll(scroll),
         ) {
-            BasicTextField(
-                value = tty.value,
-                onValueChange = { new ->
-                    val oldText = tty.value.text
-                    val liveStart = tty.liveStart
-                    val frozen = oldText.take(liveStart)
-                    if (running) return@BasicTextField
-                    if (new.text == oldText) {
-                        tty.value = new // cursor move / selection only
-                        return@BasicTextField
-                    }
-                    if (new.text.startsWith(frozen) && new.text.length >= liveStart) {
-                        val live = new.text.substring(liveStart)
-                        // Enter: the LIVE region gained a newline (the frozen
-                        // history is full of them — must not match those).
-                        if (live.contains('\n')) {
-                            exec(live.replace("\n", " ").trim())
+            SelectionContainer {
+                BasicTextField(
+                    value = tty.value,
+                    onValueChange = { new ->
+                        val oldText = tty.value.text
+                        val liveStart = tty.liveStart
+                        val frozen = oldText.take(liveStart)
+                        if (running) return@BasicTextField
+                        if (new.text == oldText) {
+                            tty.value = new // cursor move / selection only
                             return@BasicTextField
                         }
-                        tty.value = new // normal edit inside the live line
-                        return@BasicTextField
-                    }
-                    // Editing frozen history: redirect insertions to the live
-                    // line end (keystrokes always go to the prompt), reject
-                    // deletions there (a tty can't unprint).
-                    val p = new.text.commonPrefixWith(oldText).length
-                    val diff = new.text.length - oldText.length
-                    if (diff > 0 && new.text.endsWith(oldText.substring(p))) {
-                        setLive(liveText() + new.text.substring(p, p + diff).replace("\n", ""))
-                    } else {
-                        tty.value = TextFieldValue(oldText, TextRange(oldText.length))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    color = Color(0xFFD5E0EA),
-                ),
-                cursorBrush = SolidColor(Color(0xFF9BD1FF)),
-            )
+                        if (new.text.startsWith(frozen) && new.text.length >= liveStart) {
+                            val live = new.text.substring(liveStart)
+                            // Enter: the LIVE region gained a newline (the frozen
+                            // history is full of them — must not match those).
+                            if (live.contains('\n')) {
+                                exec(live.replace("\n", " ").trim())
+                                return@BasicTextField
+                            }
+                            tty.value = new // normal edit inside the live line
+                            return@BasicTextField
+                        }
+                        // Editing frozen history: redirect insertions to the live
+                        // line end (keystrokes always go to the prompt), reject
+                        // deletions there (a tty can't unprint).
+                        val p = new.text.commonPrefixWith(oldText).length
+                        val diff = new.text.length - oldText.length
+                        if (diff > 0 && new.text.endsWith(oldText.substring(p))) {
+                            setLive(tty, liveText(tty) + new.text.substring(p, p + diff).replace("\n", ""))
+                        } else {
+                            tty.value = TextFieldValue(oldText, TextRange(oldText.length))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = Color(0xFFD5E0EA),
+                    ),
+                    cursorBrush = SolidColor(Color(0xFF9BD1FF)),
+                )
+            }
         }
 
         // Extra keys row (termux-style): TAB completes, arrows navigate.

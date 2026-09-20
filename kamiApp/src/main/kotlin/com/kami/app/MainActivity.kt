@@ -380,6 +380,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContextHolder.init(applicationContext)
         ExtensionStore.init(applicationContext)
         ProotSandbox.init(applicationContext)
         ScreenControl.init(applicationContext)
@@ -514,6 +515,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Leaving for good: tear down persistent terminal session processes.
+        if (isFinishing) Thread { TerminalHub.destroyAll() }.start()
         Shizuku.removeBinderReceivedListener(binderListener)
         Shizuku.removeRequestPermissionResultListener(permissionListener)
     }
@@ -851,12 +854,14 @@ class MainActivity : FragmentActivity() {
         )
     }
 
-    /** Config-driven custom sub page: renders the declared widget list. */
+    /** Config-driven custom sub page: renders the declared widget list.
+     *  No verticalScroll here — SubPage already scrolls (nested scrolling
+     *  with unbounded height crashes the measure pass). */
     @Composable
     private fun DynPageSection(page: UiConfigStore.Page) {
         val ctx = LocalContext.current
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             for (w in page.widgets) {
@@ -911,7 +916,7 @@ class MainActivity : FragmentActivity() {
         var text by remember { mutableStateOf(UiConfigStore.raw()) }
         var status by remember { mutableStateOf("") }
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
@@ -967,7 +972,7 @@ class MainActivity : FragmentActivity() {
         var text by remember { mutableStateOf(SystemPromptStore.get()) }
         var status by remember { mutableStateOf("") }
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(

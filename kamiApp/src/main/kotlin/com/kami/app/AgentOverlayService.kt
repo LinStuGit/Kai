@@ -35,11 +35,21 @@ import java.util.concurrent.CopyOnWriteArrayList
  * ball (tap to expand status + force-stop) whenever the user leaves the app
  * mid-run. Plain classic views on purpose — no Compose in a Service.
  */
+/**
+ * Rich content shown inside the overlay panel above everything else: a web
+ * page (url), a raw HTML snippet, or a local image file — whatever the agent
+ * wants the user to see (charts, previews, results).
+ */
+data class OverlayContent(val kind: String, val data: String, val title: String)
+
 object AgentOverlayState {
 
     val running = mutableStateOf(false)
     val status = mutableStateOf("")
     val activityVisible = mutableStateOf(true)
+
+    /** Current rich content (null = none); the service polls and renders it. */
+    val content = mutableStateOf<OverlayContent?>(null)
 
     /** Set while the agent reads the screen: collapse the panel to the ball. */
     val suppress = mutableStateOf(false)
@@ -60,6 +70,21 @@ object AgentOverlayState {
      * make the ball flicker away. Reset when every job is done.
      */
     val screenSeen = mutableStateOf(false)
+
+    /** Show rich content in the overlay (and make sure the service runs). */
+    fun showContent(spec: OverlayContent) {
+        content.value = spec
+        keepAlive()
+    }
+
+    fun clearContent() {
+        content.value = null
+    }
+
+    private fun keepAlive() {
+        val ctx = AppContextHolder.get()
+        ctx.startForegroundService(Intent(ctx, AgentOverlayService::class.java))
+    }
 
     val jobs = CopyOnWriteArrayList<Job>()
 
@@ -108,12 +133,31 @@ class AgentOverlayService : Service() {
     private lateinit var statusView: TextView
     private var wakeLock: android.os.PowerManager.WakeLock? = null
 
+    /** Rich-content views: container inside the panel + current spec. */
+    private var contentHolder: LinearLayout? = null
+    private var contentView: View? = null
+    private var renderedSpec: OverlayContent? = null
+
     private val tick = object : Runnable {
         override fun run() {
             // Self-heal: recompute running from the real job states so a
             // stale flag can never keep the ball or this service alive
             // with no work behind it.
             AgentOverlayState.refresh()
+            // Rich content (web page / html / image) takes priority: shown
+            // above everything, staying up even with no agent run active.
+            val spec = AgentOverlayState.content.value
+            if (spec != null) {
+                if (!attached) attach()
+                if (attached) {
+                    renderContent(spec)
+                    setExpanded(true)
+                    handler.postDelayed(this, 500)
+                    return
+                }
+            } else if (contentView != null) {
+                removeContent()
+            }
             if (!AgentOverlayState.running.value) {
                 val hadScreen = AgentOverlayState.screenSeen.value
                 AgentOverlayState.screenSeen.value = false
@@ -240,6 +284,17 @@ class AgentOverlayService : Service() {
             textSize = 12f
             setOnClickListener { AgentOverlayState.cancelAll() }
         }
+        val contentClose = TextView(this).apply {
+            text = "✕ 关闭内容"
+            setTextColor(0xFF8A97A3.toInt())
+            textSize = 12f
+            setOnClickListener { AgentOverlayState.clearContent() }
+        }
+        contentHolder = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            addView(contentClose)
+        }
         val cardBg = GradientDrawable().apply {
             setColor(0xEE101418.toInt())
             cornerRadius = 14f * resources.displayMetrics.density
@@ -252,6 +307,7 @@ class AgentOverlayService : Service() {
             addView(head)
             addView(statusView)
             addView(stop)
+            addView(contentHolder)
         }
 
         // The ball: a small draggable circle, tap (no drag) to expand.
@@ -355,6 +411,89 @@ class AgentOverlayService : Service() {
         ball?.visibility = if (value) View.GONE else View.VISIBLE
     }
 
+    /** Build/refresh the rich-content view inside the panel. */
+    private fun renderContent(spec: OverlayContent) {
+        if (renderedSpec == spec && contentView != null) return
+        removeContent()
+        val holder = contentHolder ?: return
+        val view: View = when (spec.kind) {
+            "image" -> {
+                val iv = android.widget.ImageView(this)
+                val bmp = try {
+                    android.graphics.BitmapFactory.decodeFile(spec.data)
+                } catch (t: Throwable) {
+                    null
+                }
+                if (bmp != null) {
+                    iv.setImageBitmap(bmp)
+                } else {
+                    iv.minimumHeight = dp(60f)
+                    iv.background = GradientDrawable().apply { setColor(0x33101418.toInt()) }
+                    // ImageView can't hold text; wrap the error in a TextView.
+                    holder.addView(
+                        TextView(this).apply {
+                            text = "无法读取图片：${spec.data}"
+                            setTextColor(0xFFFFB4A9.toInt())
+                            textSize = 11f
+                        },
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ),
+                    )
+                }
+                iv.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                iv
+            }
+
+            else -> {
+                val wv = android.webkit.WebView(this)
+                wv.settings.javaScriptEnabled = true
+                wv.settings.domStorageEnabled = true
+                wv.settings.allowFileAccess = true
+                if (spec.kind == "url") {
+                    wv.loadUrl(spec.data)
+                } else {
+                    wv.loadDataWithBaseURL(null, spec.data, "text/html", "utf-8", null)
+                }
+                wv
+            }
+        }
+        val h = if (spec.kind == "image") dp(320f) else dp(380f)
+        contentView = view
+        renderedSpec = spec
+        holder.addView(
+            view,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h),
+        )
+        holder.visibility = View.VISIBLE
+        // Widen the panel so pages/images have room.
+        panel?.layoutParams = FrameLayout.LayoutParams(dp(280f), FrameLayout.LayoutParams.WRAP_CONTENT)
+        panel?.requestLayout()
+        root?.let { r ->
+            runCatching {
+                (getSystemService(Context.WINDOW_SERVICE) as WindowManager).updateViewLayout(r, params)
+            }
+        }
+    }
+
+    private fun removeContent() {
+        contentView?.let { v ->
+            if (v is android.webkit.WebView) {
+                runCatching { v.stopLoading() }
+                runCatching { v.destroy() }
+            }
+        }
+        contentView = null
+        renderedSpec = null
+        contentHolder?.let { h ->
+            h.removeAllViews()
+            h.visibility = View.GONE
+        }
+        panel?.layoutParams = FrameLayout.LayoutParams(dp(230f), FrameLayout.LayoutParams.WRAP_CONTENT)
+        panel?.requestLayout()
+    }
+
     /** SCREEN_BRIGHT for the whole screen-driving run, refreshed every tick. */
     private fun ensureWakeLock() {
         val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -387,6 +526,7 @@ class AgentOverlayService : Service() {
         attached = false
         userExpanded = false
         setExpanded(false)
+        removeContent()
         runCatching {
             (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(root)
         }

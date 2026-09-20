@@ -57,6 +57,13 @@ object ShizukuRunner {
     )
 
     /**
+     * Spawn a long-lived process (terminal sessions). Caller owns the
+     * returned IRemoteProcess — read its stream descriptors and destroy()
+     * it when the session closes.
+     */
+    fun spawn(argv: Array<String>): IRemoteProcess = binder().newProcess(argv, null, null)
+
+    /**
      * Unconditional hard stop: for every in-flight command (all sessions,
      * not just the newest) SIGKILL its whole process tree — wrapper sh plus
      * descendants to depth 5, swept while parents are alive and children
