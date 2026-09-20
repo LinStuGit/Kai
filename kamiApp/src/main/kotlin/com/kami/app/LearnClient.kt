@@ -77,8 +77,7 @@ internal object LearnClient {
         return session
     }
 
-    private fun cookieHeader(host: String): String =
-        jar[host]?.entries?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
+    private fun cookieHeader(host: String): String = jar[host]?.entries?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
 
     private fun absorb(conn: HttpURLConnection, host: String) {
         val m = jar.getOrPut(host) { mutableMapOf() }
@@ -148,11 +147,10 @@ internal object LearnClient {
         return JSONObject(r.body)
     }
 
-    private fun pageListForm(courseId: String): String =
-        "aoData=" + URLEncoder.encode(
-            JSONArray().put(JSONObject().put("name", "wlkcid").put("value", courseId)).toString(),
-            "UTF-8",
-        )
+    private fun pageListForm(courseId: String): String = "aoData=" + URLEncoder.encode(
+        JSONArray().put(JSONObject().put("name", "wlkcid").put("value", courseId)).toString(),
+        "UTF-8",
+    )
 
     private fun requireOk(json: JSONObject, key: String = "result"): JSONObject? {
         if (json.optString(key) != "success") throw Exception("接口返回异常")
