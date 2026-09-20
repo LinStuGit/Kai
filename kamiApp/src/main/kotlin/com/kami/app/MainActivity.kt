@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -57,6 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -287,9 +290,35 @@ private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("记忆管理", "agent 持久记忆 · 查看/删除", "set-memory"),
     SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
     SettingsEntry("安全", "敏感操作生物验证", "set-sec"),
+    SettingsEntry("界面配置", "主题颜色 · 自定义子页 · agent 可改", "set-ui"),
 )
 
 private val TIME_RE = Regex("^(\\d{1,2}):(\\d{2})$")
+
+/** "#RRGGBB" / "#AARRGGBB" → Color; null when blank or invalid. */
+private fun parseHexColor(s: String): Color? =
+    s.trim().takeIf { it.isNotEmpty() }?.let {
+        try {
+            Color(android.graphics.Color.parseColor(it))
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+/** Default light scheme overlaid with the configured theme colors (if any). */
+private fun themedScheme(cfg: UiConfigStore.Config): ColorScheme {
+    val base = androidx.compose.material3.lightColorScheme()
+    val t = cfg.theme ?: return base
+    return base.copy(
+        primary = parseHexColor(t.primary) ?: base.primary,
+        onPrimary = parseHexColor(t.onPrimary) ?: base.onPrimary,
+        background = parseHexColor(t.background) ?: base.background,
+        onBackground = parseHexColor(t.onBackground) ?: base.onBackground,
+        surface = parseHexColor(t.surface) ?: base.surface,
+        onSurface = parseHexColor(t.onSurface) ?: base.onSurface,
+        surfaceVariant = parseHexColor(t.surfaceVariant) ?: base.surfaceVariant,
+    )
+}
 
 /** Calendar weekday (1=Sun..7=Sat) -> chip label. */
 private val WEEKDAY_CHIPS = listOf("日" to 1, "一" to 2, "二" to 3, "三" to 4, "四" to 5, "五" to 6, "六" to 7)
@@ -314,6 +343,12 @@ class MainActivity : FragmentActivity() {
 
     /** "chat" is the home screen; everything else sits on top of it. */
     private val screen = mutableStateOf("chat")
+
+    /** In-app browser target (screen == "web"). */
+    private val webUrl = mutableStateOf("")
+
+    /** Config-file mtime — bumped by the hot-reload loop to recompose. */
+    private val uiRev = mutableStateOf(0L)
 
     private val binderListener = Shizuku.OnBinderReceivedListener {
         if (!ShizukuRunner.granted()) {
@@ -355,6 +390,7 @@ class MainActivity : FragmentActivity() {
         SessionStore.init(applicationContext)
         ArchiveStore.init(applicationContext)
         SystemPromptStore.init(applicationContext)
+        UiConfigStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
         KeepAliveService.applyIfEnabled(applicationContext)
         // Back at the foreground the agent is not driving the screen any
@@ -389,10 +425,29 @@ class MainActivity : FragmentActivity() {
                 }
             }
             BackHandler(enabled = screen.value != "chat") {
-                screen.value = if (screen.value.startsWith("set-")) "settings" else "chat"
+                screen.value = when {
+                    screen.value.startsWith("set-") -> "settings"
+                    screen.value.startsWith("dyn:") -> "settings"
+                    else -> "chat"
+                }
             }
 
-            MaterialTheme {
+            // Hot-reload signal for the config-driven UI: the polling loop
+            // bumps uiRev whenever kami_ui.json changes on disk.
+            LaunchedEffect(Unit) {
+                while (true) {
+                    kotlinx.coroutines.delay(1500)
+                    uiRev.value = UiConfigStore.mtime()
+                }
+            }
+            WebViewer.open = { url ->
+                webUrl.value = url
+                screen.value = "web"
+            }
+
+            val cfg = remember(uiRev.value) { UiConfigStore.get() }
+            val scheme = remember(cfg) { themedScheme(cfg) }
+            MaterialTheme(colorScheme = scheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(
                         modifier = Modifier
@@ -405,6 +460,8 @@ class MainActivity : FragmentActivity() {
                             "term" -> TerminalScreen(onBack = { screen.value = "chat" })
 
                             "settings" -> SettingsScreen()
+
+                            "web" -> WebViewScreen(webUrl.value) { screen.value = "chat" }
 
                             "archive" -> ArchiveSection()
 
@@ -424,11 +481,21 @@ class MainActivity : FragmentActivity() {
 
                             "set-sec" -> SubPage("安全") { BioSection() }
 
-                            else -> ChatScreen(
-                                onTerminal = { screen.value = "term" },
-                                onSettings = { screen.value = "settings" },
-                                onArchive = { screen.value = "archive" },
-                            )
+                            "set-ui" -> SubPage("界面配置") { UiSection() }
+
+                            else -> {
+                                val dynId = screen.value.removePrefix("dyn:")
+                                val dynPage = cfg.pages.firstOrNull { it.id == dynId }
+                                if (dynPage != null) {
+                                    SubPage(dynPage.title) { DynPageSection(dynPage) }
+                                } else {
+                                    ChatScreen(
+                                        onTerminal = { screen.value = "term" },
+                                        onSettings = { screen.value = "settings" },
+                                        onArchive = { screen.value = "archive" },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -783,6 +850,117 @@ class MainActivity : FragmentActivity() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+
+    /** Config-driven custom sub page: renders the declared widget list. */
+    @Composable
+    private fun DynPageSection(page: UiConfigStore.Page) {
+        val ctx = LocalContext.current
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            for (w in page.widgets) {
+                when (w.type) {
+                    "header" -> Text(
+                        w.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+
+                    "text" -> Text(w.text, style = MaterialTheme.typography.bodyMedium)
+
+                    "link" -> Text(
+                        w.text.ifEmpty { w.url },
+                        modifier = Modifier.clickable {
+                            if (w.url.isNotBlank()) WebViewer.open?.invoke(w.url)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                    )
+
+                    "button" -> Button(onClick = {
+                        if (w.target.isNotBlank()) screen.value = w.target
+                        if (w.toast.isNotBlank()) {
+                            Toast.makeText(ctx, w.toast, Toast.LENGTH_SHORT).show()
+                        }
+                    }) { Text(w.text.ifEmpty { "按钮" }) }
+
+                    "switch" -> {
+                        var on by remember(w.key) { mutableStateOf(UiConfigStore.switchOn(w.key, w.default)) }
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(w.text, style = MaterialTheme.typography.bodyMedium)
+                            Switch(checked = on, onCheckedChange = {
+                                on = it
+                                UiConfigStore.setSwitch(w.key, it)
+                            })
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Settings → 界面配置: JSON editor for the config-driven UI. */
+    @Composable
+    private fun UiSection() {
+        var text by remember { mutableStateOf(UiConfigStore.raw()) }
+        var status by remember { mutableStateOf("") }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "kami_ui.json：theme 配主题色（hex），pages 增删设置子页（widgets 支持 header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = {
+                    text = it
+                    status = ""
+                },
+                modifier = Modifier.fillMaxWidth().height(360.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 16.sp,
+                ),
+                label = { Text("界面配置 JSON") },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    enabled = text != UiConfigStore.raw(),
+                    onClick = {
+                        status = UiConfigStore.setJson(text)
+                        uiRev.value = UiConfigStore.mtime()
+                    },
+                ) { Text("保存") }
+                OutlinedButton(
+                    onClick = {
+                        status = UiConfigStore.reset()
+                        text = UiConfigStore.raw()
+                        uiRev.value = UiConfigStore.mtime()
+                    },
+                ) { Text("恢复默认") }
+            }
+            if (status.isNotEmpty()) {
+                Text(
+                    status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (status.startsWith("错误")) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
+            }
+        }
     }
 
     @Composable

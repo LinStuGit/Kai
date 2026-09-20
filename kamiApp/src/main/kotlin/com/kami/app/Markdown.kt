@@ -1,12 +1,16 @@
 package com.kami.app
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,9 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Minimal markdown renderer for chat output — headings, lists, quotes,
- * rules, fenced code blocks and inline bold/italic/code/strike/links.
- * Hand-rolled on purpose: no extra dependency, covers what the model emits.
+ * Markdown renderer for chat output — headings, lists, quotes, rules, tables,
+ * fenced code blocks (with language label) and inline bold/italic/code/
+ * strike/links. Hand-rolled on purpose: no extra dependency, covers what the
+ * model emits. Links open in the in-app browser ([WebViewer]).
  */
 @Composable
 internal fun MarkdownText(
@@ -43,6 +48,7 @@ internal fun MarkdownText(
             val line = lines[i]
             when {
                 line.trimStart().startsWith("```") -> {
+                    val lang = line.trimStart().removePrefix("```").trim()
                     val code = StringBuilder()
                     i++
                     while (i < lines.size && !lines[i].trimStart().startsWith("```")) {
@@ -50,19 +56,53 @@ internal fun MarkdownText(
                         i++
                     }
                     i++ // closing fence
-                    Text(
-                        code.toString().trimEnd('\n'),
-                        modifier = Modifier
+                    Column(
+                        Modifier
                             .fillMaxWidth()
                             .background(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 RoundedCornerShape(8.dp),
+                            ),
+                    ) {
+                        if (lang.isNotEmpty()) {
+                            Text(
+                                lang,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(baseColor.copy(alpha = 0.08f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = baseColor.copy(alpha = 0.6f),
                             )
-                            .padding(8.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        color = baseColor,
-                    )
+                        }
+                        Text(
+                            code.toString().trimEnd('\n'),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(8.dp),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = baseColor,
+                        )
+                    }
+                }
+
+                // Table: header row, |---| separator, then body rows.
+                line.contains('|') && i + 1 < lines.size &&
+                    Regex("^\\s*\\|?[\\s:|-]+\\|?\\s*$").matches(lines[i + 1]) &&
+                    lines[i + 1].contains('-') -> {
+                    fun cells(s: String): List<String> =
+                        s.trim().removePrefix("|").removeSuffix("|").split('|').map { it.trim() }
+                    val header = cells(line)
+                    i += 2
+                    val rows = mutableListOf<List<String>>()
+                    while (i < lines.size && lines[i].contains('|') && lines[i].isNotBlank()) {
+                        rows.add(cells(lines[i]))
+                        i++
+                    }
+                    MarkdownTable(header, rows, baseColor)
                 }
 
                 line.trimStart().startsWith("#") -> {
@@ -130,6 +170,50 @@ internal fun MarkdownText(
                 }
             }
             i++
+        }
+    }
+}
+
+/** GFM table: header row + body rows, horizontally scrollable when wide. */
+@Composable
+private fun MarkdownTable(header: List<String>, rows: List<List<String>>, baseColor: Color) {
+    val border = baseColor.copy(alpha = 0.25f)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 4.dp),
+    ) {
+        Column {
+            Row(Modifier.background(border.copy(alpha = 0.15f))) {
+                header.forEach { h ->
+                    Text(
+                        inline(h, baseColor),
+                        modifier = Modifier.width(110.dp).padding(6.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = baseColor,
+                    )
+                }
+            }
+            rows.forEach { r ->
+                Row {
+                    r.forEachIndexed { ci, c ->
+                        Text(
+                            inline(c, baseColor),
+                            modifier = Modifier
+                                .width(110.dp)
+                                .padding(6.dp),
+                            fontSize = 12.sp,
+                            color = baseColor,
+                        )
+                    }
+                    // Pad short rows so the grid stays rectangular.
+                    repeat((header.size - r.size).coerceAtLeast(0)) {
+                        Text("", modifier = Modifier.width(110.dp).padding(6.dp), fontSize = 12.sp)
+                    }
+                }
+            }
         }
     }
 }

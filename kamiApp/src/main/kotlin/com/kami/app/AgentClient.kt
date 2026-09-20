@@ -46,7 +46,9 @@ object AgentClient {
             "（每 N 分钟），到点发通知，important 时震动并全屏唤醒进应用（早报用 daily、" +
             "作业/上课用 weekly、短暂倒计时用 interval）；list_reminders/remove_reminder 管理；" +
             "calendar_add/calendar_list 读写系统日历日程；list_skills/skill_run 调用用户自定义" +
-            "技能模板。屏幕操作要点：先 read_screen 定位（它会收起 Kami 悬浮球面板并收起键盘，" +
+            "技能模板；ui_config 读写界面配置 JSON——用户要求改界面排版、配色或增删设置子页时，" +
+            "先 action=get 拿到当前格式，再 action=set 写回，保存后界面即时生效。" +
+            "屏幕操作要点：先 read_screen 定位（它会收起 Kami 悬浮球面板并收起键盘，" +
             "不会遮挡目标界面），随后凭一次读取的 bounds 连续执行多个点击/输入，不要每步都重读；" +
             "完成后再读一次确认结果。危险操作（重启/卸载/删文件/发短信/打开支付类应用/删提醒等）" +
             "会触发生物验证，用户拒绝则立即放弃并说明。回答用中文，简洁直接。"
@@ -79,7 +81,8 @@ object AgentClient {
           {"type":"function","function":{"name":"calendar_add","description":"在系统日历新建日程事件","parameters":{"type":"object","properties":{"title":{"type":"string"},"start_ms":{"type":"integer","description":"开始时间 epoch 毫秒"},"duration_min":{"type":"integer","description":"持续分钟，默认 60"},"desc":{"type":"string","description":"描述，可省略"}},"required":["title","start_ms"]}}},
           {"type":"function","function":{"name":"calendar_list","description":"查看未来几天的系统日历日程","parameters":{"type":"object","properties":{"days":{"type":"integer","description":"往后看几天，默认 7"}}}}},
           {"type":"function","function":{"name":"list_skills","description":"列出可用的技能（用户自定义的提示词模板）","parameters":{"type":"object","properties":{}}}},
-          {"type":"function","function":{"name":"skill_run","description":"展开技能模板为完整任务指令，按展开结果立即执行","parameters":{"type":"object","properties":{"name":{"type":"string","description":"技能名"},"args":{"type":"object","description":"模板变量键值对，如 {\"日期\":\"明天\"}"}},"required":["name"]}}}
+          {"type":"function","function":{"name":"skill_run","description":"展开技能模板为完整任务指令，按展开结果立即执行","parameters":{"type":"object","properties":{"name":{"type":"string","description":"技能名"},"args":{"type":"object","description":"模板变量键值对，如 {\"日期\":\"明天\"}"}},"required":["name"]}}},
+          {"type":"function","function":{"name":"ui_config","description":"读写 App 界面配置 JSON：theme 设置主题颜色（hex，如 #7C4DFF），pages 增删设置子页（widgets: header/text/link/button/switch）。保存后界面即时生效。改界面前先 action=get 看当前格式","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["get","set","reset"],"description":"get 读当前配置，set 写入 json 参数，reset 恢复默认"},"json":{"type":"string","description":"action=set 时的完整配置 JSON 文本"}},"required":["action"]}}}
         ]
         """.trimIndent(),
     )
@@ -319,6 +322,12 @@ object AgentClient {
             }
 
             "list_extensions" -> ExtensionStore.toJson()
+
+            "ui_config" -> when (args.optString("action")) {
+                "set" -> UiConfigStore.setJson(args.optString("json"))
+                "reset" -> UiConfigStore.reset()
+                else -> UiConfigStore.raw()
+            }
 
             "memory_save" -> {
                 if (MemoryStore.save(args.optString("text"))) {
