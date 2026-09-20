@@ -248,10 +248,15 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     fun onKey(k: String) {
         when (k) {
             "TAB" -> complete()
+
             "↑" -> historyStep(-1)
+
             "↓" -> historyStep(1)
+
             "←" -> moveCursor(-1)
+
             "→" -> moveCursor(1)
+
             else -> {
                 if (running) return
                 val cur = tty.value.selection.end.coerceIn(tty.liveStart, tty.value.text.length)
