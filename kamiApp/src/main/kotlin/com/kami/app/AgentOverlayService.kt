@@ -30,18 +30,18 @@ import kotlinx.coroutines.Job
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Shared agent-run state: the chat screen registers its running jobs here,
- * the overlay service polls it (500ms) and shows a small draggable floating
- * ball (tap to expand status + force-stop) whenever the user leaves the app
- * mid-run. Plain classic views on purpose — no Compose in a Service.
- */
-/**
  * Rich content shown inside the overlay panel above everything else: a web
  * page (url), a raw HTML snippet, or a local image file — whatever the agent
  * wants the user to see (charts, previews, results).
  */
 data class OverlayContent(val kind: String, val data: String, val title: String)
 
+/**
+ * Shared agent-run state: the chat screen registers its running jobs here,
+ * the overlay service polls it (500ms) and shows a small draggable floating
+ * ball (tap to expand status + force-stop) whenever the user leaves the app
+ * mid-run. Plain classic views on purpose — no Compose in a Service.
+ */
 object AgentOverlayState {
 
     val running = mutableStateOf(false)
