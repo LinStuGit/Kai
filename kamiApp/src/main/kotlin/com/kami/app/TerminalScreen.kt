@@ -154,7 +154,7 @@ internal class LiveProc(argv: Array<String>, firstInput: String) {
         synchronized(pending) { pending.setLength(0) }
         write(
             cmd + "\n" +
-                "printf '${marker}%s@%s@' \"\$?\" \"\$(pwd)\"\n",
+                "printf '$marker%s@%s@' \"\$?\" \"\$(pwd)\"\n",
         )
         while (alive()) {
             var res: Result? = null
@@ -266,8 +266,7 @@ internal fun TerminalScreen(onBack: () -> Unit) {
     val running = modeT.running
     val scroll = rememberScrollState()
 
-    fun prompt(): String =
-        (if (mode == "shell") "shell" else "alpine") + ":" + modeT.cwd.trimEnd('/').ifEmpty { "/" } + "$ "
+    fun prompt(): String = (if (mode == "shell") "shell" else "alpine") + ":" + modeT.cwd.trimEnd('/').ifEmpty { "/" } + "$ "
 
     /** Spawn (or reuse) the persistent process for this mode. */
     fun procFor(): LiveProc? {
@@ -317,7 +316,9 @@ internal fun TerminalScreen(onBack: () -> Unit) {
             appendTty(tty, "\n")
             when (val r = execOnProc(c)) {
                 null -> appendTty(tty, "错误：会话进程启动失败（检查 Shizuku 授权；沙箱需先安装）\n")
+
                 is LiveProc.Result.Dead -> appendTty(tty, "（会话已退出 — 输入任意命令将重新启动）\n" + prompt())
+
                 is LiveProc.Result.Ok -> {
                     val shown = r.display.trimEnd('\n')
                     if (shown.isNotBlank()) appendTty(tty, shown + "\n")

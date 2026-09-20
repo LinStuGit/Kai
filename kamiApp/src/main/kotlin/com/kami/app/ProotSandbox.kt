@@ -148,13 +148,12 @@ object ProotSandbox {
      * one long-lived proot process whose cwd (and everything else) survives
      * across commands. Null when the sandbox is not installed.
      */
-    fun persistentShellCmd(): String? =
-        if (!installed()) {
-            null
-        } else {
-            "export PROOT_TMP_DIR=$DIR/tmp PROOT_NO_SECCOMP=1; " +
-                "exec $DIR/proot -r $DIR/alpine -b /dev -b /proc -b /sys -w / /bin/sh 2>&1"
-        }
+    fun persistentShellCmd(): String? = if (!installed()) {
+        null
+    } else {
+        "export PROOT_TMP_DIR=$DIR/tmp PROOT_NO_SECCOMP=1; " +
+            "exec $DIR/proot -r $DIR/alpine -b /dev -b /proc -b /sys -w / /bin/sh 2>&1"
+    }
 
     /** Copy a bundled asset to a cache file (app can't hand assets to shell directly). */
     private fun assetToFile(relPath: String, dest: File): File {

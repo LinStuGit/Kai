@@ -11,6 +11,5 @@ object AppContextHolder {
         ctx = context.applicationContext
     }
 
-    fun get(): Context =
-        ctx ?: throw IllegalStateException("AppContextHolder not initialized")
+    fun get(): Context = ctx ?: throw IllegalStateException("AppContextHolder not initialized")
 }
