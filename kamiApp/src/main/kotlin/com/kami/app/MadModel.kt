@@ -15,6 +15,7 @@ import java.util.Base64
 object MadModel {
     const val BASE = "https://madmodel.cs.tsinghua.edu.cn/v1"
     const val CHECK_URL = "https://madmodel.cs.tsinghua.edu.cn/model-api/auth-login/check"
+    /** Default gateway model; the selectable set lives in [ModelStore.MADMODEL_MODELS]. */
     const val MODEL = "DeepSeek-V4-Flash-0731"
 
     /** Server JWTs live 6h; refresh conservatively at 5h. */

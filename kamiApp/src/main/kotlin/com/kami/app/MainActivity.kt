@@ -32,14 +32,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -284,7 +287,7 @@ private fun usageAccessGranted(ctx: Context): Boolean = try {
 private data class SettingsEntry(val title: String, val subtitle: String, val target: String)
 
 private val SETTINGS_ENTRIES = listOf(
-    SettingsEntry("Agent 模型", "固定 madmodel 端点 · JWT 池状态", "set-agent"),
+    SettingsEntry("Agent 模型", "madmodel 三模型可选 · 自定义 OpenAI 兼容端点", "set-agent"),
     SettingsEntry("系统提示词", "自定义 agent 人设与规则 · 留空恢复默认", "set-prompt"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
     SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
@@ -1051,31 +1054,138 @@ class MainActivity : FragmentActivity() {
 
     @Composable
     private fun AgentSection() {
-        val revision = rememberResumeRevision()
-        Text("Agent 模型（固定接入）", style = MaterialTheme.typography.titleSmall)
-        Text(
-            "端点  ${MadModel.BASE}\n模型  ${MadModel.MODEL}\n" +
-                "key = check 端点签发的 JWT，5 小时自动换新，每个会话独立一条",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        val keys = remember(revision) { JwtKeyPool.snapshot() }
-        if (keys.isEmpty()) {
+        val context = LocalContext.current
+        var revision by remember { mutableStateOf(0) }
+        var base by remember(revision) { mutableStateOf(ModelStore.customBase(context)) }
+        var apiKey by remember(revision) { mutableStateOf(ModelStore.customKey(context)) }
+        var model by remember(revision) { mutableStateOf(ModelStore.customModel(context)) }
+        var feedback by remember { mutableStateOf("") }
+        var probing by remember { mutableStateOf(false) }
+        val mode = remember(revision) { ModelStore.mode(context) }
+        val picked = remember(revision) { ModelStore.madmodelModel(context) }
+
+        Text("Agent 模型接入", style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = mode == ModelStore.MODE_MADMODEL,
+                onClick = {
+                    ModelStore.setMode(context, ModelStore.MODE_MADMODEL)
+                    revision++
+                },
+                label = { Text("madmodel 网关") },
+            )
+            FilterChip(
+                selected = mode == ModelStore.MODE_CUSTOM,
+                onClick = {
+                    ModelStore.setMode(context, ModelStore.MODE_CUSTOM)
+                    revision++
+                },
+                label = { Text("自定义 OpenAI 兼容") },
+            )
+        }
+
+        if (mode == ModelStore.MODE_MADMODEL) {
             Text(
-                "暂无活跃 key — 发起一次 agent 对话后出现",
+                "端点  " + MadModel.BASE + "
+key = check 端点签发的 JWT，5 小时自动换新，每会话独立一条",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-        keys.forEach { (session, iat, minutes) ->
+            ModelStore.MADMODEL_MODELS.forEach { m ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = picked == m) {
+                            ModelStore.setMadmodelModel(context, m)
+                            revision++
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = picked == m, onClick = null)
+                    Text(m, fontSize = 13.sp)
+                }
+            }
+        } else {
             Text(
-                "$session   iat=$iat   ${minutes}min 后换新",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp,
+                "任意 OpenAI 兼容端点（请求打到 {Base URL}/chat/completions）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            OutlinedTextField(
+                value = base,
+                onValueChange = { base = it },
+                label = { Text("Base URL（如 https://host/v1）") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                label = { Text("API Key") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = model,
+                onValueChange = { model = it },
+                label = { Text("模型名") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(onClick = {
+                ModelStore.setCustom(context, base, apiKey, model)
+                feedback = "已保存自定义端点"
+                revision++
+            }) { Text("保存") }
         }
-        OutlinedButton(onClick = { JwtKeyPool.dropAll() }) { Text("换新全部 key") }
+
+        Text(
+            "当前生效：
+" + ModelStore.describe(context),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(
+            enabled = !probing,
+            onClick = {
+                probing = true
+                feedback = ""
+                Thread {
+                    val r = AgentClient.probe()
+                    android.os.Handler(context.mainLooper).post {
+                        probing = false
+                        feedback = r
+                    }
+                }.start()
+            },
+        ) { Text(if (probing) "测试中…" else "测试连接") }
+        if (feedback.isNotEmpty()) {
+            Text(feedback, style = MaterialTheme.typography.bodySmall)
+        }
+
+        if (mode == ModelStore.MODE_MADMODEL) {
+            val keys = remember(revision) { JwtKeyPool.snapshot() }
+            if (keys.isEmpty()) {
+                Text(
+                    "暂无活跃 key — 发起一次 agent 对话后出现",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            keys.forEach { (session, iat, minutes) ->
+                Text(
+                    session + "   iat=" + iat + "   " + minutes + "min 后换新",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                )
+            }
+            OutlinedButton(onClick = {
+                JwtKeyPool.dropAll()
+                feedback = "已换新全部 key（下次对话重新签发）"
+            }) { Text("换新全部 key") }
+        }
     }
+
 
     @Composable
     private fun ReminderSection() {

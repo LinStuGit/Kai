@@ -148,37 +148,46 @@ object AgentClient {
         }
     }
 
-    /** POST with the session's JWT; 401/403/409 → refetch the token once. */
+    /** POST via the active endpoint ([ModelStore]); pooled-JWT mode also
+     *  refetches the token once on 401/403/409. */
     private fun postChat(
         session: String,
         history: JSONArray,
         disabled: Set<String>,
     ): JSONObject {
-        val key = JwtKeyPool.acquire("chat:$session")
-        val first = send(key, history, disabled)
+        val cfg = ModelStore.current(AppContextHolder.get())
+        val pooled = cfg.key.isBlank() // madmodel mode: key comes from the JWT pool
+        val key = if (pooled) JwtKeyPool.acquire("chat:$session") else cfg.key
+        val first = send(cfg, key, history, disabled)
         if (first.code in 200..299) return first.body
         if (first.code !in setOf(401, 403, 409)) {
             throw IOException("HTTP ${first.code}: ${first.text.take(300)}")
         }
+        if (!pooled) throw IOException("HTTP ${first.code}: ${first.text.take(300)}")
         JwtKeyPool.drop("chat:$session")
-        val refreshed = send(JwtKeyPool.acquire("chat:$session"), history, disabled)
+        val refreshed = send(cfg, JwtKeyPool.acquire("chat:$session"), history, disabled)
         if (refreshed.code !in 200..299) {
             throw IOException("HTTP ${refreshed.code}: ${refreshed.text.take(300)}")
         }
         return refreshed.body
     }
 
-    private fun send(key: String, history: JSONArray, disabled: Set<String>): SendResult {
+    private fun send(
+        cfg: KamiEndpoint,
+        key: String,
+        history: JSONArray,
+        disabled: Set<String>,
+    ): SendResult {
         val msgs = JSONArray().put(
             JSONObject().put("role", "system").put("content", systemContent()),
         )
         for (i in 0 until history.length()) msgs.put(history.getJSONObject(i))
         val body = JSONObject()
-            .put("model", MadModel.MODEL)
+            .put("model", cfg.model)
             .put("messages", msgs)
             .put("tools", toolSchemas(disabled))
 
-        val conn = URL(MadModel.BASE.trimEnd('/') + "/chat/completions")
+        val conn = URL(cfg.base.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
         liveConns.add(conn)
         try {
@@ -212,6 +221,45 @@ object AgentClient {
      */
     fun abortAll() {
         liveConns.toList().forEach { runCatching { it.disconnect() } }
+    }
+
+    /** Settings "测试连接": minimal chat call against the current endpoint. */
+    fun probe(): String {
+        val ctx = AppContextHolder.get()
+        val cfg = ModelStore.current(ctx)
+        if (!ModelStore.ready(ctx)) return "配置不完整：端点/模型/key 需填写完整"
+        val pooled = cfg.key.isBlank()
+        val key = if (pooled) JwtKeyPool.acquire("probe") else cfg.key
+        val body = JSONObject()
+            .put("model", cfg.model)
+            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "ping")))
+            .put("max_tokens", 16)
+        val conn = URL(cfg.base.trimEnd('/') + "/chat/completions")
+            .openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Authorization", "Bearer $key")
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 30_000
+            conn.doOutput = true
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = conn.responseCode
+            val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                ?.bufferedReader()?.readText().orEmpty()
+            if (code !in 200..299) return "HTTP $code: ${text.take(200)}"
+            val reply = JSONObject(text).optJSONArray("choices")?.optJSONObject(0)
+                ?.optJSONObject("message")?.optString("content").orEmpty()
+            return if (reply.isBlank()) {
+                "连接成功（HTTP 200，模型 ${cfg.model}）— reasoning 模型可能无可见回复，通即可"
+            } else {
+                "连接成功（HTTP 200，模型 ${cfg.model}）：${reply.take(80)}"
+            }
+        } catch (t: Throwable) {
+            return "连接失败：${t.message}"
+        } finally {
+            conn.disconnect()
+        }
     }
 
     /** System prompt (user-editable, see Settings → 系统提示词) plus the
