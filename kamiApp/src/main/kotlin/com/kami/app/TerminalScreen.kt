@@ -304,24 +304,21 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                 value = tty.value,
                 onValueChange = { new ->
                     val oldText = tty.value.text
-                    val frozen = oldText.take(tty.liveStart)
+                    val liveStart = tty.liveStart
+                    val frozen = oldText.take(liveStart)
                     if (running) return@BasicTextField
                     if (new.text == oldText) {
                         tty.value = new // cursor move / selection only
                         return@BasicTextField
                     }
-                    if (new.text.contains('\n')) {
-                        // Enter: run the line (a tty never inserts a newline
-                        // into the command; pasted newlines are collapsed).
-                        val cmd = if (new.text.startsWith(frozen) && new.text.length >= tty.liveStart) {
-                            new.text.substring(tty.liveStart)
-                        } else {
-                            liveText()
+                    if (new.text.startsWith(frozen) && new.text.length >= liveStart) {
+                        val live = new.text.substring(liveStart)
+                        // Enter: the LIVE region gained a newline (the frozen
+                        // history is full of them — must not match those).
+                        if (live.contains('\n')) {
+                            exec(live.replace("\n", " ").trim())
+                            return@BasicTextField
                         }
-                        exec(cmd.replace("\n", " ").trim())
-                        return@BasicTextField
-                    }
-                    if (new.text.startsWith(frozen) && new.text.length >= tty.liveStart) {
                         tty.value = new // normal edit inside the live line
                         return@BasicTextField
                     }
@@ -331,7 +328,7 @@ internal fun TerminalScreen(onBack: () -> Unit) {
                     val p = new.text.commonPrefixWith(oldText).length
                     val diff = new.text.length - oldText.length
                     if (diff > 0 && new.text.endsWith(oldText.substring(p))) {
-                        setLive(liveText() + new.text.substring(p, p + diff))
+                        setLive(liveText() + new.text.substring(p, p + diff).replace("\n", ""))
                     } else {
                         tty.value = TextFieldValue(oldText, TextRange(oldText.length))
                     }

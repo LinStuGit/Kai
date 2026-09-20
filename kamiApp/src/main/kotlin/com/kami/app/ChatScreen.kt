@@ -283,10 +283,12 @@ internal fun ChatScreen(
                             AgentOverlayState.refresh()
                             if (!AgentOverlayState.running.value) {
                                 Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
-                                runCatching {
-                                    appCtx.stopService(Intent(appCtx, AgentOverlayService::class.java))
-                                }
                             }
+                            // The overlay service owns its own lifecycle: its
+                            // 500ms tick sees running=false within half a
+                            // second and either shows the completion panel
+                            // (screen runs) or stops itself. Stopping it here
+                            // would kill it before that branch can run.
                         }
                     }
                     AgentOverlayState.status.value = ""

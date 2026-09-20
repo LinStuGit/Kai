@@ -110,6 +110,10 @@ class AgentOverlayService : Service() {
 
     private val tick = object : Runnable {
         override fun run() {
+            // Self-heal: recompute running from the real job states so a
+            // stale flag can never keep the ball or this service alive
+            // with no work behind it.
+            AgentOverlayState.refresh()
             if (!AgentOverlayState.running.value) {
                 val hadScreen = AgentOverlayState.screenSeen.value
                 AgentOverlayState.screenSeen.value = false
