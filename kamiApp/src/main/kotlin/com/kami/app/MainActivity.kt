@@ -1334,11 +1334,13 @@ class MainActivity : FragmentActivity() {
         LaunchedEffect(Unit) {
             watchdogOn = KeepAliveService.enabled(context)
             scope.launch(Dispatchers.IO) {
-                keepMsg = if (KeepAliveService.enabled(context)) {
+                val base = if (KeepAliveService.enabled(context)) {
                     "看门狗已启用"
                 } else {
                     KeepAlive.status()
                 }
+                keepMsg = base + " · 守护进程:" +
+                    if (KeepAliveService.daemonRunning()) "运行中" else "未运行"
             }
         }
     }

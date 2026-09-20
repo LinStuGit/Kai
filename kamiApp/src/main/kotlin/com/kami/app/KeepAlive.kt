@@ -16,7 +16,11 @@ object KeepAlive {
     /** Apply both exemptions (idempotent); returns a status line. */
     fun apply(): String {
         if (!ShizukuRunner.granted()) return "错误：Shizuku 未授权"
-        ShizukuRunner.run("cmd deviceidle whitelist +$PKG")
+        // Both whitelist spellings: dumpsys is the form that works across
+        // ROMs (cmd deviceidle is missing on some), applying both is
+        // harmless since both are idempotent.
+        ShizukuRunner.run("dumpsys deviceidle whitelist +$PKG")
+        ShizukuRunner.run("cmd deviceidle whitelist +$PKG 2>/dev/null")
         ShizukuRunner.run("cmd appops set $PKG RUN_ANY_IN_BACKGROUND ignore")
         return status()
     }

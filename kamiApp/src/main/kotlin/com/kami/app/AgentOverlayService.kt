@@ -86,6 +86,9 @@ object AgentOverlayState {
         AgentClient.abortAll()
         SensitiveGate.cancelPending()
         Thread { ShizukuRunner.killAll() }.start()
+        // Forced stop must also hand the user's own keyboard back if we
+        // borrowed it mid-run.
+        Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
     }
 }
 
@@ -108,7 +111,21 @@ class AgentOverlayService : Service() {
     private val tick = object : Runnable {
         override fun run() {
             if (!AgentOverlayState.running.value) {
+                val hadScreen = AgentOverlayState.screenSeen.value
                 AgentOverlayState.screenSeen.value = false
+                // A finished screen-driving run: expand the panel with a
+                // completion note (the user is likely elsewhere), linger a
+                // few seconds, then stop the service.
+                if (hadScreen && expandForCompletion()) {
+                    statusView.text = "任务已完成"
+                    notifyProgress("任务已完成")
+                    handler.postDelayed({
+                        detach()
+                        Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
+                        stopSelf()
+                    }, 8000)
+                    return
+                }
                 detach()
                 Thread { ScreenControl.restoreImeIfNeeded(force = true) }.start()
                 stopSelf()
@@ -341,6 +358,15 @@ class AgentOverlayService : Service() {
     private fun releaseWakeLock() {
         wakeLock?.let { runCatching { if (it.isHeld) it.release() } }
         wakeLock = null
+    }
+
+    /** Attach (once) and expand the panel for the completion notice;
+     *  false when there is no overlay permission to show anything. */
+    private fun expandForCompletion(): Boolean {
+        if (!attached) attach()
+        if (!attached) return false
+        setExpanded(true)
+        return true
     }
 
     private fun detach() {
