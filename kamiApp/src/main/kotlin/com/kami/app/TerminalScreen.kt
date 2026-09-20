@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,7 +48,7 @@ private const val TTY_MAX = 40_000
  * The single-buffer tty state: the whole session text plus the index where
  * the live (editable) region after the last prompt starts.
  */
-private class Tty(initial: String) {
+internal class Tty(initial: String) {
     var value by mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
     var liveStart by mutableStateOf(initial.length)
 }
@@ -84,7 +85,7 @@ private fun commonPrefix(cands: List<String>): String = cands.reduce { a, b -> a
  * output, its exit code and the live cwd — a REAL continuous session, so
  * `cd`, env vars and everything else persist naturally.
  */
-private class LiveProc(argv: Array<String>, firstInput: String) {
+internal class LiveProc(argv: Array<String>, firstInput: String) {
 
     private val proc: IRemoteProcess = ShizukuRunner.spawn(argv)
     private val outPfd = proc.inputStream
@@ -180,7 +181,7 @@ private class LiveProc(argv: Array<String>, firstInput: String) {
 }
 
 /** Per-mode state of a terminal session: tty buffer, process, history. */
-private class TermMode(initialPrompt: String) {
+internal class TermMode(initialPrompt: String) {
     val tty = Tty(initialPrompt)
     var running by mutableStateOf(false)
     var cwd by mutableStateOf("/")
@@ -191,7 +192,7 @@ private class TermMode(initialPrompt: String) {
 }
 
 /** One terminal session — named, with independent shell/alpine consoles. */
-class TermSession(val id: Int) {
+internal class TermSession(val id: Int) {
     var name by mutableStateOf("终端 $id")
     val shell = TermMode("shell:/$ ")
     val alpine = TermMode("alpine:/$ ")
