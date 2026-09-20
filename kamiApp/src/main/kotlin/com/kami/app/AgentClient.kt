@@ -48,6 +48,7 @@ object AgentClient {
             "calendar_add/calendar_list 读写系统日历日程；list_skills/skill_run 调用用户自定义" +
             "技能模板；ui_config 读写界面配置 JSON——用户要求改界面排版、配色、黑夜模式、主页控件或增删设置子页时，" +
             "先 action=get 拿到当前格式，再 action=set 写回，保存后界面即时生效（theme/darkTheme/home/hidden/pages）；" +
+            "campus 查清华网络学堂（课程/作业/公告/文件，用户需先在设置里完成校园账号 WebView 登录）；" +
             "overlay_show 可在悬浮窗向用户展示网页/HTML（含内联 SVG 图表）/本地图片，" +
             "适合把可视化结果直接呈现在用户眼前。" +
             "屏幕操作要点：先 read_screen 定位（它会收起 Kami 悬浮球面板并收起键盘，" +
@@ -85,7 +86,8 @@ object AgentClient {
           {"type":"function","function":{"name":"list_skills","description":"列出可用的技能（用户自定义的提示词模板）","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"skill_run","description":"展开技能模板为完整任务指令，按展开结果立即执行","parameters":{"type":"object","properties":{"name":{"type":"string","description":"技能名"},"args":{"type":"object","description":"模板变量键值对，如 {\"日期\":\"明天\"}"}},"required":["name"]}}},
           {"type":"function","function":{"name":"ui_config","description":"读写 App 界面配置 JSON：theme 设置主题颜色（hex）；darkTheme 填 dark/light/空（空=跟随系统黑夜模式）；home 是主页下方控件列表；hidden 隐藏设置项（填入口路由如 set-perms 或子页 id）；pages 增删设置子页（widgets: header/text/link/button/switch）。保存后界面即时生效。改界面前先 action=get 看当前格式","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["get","set","reset"],"description":"get 读当前配置，set 写入 json 参数，reset 恢复默认"},"json":{"type":"string","description":"action=set 时的完整配置 JSON 文本"}},"required":["action"]}}},
-          {"type":"function","function":{"name":"overlay_show","description":"在悬浮窗中显示内容（覆盖在任意应用上方）：url 打开网页、html 直接渲染（可用内联 SVG/图表）、image 显示本地图片文件。图表/可视化结果优先用 html+内联 SVG。hide 收起","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["show","hide"],"description":"默认 show"},"url":{"type":"string","description":"要打开的网页地址"},"html":{"type":"string","description":"要渲染的 HTML 片段（支持内联 SVG 图表）"},"image":{"type":"string","description":"本地图片文件路径"},"title":{"type":"string","description":"内容标题，可省略"}}}}}
+          {"type":"function","function":{"name":"overlay_show","description":"在悬浮窗中显示内容（覆盖在任意应用上方）：url 打开网页、html 直接渲染（可用内联 SVG/图表）、image 显示本地图片文件。图表/可视化结果优先用 html+内联 SVG。hide 收起","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["show","hide"],"description":"默认 show"},"url":{"type":"string","description":"要打开的网页地址"},"html":{"type":"string","description":"要渲染的 HTML 片段（支持内联 SVG 图表）"},"image":{"type":"string","description":"本地图片文件路径"},"title":{"type":"string","description":"内容标题，可省略"}}}}},
+          {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}}
         ]
         """.trimIndent(),
     )
@@ -277,7 +279,7 @@ object AgentClient {
                     val allowed = runBlocking {
                         SensitiveGate.await("敏感命令", cmd.take(120))
                     }
-                    if (!allowed) return "用户拒绝执行该敏感命令（或生物验证失败）——不要重试，改问用户"
+                    if (!allowed) return "用户未确认敏感命令（拒绝/生物验证失败/60秒超时）——不要重试，改问用户"
                 }
                 ShizukuRunner.run(cmd).ifEmpty { "(无输出)" }
             }
@@ -318,7 +320,7 @@ object AgentClient {
                 val allowed = runBlocking {
                     SensitiveGate.await("删除拓展", args.optString("id").take(120))
                 }
-                if (!allowed) return "用户拒绝删除（或生物验证失败）——不要重试"
+                if (!allowed) return "用户未确认删除（拒绝/超时）——不要重试"
                 val before = ExtensionStore.items.value.size
                 ExtensionStore.remove(args.optString("id"))
                 "已删除 ${before - ExtensionStore.items.value.size} 项"
@@ -360,6 +362,12 @@ object AgentClient {
                         else -> "错误：url/html/image 至少提供一个，或 action=hide"
                     }
                 }
+            }
+
+            "campus" -> try {
+                LearnClient.agentCommand(args.optString("action", "status"))
+            } catch (t: Throwable) {
+                "campus 查询失败：${t.message} — 若为会话问题，让用户在 设置→校园账号 重新登录"
             }
 
             "memory_save" -> {
@@ -458,7 +466,7 @@ object AgentClient {
                 val allowed = runBlocking {
                     SensitiveGate.await("删除定时任务", target.take(120))
                 }
-                if (!allowed) return "用户拒绝删除（或生物验证失败）——不要重试"
+                if (!allowed) return "用户未确认删除（拒绝/超时）——不要重试"
                 val removed = ReminderStore.remove(context.applicationContext, id)
                 if (removed) "已删除定时任务" else "未找到该提醒（list_reminders 可查 id）"
             }

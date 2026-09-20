@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -287,6 +288,7 @@ private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("系统提示词", "自定义 agent 人设与规则 · 留空恢复默认", "set-prompt"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
     SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
+    SettingsEntry("校园账号", "清华网络学堂 · 课程/作业/公告", "set-campus"),
     SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板 · 内置能力", "set-ext"),
     SettingsEntry("记忆管理", "agent 持久记忆 · 查看/删除", "set-memory"),
     SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
@@ -402,6 +404,7 @@ class MainActivity : FragmentActivity() {
         ArchiveStore.init(applicationContext)
         SystemPromptStore.init(applicationContext)
         UiConfigStore.init(applicationContext)
+        CampusStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
         KeepAliveService.applyIfEnabled(applicationContext)
         // Back at the foreground the agent is not driving the screen any
@@ -439,6 +442,7 @@ class MainActivity : FragmentActivity() {
                 screen.value = when {
                     screen.value.startsWith("set-") -> "settings"
                     screen.value.startsWith("dyn:") -> "settings"
+                    screen.value == "campus-login" -> "settings"
                     else -> "chat"
                 }
             }
@@ -459,6 +463,24 @@ class MainActivity : FragmentActivity() {
             val cfg = remember(uiRev.value) { UiConfigStore.get() }
             val systemDark = isSystemInDarkTheme()
             val scheme = remember(cfg, systemDark) { themedScheme(cfg, systemDark) }
+
+            // Sensitive-gate (biometric) resolver: lives at the composition
+            // root so prompts work from ANY screen (the tool loop blocks on
+            // it; a screen-local collector hung when the user was elsewhere).
+            val gateCtx = LocalContext.current
+            val gateActivity = gateCtx as? FragmentActivity
+            LaunchedEffect(Unit) {
+                snapshotFlow { SensitiveGate.pending.value }.collect {
+                    val req = SensitiveGate.claimFirst() ?: return@collect
+                    val ok = if (gateActivity != null && BioGate.available(gateCtx) && BioGate.enabled(gateCtx)) {
+                        BioGate.authenticate(gateActivity, req.title, req.detail)
+                    } else {
+                        true
+                    }
+                    SensitiveGate.decide(req.id, ok)
+                }
+            }
+
             MaterialTheme(colorScheme = scheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(
@@ -484,6 +506,10 @@ class MainActivity : FragmentActivity() {
                             "set-tasks" -> SubPage("定时任务") { ReminderSection() }
 
                             "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
+
+                            "set-campus" -> SubPage("校园账号") { CampusSection(onLogin = { screen.value = "campus-login" }) }
+
+                            "campus-login" -> CampusLoginScreen(onBack = { screen.value = "settings" })
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
 

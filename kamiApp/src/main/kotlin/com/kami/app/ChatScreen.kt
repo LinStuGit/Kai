@@ -27,7 +27,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,7 +34,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,25 +80,13 @@ internal fun ChatScreen(
     onTarget: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val activity = context as? FragmentActivity
     val scope = rememberCoroutineScope()
     val sessions by SessionStore.sessions
     val activeId by SessionStore.activeId
     val session = sessions.firstOrNull { it.id == activeId } ?: sessions.first()
 
-    // Resolve pending sensitive-command requests one by one (sequential
-    // prompts; fail-open when the device has no biometrics or it's off).
-    LaunchedEffect(Unit) {
-        snapshotFlow { SensitiveGate.pending.value }.collect {
-            val req = SensitiveGate.claimFirst() ?: return@collect
-            val ok = if (activity != null && BioGate.available(context) && BioGate.enabled(context)) {
-                BioGate.authenticate(activity, req.title, req.detail)
-            } else {
-                true
-            }
-            SensitiveGate.decide(req.id, ok)
-        }
-    }
+    // NOTE: sensitive-gate (biometric) resolving moved to MainActivity's root
+    // composables — it must stay alive on every screen, not just the home.
 
     var input by remember(session.id) { mutableStateOf("") }
     val listState = rememberLazyListState()

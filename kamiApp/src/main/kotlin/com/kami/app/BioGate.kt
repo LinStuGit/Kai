@@ -1,16 +1,28 @@
 package com.kami.app
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
+
+/** Max wait for a sensitive-gate confirmation before it settles as denied. */
+private const val GATE_TIMEOUT_MS = 60_000L
+private const val GATE_CHANNEL = "kami_gate"
+private const val GATE_TAG = "kami_gate"
 
 /**
  * Biometric convenience gate backed by device credential. Devices without
@@ -107,10 +119,62 @@ object SensitiveGate {
             seq
         }
         pending.value = pending.value + Request(id, title, detail)
+        notifyPending(id, title, detail)
         try {
-            return deferred.await()
+            // Never hang the tool loop: if nothing can prompt (app in the
+            // background, no UI), settle as denied after a grace period.
+            return runBlocking {
+                withTimeoutOrNull(GATE_TIMEOUT_MS) { deferred.await() } ?: false
+            }
         } finally {
             synchronized(this) { deferreds.remove(id) }
+        }
+    }
+
+    private fun notifyPending(id: Long, title: String, detail: String) {
+        val ctx = try {
+            AppContextHolder.get()
+        } catch (t: Throwable) {
+            return
+        }
+        runCatching {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    GATE_CHANNEL,
+                    "操作确认",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ),
+            )
+            val open = PendingIntent.getActivity(
+                ctx,
+                id.toInt(),
+                Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            nm.notify(
+                GATE_TAG,
+                id.toInt(),
+                NotificationCompat.Builder(ctx, GATE_CHANNEL)
+                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                    .setContentTitle("Kami 请求确认：$title")
+                    .setContentText(detail.take(120))
+                    .setContentIntent(open)
+                    .setAutoCancel(true)
+                    .build(),
+            )
+        }
+    }
+
+    private fun cancelNotification(id: Long) {
+        val ctx = try {
+            AppContextHolder.get()
+        } catch (t: Throwable) {
+            return
+        }
+        runCatching {
+            (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .cancel(GATE_TAG, id.toInt())
         }
     }
 
@@ -122,6 +186,7 @@ object SensitiveGate {
     }
 
     fun decide(id: Long, allowed: Boolean) {
+        cancelNotification(id)
         synchronized(this) { deferreds[id] }?.complete(allowed)
     }
 
