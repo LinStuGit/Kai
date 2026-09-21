@@ -288,17 +288,19 @@ private fun usageAccessGranted(ctx: Context): Boolean = try {
 /** Settings menu entry: title row that opens a sub page. */
 private data class SettingsEntry(val title: String, val subtitle: String, val target: String)
 
-private val SETTINGS_ENTRIES = listOf(
-    SettingsEntry("Agent 模型", "madmodel 三模型可选 · 自定义 OpenAI 兼容端点", "set-agent"),
-    SettingsEntry("系统提示词", "自定义 agent 人设与规则 · 留空恢复默认", "set-prompt"),
-    SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
-    SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
-    SettingsEntry("校园账号", "网络学堂 / 荷塘雨课堂 · 课程/作业", "set-campus"),
-    SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板 · 内置能力", "set-ext"),
-    SettingsEntry("记忆管理", "agent 持久记忆 · 查看/删除", "set-memory"),
-    SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
-    SettingsEntry("安全", "敏感操作生物验证", "set-sec"),
-    SettingsEntry("界面配置", "主题颜色 · 自定义子页 · agent 可改", "set-ui"),
+// Function (not a val): entries re-evaluate per composition so the
+// language switch takes effect on the spot.
+private fun settingsEntries() = listOf(
+    SettingsEntry(L10n.s("Agent 模型", "Agent model"), L10n.s("madmodel 三模型可选 · 自定义 OpenAI 兼容端点", "3 madmodel models · custom OpenAI endpoint"), "set-agent"),
+    SettingsEntry(L10n.s("系统提示词", "System prompt"), L10n.s("自定义 agent 人设与规则 · 留空恢复默认", "Agent persona & rules · blank restores default"), "set-prompt"),
+    SettingsEntry(L10n.s("定时任务", "Scheduled tasks"), L10n.s("每日提醒 · 重要任务震动直达", "Daily reminders · full-screen alerts · agent jobs"), "set-tasks"),
+    SettingsEntry(L10n.s("沙箱管理", "Sandbox"), L10n.s("内置 Alpine · 安装与状态", "Built-in Alpine · install & status"), "set-sandbox"),
+    SettingsEntry(L10n.s("校园账号", "Campus account"), L10n.s("网络学堂 / 荷塘雨课堂 · 课程/作业", "Learn / Yuketang · courses & homework"), "set-campus"),
+    SettingsEntry(L10n.s("拓展与技能", "Extensions & skills"), L10n.s("shell 拓展 · 提示词技能模板 · 内置能力", "Shell extensions · skill templates · built-ins"), "set-ext"),
+    SettingsEntry(L10n.s("记忆管理", "Memory"), L10n.s("agent 持久记忆 · 查看/删除", "Agent persistent memory · view/delete"), "set-memory"),
+    SettingsEntry(L10n.s("权限管理", "Permissions"), L10n.s("运行时权限 · 特殊访问", "Runtime permissions · special access"), "set-perms"),
+    SettingsEntry(L10n.s("安全", "Security"), L10n.s("敏感操作生物验证", "Biometric gate for sensitive actions"), "set-sec"),
+    SettingsEntry(L10n.s("界面配置", "UI config"), L10n.s("主题颜色 · 自定义子页 · agent 可改", "Theme color · custom pages · agent-editable"), "set-ui"),
 )
 
 private val TIME_RE = Regex("^(\\d{1,2}):(\\d{2})$")
@@ -399,6 +401,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppContextHolder.init(applicationContext)
+        L10n.init(applicationContext)
         ExtensionStore.init(applicationContext)
         ProotSandbox.init(applicationContext)
         ScreenControl.init(applicationContext)
@@ -641,7 +644,7 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { screen.value = "settings" }) { Text("← 设置") }
+                TextButton(onClick = { screen.value = "settings" }) { Text(L10n.s("← 设置", "← Settings")) }
                 Text(title, style = MaterialTheme.typography.titleLarge)
             }
             content()
@@ -660,11 +663,33 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { screen.value = "chat" }) { Text("← 主页") }
-                Text("设置", style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = { screen.value = "chat" }) { Text(L10n.s("← 主页", "← Home")) }
+                Text(L10n.s("设置", "Settings"), style = MaterialTheme.typography.titleLarge)
             }
 
-            SETTINGS_ENTRIES.forEach { entry ->
+            // In-app language switch (zh default, English optional).
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { L10n.set(context, if (L10n.isEn) L10n.ZH else L10n.EN) }
+                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(L10n.s("语言", "Language"), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        L10n.s("界面显示语言（点按切换 中文/English）", "UI display language (tap to switch)"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    if (L10n.isEn) "English ✓" else "中文 ✓",
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            settingsEntries().forEach { entry ->
                 if (entry.target in UiConfigStore.get().hidden) return@forEach
                 Row(
                     modifier = Modifier
@@ -744,7 +769,7 @@ class MainActivity : FragmentActivity() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { screen.value = "chat" }) { Text("← 主页") }
+                TextButton(onClick = { screen.value = "chat" }) { Text(L10n.s("← 主页", "← Home")) }
                 Text(
                     "历史会话",
                     modifier = Modifier.weight(1f),

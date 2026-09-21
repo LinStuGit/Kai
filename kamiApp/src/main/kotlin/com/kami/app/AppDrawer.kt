@@ -195,7 +195,7 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("搜索应用（名称 / 拼音 / 首字母）") },
+            placeholder = { Text(L10n.s("搜索应用（名称 / 拼音 / 首字母）", "Search apps (name / pinyin / initials)")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

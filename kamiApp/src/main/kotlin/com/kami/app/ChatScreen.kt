@@ -1,7 +1,10 @@
 package com.kami.app
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -91,6 +94,18 @@ internal fun ChatScreen(
 
     // rememberSaveable: pager disposes offscreen pages, draft must survive the swipe.
     var input by rememberSaveable(session.id) { mutableStateOf("") }
+    // Pending chat attachments (picked via SAF; resolved to payloads on send).
+    val pendingAtts = remember { mutableStateListOf<Pair<Uri, String>>() }
+    val pickFiles = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments(),
+    ) { uris ->
+        for (u in uris) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            pendingAtts.add(u to Attachments.nameOf(context, u))
+        }
+    }
     val listState = rememberLazyListState()
     val lines = session.lines
     val entries = remember(lines) { buildEntries(lines) }
@@ -113,8 +128,8 @@ internal fun ChatScreen(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            TextButton(onClick = onTerminal) { Text("终端") }
-            TextButton(onClick = onSettings) { Text("设置") }
+            TextButton(onClick = onTerminal) { Text(L10n.s("终端", "Terminal")) }
+            TextButton(onClick = onSettings) { Text(L10n.s("设置", "Settings")) }
         }
 
         // Parallel sessions: the shared selector bar (same as the terminal).
@@ -133,11 +148,11 @@ internal fun ChatScreen(
                         ),
                     )
                 }
-                add(SessionChip("＋ 新会话") { SessionStore.newSession() })
+                add(SessionChip(L10n.s("＋ 新会话", "＋ New chat")) { SessionStore.newSession() })
                 if (sessions.any { it.busy }) {
-                    add(SessionChip("■ 终止") { AgentOverlayState.cancelAll() })
+                    add(SessionChip(L10n.s("■ 终止", "■ Stop")) { AgentOverlayState.cancelAll() })
                 }
-                add(SessionChip("历史") { onArchive() })
+                add(SessionChip(L10n.s("历史", "History")) { onArchive() })
             },
         )
 
@@ -192,15 +207,32 @@ internal fun ChatScreen(
             }
         }
 
+        if (pendingAtts.isNotEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                pendingAtts.forEach { att ->
+                    TextButton(
+                        onClick = { pendingAtts.remove(att) },
+                        enabled = !session.busy,
+                    ) { Text("📎 " + att.second + " ✕", fontSize = 11.sp, maxLines = 1) }
+                }
+            }
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            TextButton(
+                onClick = { pickFiles.launch(arrayOf("*/*")) },
+                enabled = !session.busy,
+            ) { Text("📎", fontSize = 18.sp) }
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("让 agent 做点什么…", fontSize = 13.sp) },
+                placeholder = { Text(L10n.s("让 agent 做点什么…", "Ask the agent…"), fontSize = 13.sp) },
                 singleLine = true,
                 enabled = !session.busy,
                 trailingIcon = if (session.busy) {
@@ -212,21 +244,26 @@ internal fun ChatScreen(
             Button(
                 onClick = {
                     val text = input.trim()
-                    if (text.isEmpty() || session.busy) return@Button
+                    if (session.busy || (text.isEmpty() && pendingAtts.isEmpty())) return@Button
+                    val attUris = pendingAtts.map { it.first }
+                    val attNames = pendingAtts.map { it.second }
+                    pendingAtts.clear()
                     input = ""
                     val sid = session.id
                     val appCtx = context.applicationContext
                     SessionStore.update(sid) {
-                        it.copy(busy = true, lines = it.lines + ChatLine("user", text))
+                        it.copy(busy = true, lines = it.lines + ChatLine("user", text + Attachments.summary(attNames)))
                     }
-                    SessionStore.retitlePlaceholder(sid, text)
+                    SessionStore.retitlePlaceholder(sid, text.ifBlank { "📎 " + attNames.joinToString("、") })
                     val job = scope.launch(Dispatchers.IO) {
                         try {
+                            val atts = attUris.mapNotNull { Attachments.load(appCtx, it) }
                             val reply = AgentClient.turn(
                                 sid,
                                 appCtx,
                                 SessionStore.history(sid),
                                 text,
+                                atts,
                             ) { ev ->
                                 AgentOverlayState.status.value = ev
                                 SessionStore.update(sid) { s ->
@@ -241,9 +278,9 @@ internal fun ChatScreen(
                             }
                         } catch (t: Throwable) {
                             val msg = if (t is CancellationException || !AgentOverlayState.running.value) {
-                                "已强制终止"
+                                L10n.s("已强制终止", "Force stopped")
                             } else {
-                                "错误：${t.message}"
+                                L10n.s("错误：", "Error: ") + t.message
                             }
                             SessionStore.update(sid) { s ->
                                 s.copy(busy = false, lines = s.lines + ChatLine("assistant", msg))
@@ -272,8 +309,8 @@ internal fun ChatScreen(
                         }
                     }
                 },
-                enabled = !session.busy && input.isNotBlank(),
-            ) { Text("发送") }
+                enabled = !session.busy && (input.isNotBlank() || pendingAtts.isNotEmpty()),
+            ) { Text(L10n.s("发送", "Send")) }
         }
     }
 }
@@ -294,7 +331,7 @@ private fun ThinkingBlock(text: String) {
                 .padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
             Text(
-                if (open) "▼ 思考过程" else "▸ 思考过程",
+                if (open) "▼ " + L10n.s("思考过程", "Reasoning") else "▸ " + L10n.s("思考过程", "Reasoning"),
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

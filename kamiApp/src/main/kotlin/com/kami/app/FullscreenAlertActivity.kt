@@ -48,7 +48,8 @@ class FullscreenAlertActivity : ComponentActivity() {
     private val tick = object : Runnable {
         override fun run() {
             nowMs = System.currentTimeMillis()
-            handler.postDelayed(this, 30_000)
+            // Minute-aligned: the clock shows HH:mm, so wake once a minute.
+            handler.postDelayed(this, 60_000 - System.currentTimeMillis() % 60_000 + 50)
         }
     }
 
@@ -65,7 +66,7 @@ class FullscreenAlertActivity : ComponentActivity() {
         if (intent.getBooleanExtra("vibrate", true)) {
             Vibe.pattern(this, longArrayOf(0, 500, 700), 0)
         }
-        handler.postDelayed(tick, 30_000)
+        handler.postDelayed(tick, 60_000 - System.currentTimeMillis() % 60_000 + 50)
         setContent {
             val clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(nowMs))
             MaterialTheme(colorScheme = MaterialTheme.colorScheme) {

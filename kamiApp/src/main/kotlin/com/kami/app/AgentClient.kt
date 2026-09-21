@@ -117,13 +117,31 @@ object AgentClient {
         context: Context,
         history: JSONArray,
         userText: String,
+        attachments: List<AttachmentPayload> = emptyList(),
         onEvent: (String) -> Unit,
     ): TurnReply {
         val thinkings = mutableListOf<String>()
-        history.put(JSONObject().put("role", "user").put("content", userText))
+        val hasImages = attachments.any { it.imageB64 != null }
+        history.put(
+            JSONObject().put("role", "user").put("content", Attachments.buildContent(userText, attachments)),
+        )
+        var firstCall = true
         while (true) {
             currentCoroutineContext().ensureActive()
-            val resp = postChat(sessionId, history, disabledToolNames(context))
+            val resp = try {
+                postChat(sessionId, history, disabledToolNames(context))
+            } catch (t: IOException) {
+                // Multimodal parts rejected (text-only model): resend the same
+                // user message once with attachments downgraded to text.
+                if (firstCall && hasImages) {
+                    history.getJSONObject(history.length() - 1)
+                        .put("content", Attachments.fallbackText(userText, attachments))
+                    postChat(sessionId, history, disabledToolNames(context))
+                } else {
+                    throw t
+                }
+            }
+            firstCall = false
             val msg = resp.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
             val reasoning = msg.optString("reasoning_content")
             if (reasoning.isNotBlank()) thinkings.add(reasoning.trim())
@@ -132,7 +150,7 @@ object AgentClient {
                 val content = msg.optString("content")
                 history.put(JSONObject().put("role", "assistant").put("content", content))
                 return TurnReply(
-                    content.ifBlank { "（空回复）" },
+                    content.ifBlank { L10n.s("（空回复）", "(empty reply)") },
                     thinkings.joinToString("\n\n").ifBlank { null },
                 )
             }
@@ -303,7 +321,12 @@ object AgentClient {
      *  latest persisted memories for this turn. */
     private fun systemContent(): String {
         val mem = MemoryStore.recent(30)
-        val base = SystemPromptStore.get()
+        val base = SystemPromptStore.get() +
+            if (L10n.isEn) {
+                "\n\n[Language] The app's UI language is English: prefer English in your replies unless the user writes in Chinese."
+            } else {
+                ""
+            }
         return if (mem.isEmpty()) {
             base
         } else {

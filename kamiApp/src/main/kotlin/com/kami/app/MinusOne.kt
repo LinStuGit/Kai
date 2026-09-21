@@ -355,7 +355,7 @@ private fun AgendaCard(onOpen: (Detail) -> Unit) {
             agendaAt = System.currentTimeMillis()
         }
     }
-    DashCard("日程（近 3 天）", onClick = { onOpen(agendaDetail()) }) {
+    DashCard(L10n.s("日程（近 3 天）", "Agenda (3 days)"), onClick = { onOpen(agendaDetail()) }) {
         if (!granted) {
             Text("未授权日历权限——设置 → 权限管理 授权后显示", style = MaterialTheme.typography.bodySmall)
         } else if (agendaRows.isEmpty()) {
@@ -389,7 +389,7 @@ private fun agendaDetail(): Detail = Detail(
             weights = listOf(2.7f, 2.0f, 3.1f),
             rows = agendaTableRows(agendaRows),
             tags = agendaRows.indices.map { "ev:$it" },
-            hint = "点任意一行查看时间/地点/备注",
+            hint = L10n.s("点任意一行查看时间/地点/备注", "Tap a row for time/location/notes"),
         )
     }
 }
@@ -447,7 +447,7 @@ private fun TodoCard(onOpen: (Detail) -> Unit) {
     }
     val hw = hwCache
     val yk = ykCache
-    DashCard("待办", onClick = { onOpen(todoDetail(reminders)) }) {
+    DashCard(L10n.s("待办", "To-dos"), onClick = { onOpen(todoDetail(reminders)) }) {
         Text("定时提醒", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (reminders.isEmpty()) {
             Text("暂无——可以让 agent 创建提醒", style = MaterialTheme.typography.bodySmall)
@@ -622,7 +622,10 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
             weights = listOf(1.4f, 4.4f, 2.4f),
             rows = sorted.map { it.row },
             tags = sorted.map { it.tag },
-            hint = "按紧急程度从上到下排列；点任意行查看详情/下载，附件可存到 Download/Kami/",
+            hint = L10n.s(
+                "按紧急程度从上到下排列；点任意行查看详情/下载，附件可存到 Download/Kami/",
+                "Sorted by urgency; tap a row for details/downloads, attachments land in Download/Kami/",
+            ),
         )
     }
 }
@@ -744,7 +747,7 @@ private fun NoticesCard(onOpen: (Detail) -> Unit) {
         }
     }
     val notices = noticeCache
-    DashCard("课程公告", onClick = if (CampusStore.get() == null) null else ({ onOpen(noticesDetail()) })) {
+    DashCard(L10n.s("课程公告", "Announcements"), onClick = if (CampusStore.get() == null) null else ({ onOpen(noticesDetail()) })) {
         if (CampusStore.get() == null) {
             Text("未登录网络学堂（设置 → 校园账号）", style = MaterialTheme.typography.bodySmall)
         } else {
@@ -913,7 +916,9 @@ internal fun MinusOneScreen() {
     LaunchedEffect(Unit) {
         while (true) {
             nowMs = System.currentTimeMillis()
-            delay(30_000)
+            // Minute-aligned wake: the clock only shows HH:mm, so ticking
+            // every 30s just doubled wakeups for nothing.
+            delay(60_000 - System.currentTimeMillis() % 60_000 + 50)
         }
     }
     val clock = remember(nowMs) {
@@ -929,7 +934,7 @@ internal fun MinusOneScreen() {
             TextButton(onClick = {
                 clearCaches()
                 rev++
-            }) { Text("↻ 刷新") }
+            }) { Text(L10n.s("↻ 刷新", "↻ Refresh")) }
         }
         key(rev) {
             WeatherCard(onOpen = { open(weatherDetail()) })

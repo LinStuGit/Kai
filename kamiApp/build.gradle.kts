@@ -22,8 +22,8 @@ android {
                 .get()
                 .toInt()
         // Bump versionCode/versionName on every release.
-        versionCode = 29
-        versionName = "1.28"
+        versionCode = 30
+        versionName = "2.1"
     }
 
     // Debug builds are signed with the keystore committed at keystore/
@@ -49,9 +49,20 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    testOptions {
+        // Local JVM unit tests call pure logic only; unmocked android.jar
+        // methods just return defaults instead of throwing.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
+    // JVM unit tests (run by 'Kami App' workflow): kotlin-test assertions +
+    // a real org.json so JSONObject/JSONArray behave like on-device.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
+    testImplementation("org.json:json:20240305")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.biometric)
     implementation(libs.compose.material3)

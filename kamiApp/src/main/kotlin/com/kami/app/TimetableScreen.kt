@@ -156,7 +156,7 @@ object TimetableStore {
 }
 
 /** "1-16" / "1,3,5" / "1-8,11-16" → 第 n 周是否上课。 */
-private fun weekInRange(spec: String, n: Int): Boolean {
+internal fun weekInRange(spec: String, n: Int): Boolean {
     if (spec.isBlank()) return true
     return spec.split(",").any { part ->
         val p = part.trim()
@@ -198,15 +198,19 @@ internal fun TimetableScreen() {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                data.semesterName + " · 第 " + TimetableStore.weekOf(data.semesterStart, today) + " 周",
+                if (L10n.isEn) {
+                    data.semesterName + " · Week " + TimetableStore.weekOf(data.semesterStart, today)
+                } else {
+                    data.semesterName + " · 第 " + TimetableStore.weekOf(data.semesterStart, today) + " 周"
+                },
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = view == "week", onClick = { view = "week" }, label = { Text("课表") })
-            FilterChip(selected = view == "month", onClick = { view = "month" }, label = { Text("月") })
-            FilterChip(selected = view == "year", onClick = { view = "year" }, label = { Text("年") })
+            FilterChip(selected = view == "week", onClick = { view = "week" }, label = { Text(L10n.s("课表", "Timetable")) })
+            FilterChip(selected = view == "month", onClick = { view = "month" }, label = { Text(L10n.s("月", "Month")) })
+            FilterChip(selected = view == "year", onClick = { view = "year" }, label = { Text(L10n.s("年", "Year")) })
         }
         when (view) {
             "month" -> MonthView(data, today, monthOffset, onOffset = { monthOffset = it })
@@ -235,7 +239,8 @@ private fun WeekView(data: TimetableStore.Data, today: LocalDate, offset: Int, o
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = { onOffset(offset - 1) }) { Text("‹") }
             Text(
-                "第 " + weekNum + " 周 · " + weekStart.format(FMT_MD) + " ~ " + weekStart.plusDays(6).format(FMT_MD),
+                (if (L10n.isEn) "Week " + weekNum + " · " else "第 " + weekNum + " 周 · ") +
+                    weekStart.format(FMT_MD) + " ~ " + weekStart.plusDays(6).format(FMT_MD),
                 Modifier.weight(1f),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
@@ -244,14 +249,17 @@ private fun WeekView(data: TimetableStore.Data, today: LocalDate, offset: Int, o
         }
         if (holiday != null) {
             Text(
-                "假期：" + holiday.name + "（" + holiday.start + " ~ " + holiday.end + "）",
+                L10n.s("假期：", "Holiday: ") + holiday.name + "（" + holiday.start + " ~ " + holiday.end + "）",
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
             )
         }
         if (data.courses.isEmpty()) {
             Text(
-                "课表为空——对 agent 说「把课表导入负二屏」并发送课表文本即可导入（教师/教室/周次选填）",
+                L10n.s(
+                    "课表为空——对 agent 说「把课表导入负二屏」并发送课表文本即可导入（教师/教室/周次选填）",
+                    "Timetable is empty — tell the agent to import it into minus-two and paste your course list (teacher/room/weeks optional)",
+                ),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -328,15 +336,19 @@ private fun WeekView(data: TimetableStore.Data, today: LocalDate, offset: Int, o
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(c.name, style = MaterialTheme.typography.titleMedium)
-                if (c.teacher.isNotBlank()) Text("教师：" + c.teacher, style = MaterialTheme.typography.bodySmall)
+                if (c.teacher.isNotBlank()) {
+                    Text(L10n.s("教师：", "Teacher: ") + c.teacher, style = MaterialTheme.typography.bodySmall)
+                }
                 Text(
                     "时间：周" + WEEKDAY_CN[c.day - 1] + " 第 " + c.start + "-" + c.end + " 节 · " +
                         c.weeks + " 周",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                if (c.where.isNotBlank()) Text("地点：" + c.where, style = MaterialTheme.typography.bodySmall)
+                if (c.where.isNotBlank()) {
+                    Text(L10n.s("地点：", "Room: ") + c.where, style = MaterialTheme.typography.bodySmall)
+                }
                 Spacer(Modifier.height(4.dp))
-                TextButton(onClick = { selected = null }, modifier = Modifier.align(Alignment.End)) { Text("关闭") }
+                TextButton(onClick = { selected = null }, modifier = Modifier.align(Alignment.End)) { Text(L10n.s("关闭", "Close")) }
             }
         }
     }
@@ -422,14 +434,14 @@ private fun MonthView(data: TimetableStore.Data, today: LocalDate, offset: Int, 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(sel.toString() + " 周" + WEEKDAY_CN[sel.dayOfWeek.value - 1], fontSize = 13.sp)
             if (hol != null) {
-                Text("假期：" + hol.name, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                Text(L10n.s("假期：", "Holiday: ") + hol.name, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
             }
             val dayCourses = data.courses.filter { it.day == sel.dayOfWeek.value }
             if (dayCourses.isNotEmpty()) {
-                Text("课程：" + dayCourses.joinToString("；") { it.name + (if (it.where.isBlank()) "" else "@" + it.where) }, fontSize = 12.sp)
+                Text(L10n.s("课程：", "Courses: ") + dayCourses.joinToString("；") { it.name + (if (it.where.isBlank()) "" else "@" + it.where) }, fontSize = 12.sp)
             }
             if (selEvents.isEmpty()) {
-                Text("（无日程）", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(L10n.s("（无日程）", "(no events)"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 selEvents.take(8).forEach { e ->
                     Text(
@@ -494,7 +506,7 @@ private fun YearView(data: TimetableStore.Data, today: LocalDate, onMonth: (Int)
             }
         }
         Text(
-            "红色为假期（校历可在 agent 的 timetable 工具里维护）",
+            L10n.s("红色为假期（校历可在 agent 的 timetable 工具里维护）", "Red = holidays (maintain the academic calendar via the agent's timetable tool)"),
             fontSize = 10.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
