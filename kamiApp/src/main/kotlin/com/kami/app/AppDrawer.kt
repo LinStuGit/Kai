@@ -235,12 +235,12 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
                                     return letters[i]
                                 }
                                 detectVerticalDragGestures(
-                                    onDragStart = { off ->
-                                        letterAt(off.y)?.let { jump(it) }
-                                    },
-                                    onDrag = { change, _ ->
+                                    onVerticalDrag = { change, _ ->
                                         change.consume()
                                         letterAt(change.position.y)?.let { jump(it) }
+                                    },
+                                    onDragStart = { off ->
+                                        letterAt(off.y)?.let { jump(it) }
                                     },
                                     onDragEnd = { activeLetter = null },
                                     onDragCancel = { activeLetter = null },

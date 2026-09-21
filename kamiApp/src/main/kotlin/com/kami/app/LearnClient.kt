@@ -298,7 +298,7 @@ internal object LearnClient {
                 for (fi in 0 until arr.length()) {
                     val f = arr.getJSONObject(fi)
                     val kb = f.optLong("wjdx") / 1024
-                    out.add(html(f.optString("bt")) + "｜${kb}KB｜上传 " + fmtEpochTs(f.optString("scsj"))))
+                    out.add(html(f.optString("bt")) + "｜${kb}KB｜上传 " + fmtEpochTs(f.optString("scsj")))
                 }
             } catch (t: Throwable) {
             }

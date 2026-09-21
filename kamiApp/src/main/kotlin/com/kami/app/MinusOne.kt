@@ -79,8 +79,8 @@ private class DetailData(
 /** One level of the detail sheet; onTap may push the next level. */
 private class Detail(
     val title: String,
-    val load: suspend () -> DetailData,
     val onTap: (suspend (String) -> Detail)? = null,
+    val load: suspend () -> DetailData,
 )
 
 /** Rounded card with a small title; when onClick is set the whole card opens a detail sheet. */
@@ -258,7 +258,7 @@ private fun WeatherCard(onOpen: () -> Unit) {
                     listOf(
                         dayLabel(d.date, i),
                         weatherDesc(d.code),
-                        d.min + "～" + d.max + "°C",
+                        "" + d.min + "～" + d.max + "°C",
                         d.pop + "%",
                     )
                 },
@@ -280,7 +280,7 @@ private fun weatherDetail(): Detail = Detail("天气 · 未来 7 天") {
             listOf(
                 dayLabel(d.date, i),
                 weatherDesc(d.code),
-                d.min + "～" + d.max + "°C",
+                "" + d.min + "～" + d.max + "°C",
                 d.pop + "%",
             )
         },
