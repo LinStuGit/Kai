@@ -299,7 +299,7 @@ internal object LearnClient {
 
     /** 未提交作业（负一屏待办用）：每课一查，单课失败容忍。 */
     fun homeworkPending(): List<HomeworkItem> =
-        perCourse { _, name ->
+        perCourse { id, name ->
             val out = mutableListOf<HomeworkItem>()
             try {
                 val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
