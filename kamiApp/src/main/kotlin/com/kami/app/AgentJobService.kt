@@ -12,6 +12,7 @@ import android.os.IBinder
 import org.json.JSONArray
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
+import kotlinx.coroutines.runBlocking
 
 /**
  * Runs one agent turn in the background when an action=agent reminder fires.
@@ -50,7 +51,7 @@ class AgentJobService : Service() {
                 ReminderStore.init(this@AgentJobService)
                 SessionStore.init(this@AgentJobService)
                 // turn 是 suspend：后台线程里用 runBlocking 提供协程环境
-                val outcome = runBlocking {
+                val outcome: String? = runBlocking<String?> {
                     try {
                         val reply = AgentClient.turn("job:" + id, this@AgentJobService, JSONArray(), prompt) { ev ->
                             progressText = ev.take(120)
