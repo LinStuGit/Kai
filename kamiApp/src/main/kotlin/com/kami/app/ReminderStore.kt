@@ -32,6 +32,8 @@ data class Reminder(
     val day: Int = 0, // 1-31
     val weekday: Int = 0, // java.util.Calendar.DAY_OF_WEEK (1=Sun .. 7=Sat)
     val intervalMin: Int = 0,
+    val action: String = "notify", // notify | alert（全屏闹钟界面） | agent（唤起 agent 执行 prompt）
+    val prompt: String = "",
 )
 
 /** Store persisted to filesDir/reminders.json. */
@@ -63,6 +65,8 @@ object ReminderStore {
                         day = o.optInt("day"),
                         weekday = o.optInt("weekday"),
                         intervalMin = o.optInt("intervalMin"),
+                        action = o.optString("action", "notify"),
+                        prompt = o.optString("prompt"),
                     ),
                 )
             }
@@ -119,7 +123,9 @@ object ReminderStore {
                         .put("month", it.month)
                         .put("day", it.day)
                         .put("weekday", it.weekday)
-                        .put("intervalMin", it.intervalMin),
+                        .put("intervalMin", it.intervalMin)
+                        .put("action", it.action)
+                        .put("prompt", it.prompt),
                 )
             }
             requireFile().writeText(arr.toString())

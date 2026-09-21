@@ -248,6 +248,30 @@ private fun clearCaches() {
     courseCacheAt = 0
 }
 
+/** "MM-dd HH:mm" → 本年 epoch（早于现在超过 180 天视为明年）；解析不了给 MAX（排最后）。 */
+private fun urgencyOf(deadline: String): Long {
+    val m = Regex("^(\\d{2})-(\\d{2}) (\\d{2}):(\\d{2})$").find(deadline.trim()) ?: return Long.MAX_VALUE
+    return try {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.MONTH, m.groupValues[2].toInt() - 1)
+        cal.set(java.util.Calendar.DAY_OF_MONTH, m.groupValues[1].toInt())
+        cal.set(java.util.Calendar.HOUR_OF_DAY, m.groupValues[3].toInt())
+        cal.set(java.util.Calendar.MINUTE, m.groupValues[4].toInt())
+        cal.set(java.util.Calendar.SECOND, 0)
+        var t = cal.timeInMillis
+        if (t < System.currentTimeMillis() - 180L * 86_400_000L) {
+            cal.add(java.util.Calendar.YEAR, 1)
+            t = cal.timeInMillis
+        }
+        t
+    } catch (t: Throwable) {
+        Long.MAX_VALUE
+    }
+}
+
+/** One aggregated todo row carrying its urgency timestamp for sorting. */
+private data class TodoRow(val at: Long, val row: List<String>, val tag: String)
+
 // ---- weather ----
 
 @Composable
@@ -305,7 +329,7 @@ private fun weatherDetail(): Detail = Detail("天气 · 未来 7 天") {
 // ---- agenda (calendar) ----
 
 private fun agendaTableRows(rows: List<EventRow>): List<List<String>> = rows.map { r ->
-    listOf(fmtDate(r.start), fmtTime(r.start, r.end), r.location.ifBlank { "—" }, r.title)
+    listOf(fmtDate(r.start) + " " + fmtTime(r.start, r.end), r.location.ifBlank { "—"}, r.title)
 }
 
 private fun eventDetail(idx: Int): Detail {
@@ -338,8 +362,8 @@ private fun AgendaCard(onOpen: (Detail) -> Unit) {
             Text("近 30 天无日程", style = MaterialTheme.typography.bodySmall)
         } else {
             DashTable(
-                listOf("日期", "时间", "地点", "事件"),
-                listOf(1.4f, 2.2f, 2.0f, 2.9f),
+                listOf("时间", "地点", "事件"),
+                listOf(2.7f, 2.0f, 3.1f),
                 agendaTableRows(agendaRows.take(3)),
                 tags = agendaRows.indices.take(3).map { "ev:$it" },
                 onTag = { tag -> onOpen(eventDetail(tag.removePrefix("ev:").toInt())) },
@@ -361,8 +385,8 @@ private fun agendaDetail(): Detail = Detail(
         DetailData(text = "近 30 天无日程")
     } else {
         DetailData(
-            headers = listOf("日期", "时间", "地点", "事件"),
-            weights = listOf(1.4f, 2.2f, 2.0f, 2.9f),
+            headers = listOf("时间", "地点", "事件"),
+            weights = listOf(2.7f, 2.0f, 3.1f),
             rows = agendaTableRows(agendaRows),
             tags = agendaRows.indices.map { "ev:$it" },
             hint = "点任意一行查看时间/地点/备注",
@@ -461,16 +485,19 @@ private fun TodoCard(onOpen: (Detail) -> Unit) {
 
             hw.isEmpty() -> Text("暂无未提交作业", style = MaterialTheme.typography.bodySmall)
 
-            else -> DashTable(
-                listOf("课程", "作业", "截止"),
-                listOf(2.2f, 3f, 2.2f),
-                hw.take(2).map { listOf(it.course, it.title, it.deadline) },
-                tags = hw.indices.take(2).map { "hw:$it" },
-                onTag = { tag ->
-                    val h = hw.getOrNull(tag.removePrefix("hw:").toInt()) ?: return@DashTable
-                    onOpen(homeworkDetailPage(h))
-                },
-            )
+            else -> {
+                val hwTop = hw.withIndex().sortedBy { urgencyOf(it.value.deadline) }.take(2)
+                DashTable(
+                    listOf("课程", "作业", "截止"),
+                    listOf(2.2f, 3f, 2.2f),
+                    hwTop.map { listOf(it.value.course, it.value.title, it.value.deadline) },
+                    tags = hwTop.map { "hw:" + it.index },
+                    onTag = { tag ->
+                        val h = hw.getOrNull(tag.removePrefix("hw:").toInt()) ?: return@DashTable
+                        onOpen(homeworkDetailPage(h))
+                    },
+                )
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text("雨课堂 · 作业/考试", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -481,16 +508,19 @@ private fun TodoCard(onOpen: (Detail) -> Unit) {
 
             yk.isEmpty() -> Text("暂无雨课堂作业/考试", style = MaterialTheme.typography.bodySmall)
 
-            else -> DashTable(
-                listOf("课程", "条目", "截止"),
-                listOf(2.2f, 3f, 2.2f),
-                yk.take(2).map { listOf(it.course, it.title + "（" + it.kind + "）", it.deadline.ifBlank { "—" }) },
-                tags = yk.indices.take(2).map { "yk:$it" },
-                onTag = { tag ->
-                    val it2 = yk.getOrNull(tag.removePrefix("yk:").toInt()) ?: return@DashTable
-                    onOpen(yuketangItemDetail(it2))
-                },
-            )
+            else -> {
+                val ykTop = yk.withIndex().sortedBy { urgencyOf(it.value.deadline) }.take(2)
+                DashTable(
+                    listOf("课程", "条目", "截止"),
+                    listOf(2.2f, 3f, 2.2f),
+                    ykTop.map { listOf(it.value.course, it.value.title + "（" + it.value.kind + "）", it.value.deadline.ifBlank { "—" }) },
+                    tags = ykTop.map { "yk:" + it.index },
+                    onTag = { tag ->
+                        val it2 = yk.getOrNull(tag.removePrefix("yk:").toInt()) ?: return@DashTable
+                        onOpen(yuketangItemDetail(it2))
+                    },
+                )
+            }
         }
     }
 }
@@ -573,29 +603,26 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
     } else {
         null
     }
-    val rows = mutableListOf<List<String>>()
-    val tags = mutableListOf<String>()
+    val agg = mutableListOf<TodoRow>()
     reminders.forEachIndexed { i, r ->
-        rows.add(listOf("提醒", r.title, ReminderScheduler.describe(r)))
-        tags.add("rem:$i")
+        agg.add(TodoRow(ReminderScheduler.nextAt(r)?.timeInMillis ?: Long.MAX_VALUE, listOf("提醒", r.title, ReminderScheduler.describe(r)), "rem:$i"))
     }
     hw?.forEachIndexed { i, h ->
-        rows.add(listOf("学堂作业", h.course + " · " + h.title, "截止 " + h.deadline))
-        tags.add("hw:$i")
+        agg.add(TodoRow(urgencyOf(h.deadline), listOf("学堂作业", h.course + " · " + h.title, "截止 " + h.deadline), "hw:$i"))
     }
     yk?.forEachIndexed { i, y ->
-        rows.add(listOf("雨课堂", y.course + " · " + y.title + "（" + y.kind + "）", y.deadline.ifBlank { "—" }))
-        tags.add("yk:$i")
+        agg.add(TodoRow(urgencyOf(y.deadline), listOf("雨课堂", y.course + " · " + y.title + "（" + y.kind + "）", y.deadline.ifBlank { "—" }), "yk:$i"))
     }
-    if (rows.isEmpty()) {
+    val sorted = agg.sortedBy { it.at }
+    if (sorted.isEmpty()) {
         DetailData(text = "暂无提醒 / 作业 / 考试（未登录或全部为空）")
     } else {
         DetailData(
             headers = listOf("类别", "内容", "时间"),
             weights = listOf(1.4f, 4.4f, 2.4f),
-            rows = rows,
-            tags = tags,
-            hint = "点任意行查看详情/下载，附件可存到 Download/Kami/",
+            rows = sorted.map { it.row },
+            tags = sorted.map { it.tag },
+            hint = "按紧急程度从上到下排列；点任意行查看详情/下载，附件可存到 Download/Kami/",
         )
     }
 }

@@ -32,7 +32,19 @@ class ReminderReceiver : BroadcastReceiver() {
         }
 
         val r = ReminderStore.get(intent.getStringExtra("id") ?: return) ?: return
-        postNotification(appCtx, r)
+        if (r.action == "agent") {
+            // 唤起 agent 后台跑一轮 prompt（setAlarmClock 触发可获 FGS 临时豁免）
+            try {
+                appCtx.startForegroundService(
+                    Intent(appCtx, AgentJobService::class.java).putExtra("id", r.id),
+                )
+            } catch (t: Throwable) {
+                // ROM 拒绝后台 FGS 时退化为普通提醒
+                postNotification(appCtx, r)
+            }
+        } else {
+            postNotification(appCtx, r)
+        }
         ReminderScheduler.scheduleAll(appCtx)
     }
 
@@ -70,7 +82,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setContentIntent(contentPi)
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)
-        if (r.important) {
+        if (r.important || r.action == "alert") {
             // 全屏「闹钟界面」：锁屏可见、自动亮屏、持续震动
             val alertPi = PendingIntent.getActivity(
                 ctx,

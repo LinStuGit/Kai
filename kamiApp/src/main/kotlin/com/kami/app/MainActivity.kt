@@ -409,6 +409,7 @@ class MainActivity : FragmentActivity() {
         ArchiveStore.init(applicationContext)
         SystemPromptStore.init(applicationContext)
         UiConfigStore.init(applicationContext)
+        TimetableStore.init(applicationContext)
         CampusStore.init(applicationContext)
         ReminderScheduler.scheduleAll(applicationContext)
         KeepAliveService.applyIfEnabled(applicationContext)
@@ -551,6 +552,7 @@ class MainActivity : FragmentActivity() {
                                             )
                                         },
                                         minusOne = { MinusOneScreen() },
+                                        minusTwo = { TimetableScreen() },
                                         drawer = { goHome -> AppDrawerScreen(onBack = goHome) },
                                     )
                                 }

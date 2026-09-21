@@ -42,7 +42,7 @@ object AgentClient {
             "shell 命令固化为可复用功能——当用户要求新能力时优先注册拓展，而不是只执行一次；" +
             "notify_user 可发系统通知（长任务完成或需要用户回来时用）。" +
             "跨会话持久记忆可用：用户的偏好、背景、长期约定与重要结论用 memory_save 主动记录" +
-            "（不必询问），memory_recall 可检索；add_reminder 创建定时任务，支持四种类型：" +
+            "（不必询问），memory_recall 可检索；add_reminder 创建定时任务（action=notify 通知/alert 全屏闹钟界面/agent 到点唤起你自动执行 prompt，如每日早报、作业汇总），支持四种类型：" +
             "once（指定日期时间）/daily（每日 HH:mm）/weekly（每周几 HH:mm）/interval" +
             "（每 N 分钟），到点发通知，important 时震动并全屏唤醒进应用（早报用 daily、" +
             "作业/上课用 weekly、短暂倒计时用 interval）；list_reminders/remove_reminder 管理；" +
@@ -81,7 +81,7 @@ object AgentClient {
           {"type":"function","function":{"name":"device_info","description":"设备概况：型号/系统版本/无线调试开关与端口","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"memory_save","description":"把重要事实写入持久记忆（跨会话有效）：用户偏好、项目背景、长期约定、重要结论。值得记的主动存，不必询问","parameters":{"type":"object","properties":{"text":{"type":"string","description":"要记住的事实，一句话"}},"required":["text"]}}},
           {"type":"function","function":{"name":"memory_recall","description":"检索持久记忆；不带 query 返回最近记忆","parameters":{"type":"object","properties":{"query":{"type":"string","description":"关键词，可省略"}}}}},
-          {"type":"function","function":{"name":"add_reminder","description":"创建定时任务，到点发系统通知（important 时震动并全屏唤醒进应用）。四种类型：once 单次（date=2026-09-20）、daily 每日、weekly 每周（weekday 1=周日 2=周一…7=周六）、interval 每 N 分钟。适合早报（daily）、作业/上课（weekly）、稍后提醒（once/interval）","parameters":{"type":"object","properties":{"title":{"type":"string","description":"提醒标题，要短"},"text":{"type":"string","description":"通知内容"},"type":{"type":"string","enum":["once","daily","weekly","interval"],"description":"类型，默认 daily"},"hour":{"type":"integer","description":"小时 0-23（once/daily/weekly 必填）"},"minute":{"type":"integer","description":"分钟 0-59"},"date":{"type":"string","description":"once 的日期，如 2026-09-20"},"weekday":{"type":"integer","description":"weekly 的周几：1=周日 2=周一 … 7=周六"},"interval_min":{"type":"integer","description":"interval 的间隔分钟"},"important":{"type":"boolean","description":"重要：震动+全屏直达，默认 false"}},"required":["title","text"]}}},
+          {"type":"function","function":{"name":"add_reminder","description":"创建定时任务，到点按 action 触发：notify 系统通知（默认）；alert 全屏闹钟界面（锁屏可见+亮屏+持续震动）；agent 唤起 agent 自动执行 prompt 并通知结果。四种类型：once 单次（date=2026-09-20）、daily 每日、weekly 每周（weekday 1=周日 2=周一…7=周六）、interval 每 N 分钟。适合早报（daily）、作业/上课（weekly）、稍后提醒（once/interval）","parameters":{"type":"object","properties":{"title":{"type":"string","description":"提醒标题，要短"},"text":{"type":"string","description":"通知内容"},"type":{"type":"string","enum":["once","daily","weekly","interval"],"description":"类型，默认 daily"},"hour":{"type":"integer","description":"小时 0-23（once/daily/weekly 必填）"},"minute":{"type":"integer","description":"分钟 0-59"},"date":{"type":"string","description":"once 的日期，如 2026-09-20"},"weekday":{"type":"integer","description":"weekly 的周几：1=周日 2=周一 … 7=周六"},"interval_min":{"type":"integer","description":"interval 的间隔分钟"},"important":{"type":"boolean","description":"重要：震动+全屏直达，默认 false"},"action":{"type":"string","enum":["notify","alert","agent"],"description":"触发动作，默认 notify"},"prompt":{"type":"string","description":"action=agent 时要执行的指令，如「汇总今天的日程和作业发给我」"}},"required":["title","text"]}}},
           {"type":"function","function":{"name":"remove_reminder","description":"删除定时提醒","parameters":{"type":"object","properties":{"id":{"type":"string","description":"提醒 id 或精确标题"}},"required":["id"]}}},
           {"type":"function","function":{"name":"list_reminders","description":"列出全部定时提醒","parameters":{"type":"object","properties":{}}}},
           {"type":"function","function":{"name":"calendar_add","description":"在系统日历新建日程事件","parameters":{"type":"object","properties":{"title":{"type":"string"},"start_ms":{"type":"integer","description":"开始时间 epoch 毫秒"},"duration_min":{"type":"integer","description":"持续分钟，默认 60"},"desc":{"type":"string","description":"描述，可省略"}},"required":["title","start_ms"]}}},
@@ -93,7 +93,8 @@ object AgentClient {
           {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}},
           {"type":"function","function":{"name":"yuketang","description":"荷塘雨课堂（pro.yuketang.cn）只读数据面：action=courses 课程列表；assignments 作业与考试（含截止时间）；status 登录状态。未登录时返回指引——让用户去 设置→校园账号 点「登录雨课堂」完成一次 WebView 登录，不要反复重试。只读：不代答题、不代提交","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","assignments"],"description":"默认 status"}},"required":["action"]}}},
           {"type":"function","function":{"name":"vibrate","description":"让手机原生震动一次（无任何 UI）","parameters":{"type":"object","properties":{"duration_ms":{"type":"integer","description":"震动时长毫秒，默认 400"}}}}},
-          {"type":"function","function":{"name":"fullscreen_alert","description":"弹出全屏提醒界面（闹钟式：大字时钟+标题+正文+知道了按钮，锁屏可见并自动亮屏震动）。适合重要到点提示、计时完成、需要用户立刻处理的事项","parameters":{"type":"object","properties":{"title":{"type":"string","description":"标题"},"text":{"type":"string","description":"正文"},"vibrate":{"type":"boolean","description":"显示期间是否持续震动，默认 true"}},"required":["title","text"]}}}
+          {"type":"function","function":{"name":"fullscreen_alert","description":"弹出全屏提醒界面（闹钟式：大字时钟+标题+正文+知道了按钮，锁屏可见并自动亮屏震动）。适合重要到点提示、计时完成、需要用户立刻处理的事项","parameters":{"type":"object","properties":{"title":{"type":"string","description":"标题"},"text":{"type":"string","description":"正文"},"vibrate":{"type":"boolean","description":"显示期间是否持续震动，默认 true"}},"required":["title","text"]}}},
+          {"type":"function","function":{"name":"timetable","description":"负二屏课程表配置：semesterName 学期名、semesterStart 学期第一周的周一（如 2026-09-14）、courses 每周课表（name 课程名/teacher 教师/day 1=周一…7=周日/start 起始节/end 结束节/where 地点/weeks 上课周如 1-16）、holidays 假期（name/start/end，校历）。用户让你导入或修改课表时，把课表文本解析成这些字段写入","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["get","set","reset"],"description":"get 读当前配置，set 写完整 JSON，reset 恢复默认"},"json":{"type":"string","description":"action=set 时的完整配置 JSON 文本"}},"required":["action"]}}}
         ]
             """.trimIndent(),
         )
@@ -479,6 +480,12 @@ object AgentClient {
                 "全屏提醒失败：${t.message}"
             }
 
+            "timetable" -> when (args.optString("action", "get")) {
+                "set" -> TimetableStore.setJson(args.optString("json"))
+                "reset" -> TimetableStore.reset()
+                else -> TimetableStore.raw()
+            }
+
             "memory_save" -> {
                 if (MemoryStore.save(args.optString("text"))) {
                     "已记住（现共 ${MemoryStore.all().size} 条）"
@@ -499,6 +506,9 @@ object AgentClient {
 
             "add_reminder" -> {
                 val type = args.optString("type").ifBlank { "daily" }
+                val action = args.optString("action", "notify").ifBlank { "notify" }
+                if (action !in setOf("notify", "alert", "agent")) return "错误：action 只支持 notify/alert/agent"
+                val prompt = args.optString("prompt").ifBlank { args.optString("text").trim() }
                 val hour = args.optInt("hour").coerceIn(0, 23)
                 val minute = args.optInt("minute").coerceIn(0, 59)
                 val r = when (type) {
@@ -511,6 +521,7 @@ object AgentClient {
                             id = newReminderId(), title = args.optString("title").trim(),
                             text = args.optString("text").trim(),
                             important = args.optBoolean("important"), enabled = true,
+                            action = action, prompt = prompt,
                             type = "once", hour = hour, minute = minute,
                             year = m.groupValues[1].toInt(),
                             month = m.groupValues[2].toInt(),
@@ -525,6 +536,7 @@ object AgentClient {
                             id = newReminderId(), title = args.optString("title").trim(),
                             text = args.optString("text").trim(),
                             important = args.optBoolean("important"), enabled = true,
+                            action = action, prompt = prompt,
                             type = "weekly", hour = hour, minute = minute, weekday = wd,
                         )
                     }
@@ -538,6 +550,7 @@ object AgentClient {
                             text = args.optString("text").trim(),
                             important = args.optBoolean("important"),
                             enabled = true,
+                            action = action, prompt = prompt,
                             type = "interval",
                             intervalMin = iv,
                         )
@@ -549,6 +562,7 @@ object AgentClient {
                         text = args.optString("text").trim(),
                         important = args.optBoolean("important"),
                         enabled = true,
+                        action = action, prompt = prompt,
                         type = "daily",
                         hour = hour,
                         minute = minute,

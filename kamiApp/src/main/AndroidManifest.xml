@@ -151,6 +151,17 @@
              in the notification bar so scheduled work always has a warm process.
              exported=true on purpose: the detached shell daemon (shell uid,
              like adb) must be able to relaunch it after a force-stop/swipe. -->
+        <!-- Runs one agent turn in the background when an action=agent
+             reminder fires (alarm-clock alarms may start FGS from background). -->
+        <service
+            android:name=".AgentJobService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Run scheduled agent tasks (reminder-triggered prompts), progress via notification" />
+        </service>
+
         <service
             android:name=".KeepAliveService"
             android:exported="true"

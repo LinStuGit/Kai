@@ -85,6 +85,32 @@ object CalendarTools {
         return out.toString().ifBlank { "（未来 $days 天没有日程）" }
     }
 
+    /** Events within an arbitrary inclusive range (month/year views). */
+    fun listEventRowsRange(context: Context, startMs: Long, endMs: Long): List<EventRow> {
+        if (!granted(context)) return emptyList()
+        val rows = mutableListOf<EventRow>()
+        context.contentResolver.query(
+            Events.CONTENT_URI,
+            arrayOf(Events.TITLE, Events.DTSTART, Events.DTEND, Events.EVENT_LOCATION, Events.DESCRIPTION),
+            Events.DTSTART + " >= ? AND " + Events.DTSTART + " <= ?",
+            arrayOf(startMs.toString(), endMs.toString()),
+            Events.DTSTART + " ASC",
+        )?.use { c ->
+            while (c.moveToNext() && rows.size < 200) {
+                rows.add(
+                    EventRow(
+                        c.getLong(1),
+                        c.getLong(2),
+                        c.getString(0) ?: "(无标题)",
+                        c.getString(3) ?: "",
+                        c.getString(4) ?: "",
+                    ),
+                )
+            }
+        }
+        return rows
+    }
+
     /** Structured agenda rows for the dashboard table (empty when not granted). */
     fun listEventRows(context: Context, days: Int): List<EventRow> {
         if (!granted(context)) return emptyList()
