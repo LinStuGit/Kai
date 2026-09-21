@@ -9,10 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
-import kotlinx.coroutines.runBlocking
 
 /**
  * Runs one agent turn in the background when an action=agent reminder fires.
