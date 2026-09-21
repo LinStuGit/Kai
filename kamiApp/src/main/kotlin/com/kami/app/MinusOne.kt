@@ -257,7 +257,7 @@ private fun WeatherCard(onOpen: () -> Unit) {
                         dayLabel(d.date, i),
                         weatherDesc(d.code),
                         "" + d.min + "～" + d.max + "°C",
-                        d.pop + "%",
+                        d.pop.toString() + "%",
                     )
                 },
             )
@@ -279,7 +279,7 @@ private fun weatherDetail(): Detail = Detail("天气 · 未来 7 天") {
                 dayLabel(d.date, i),
                 weatherDesc(d.code),
                 "" + d.min + "～" + d.max + "°C",
-                d.pop + "%",
+                d.pop.toString() + "%",
             )
         },
         hint = "open-meteo 数据，每 30 分钟刷新一次",
@@ -688,14 +688,14 @@ private fun noticeDetail(idx: Int): Detail {
             )
         },
         onTap = { tag ->
-            if (!tag.startsWith("dl:")) {
-                null
-            } else {
+            if (tag.startsWith("dl:")) {
                 Detail("下载附件") {
                     val url = LearnClient.notificationAttachmentUrl(n.wlkcid, n.ggid)
                         ?: return@Detail DetailData(text = "未在公告页找到附件下载链接")
                     DetailData(text = LearnClient.downloadToFile(AppContextHolder.get(), url, n.attName ?: "learn-附件"))
                 }
+            } else {
+                Detail("提示") { DetailData(text = "无法识别的操作") }
             }
         },
     )
