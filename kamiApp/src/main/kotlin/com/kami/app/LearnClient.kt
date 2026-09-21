@@ -298,22 +298,21 @@ internal object LearnClient {
     }
 
     /** 未提交作业（负一屏待办用）：每课一查，单课失败容忍。 */
-    fun homeworkPending(): List<HomeworkItem> =
-        perCourse { id, name ->
-            val out = mutableListOf<HomeworkItem>()
-            try {
-                val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
-                val arr = obj?.optJSONArray("aaData")
-                if (arr != null) {
-                    for (i in 0 until arr.length()) {
-                        val h = arr.getJSONObject(i)
-                        out.add(HomeworkItem(name, html(h.optString("bt")), h.optString("jzsj", "?")))
-                    }
+    fun homeworkPending(): List<HomeworkItem> = perCourse { id, name ->
+        val out = mutableListOf<HomeworkItem>()
+        try {
+            val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
+            val arr = obj?.optJSONArray("aaData")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val h = arr.getJSONObject(i)
+                    out.add(HomeworkItem(name, html(h.optString("bt")), h.optString("jzsj", "?")))
                 }
-            } catch (t: Throwable) {
             }
-            out
-        }.map { it.second }
+        } catch (t: Throwable) {
+        }
+        out
+    }.map { it.second }
 
     /** The agent tool entry point. */
     fun agentCommand(action: String): String = when (action) {

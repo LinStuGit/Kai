@@ -24,7 +24,9 @@ internal fun HomePager(
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
         when (page) {
             0 -> minusOne()
+
             1 -> chat()
+
             else -> drawer {
                 scope.launch { pagerState.animateScrollToPage(1) }
             }

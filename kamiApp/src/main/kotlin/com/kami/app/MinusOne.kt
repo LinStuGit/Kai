@@ -93,39 +93,37 @@ private fun DashCard(title: String, onClick: (() -> Unit)? = null, content: @Com
 }
 
 /** open-meteo (free, no key) pinned to the Tsinghua campus coordinates — 7-day daily. */
-private fun fetchWeather(): Triple<String, List<WeatherDay>, String> {
-    return try {
-        val url = "https://api.open-meteo.com/v1/forecast?latitude=40.0035&longitude=116.3264" +
-            "&current=temperature_2m,weather_code" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-            "&timezone=auto&forecast_days=7"
-        val conn = URL(url).openConnection() as HttpURLConnection
-        try {
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 15_000
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
-            val daily = json.getJSONObject("daily")
-            val times = daily.getJSONArray("time")
-            val codes = daily.getJSONArray("weather_code")
-            val tMin = daily.getJSONArray("temperature_2m_min")
-            val tMax = daily.getJSONArray("temperature_2m_max")
-            val pop = daily.getJSONArray("precipitation_probability_max")
-            val days = (0 until times.length()).map { i ->
-                WeatherDay(
-                    times.optString(i),
-                    codes.optInt(i, -1),
-                    tMin.optDouble(i, 0.0),
-                    tMax.optDouble(i, 0.0),
-                    pop.optInt(i, 0),
-                )
-            }
-            Triple(json.getJSONObject("current").optDouble("temperature_2m", 0.0).toString(), days, "")
-        } finally {
-            conn.disconnect()
+private fun fetchWeather(): Triple<String, List<WeatherDay>, String> = try {
+    val url = "https://api.open-meteo.com/v1/forecast?latitude=40.0035&longitude=116.3264" +
+        "&current=temperature_2m,weather_code" +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+        "&timezone=auto&forecast_days=7"
+    val conn = URL(url).openConnection() as HttpURLConnection
+    try {
+        conn.connectTimeout = 10_000
+        conn.readTimeout = 15_000
+        val json = JSONObject(conn.inputStream.bufferedReader().readText())
+        val daily = json.getJSONObject("daily")
+        val times = daily.getJSONArray("time")
+        val codes = daily.getJSONArray("weather_code")
+        val tMin = daily.getJSONArray("temperature_2m_min")
+        val tMax = daily.getJSONArray("temperature_2m_max")
+        val pop = daily.getJSONArray("precipitation_probability_max")
+        val days = (0 until times.length()).map { i ->
+            WeatherDay(
+                times.optString(i),
+                codes.optInt(i, -1),
+                tMin.optDouble(i, 0.0),
+                tMax.optDouble(i, 0.0),
+                pop.optInt(i, 0),
+            )
         }
-    } catch (t: Throwable) {
-        Triple("", emptyList(), "天气获取失败：" + (t.message ?: t.javaClass.simpleName))
+        Triple(json.getJSONObject("current").optDouble("temperature_2m", 0.0).toString(), days, "")
+    } finally {
+        conn.disconnect()
     }
+} catch (t: Throwable) {
+    Triple("", emptyList(), "天气获取失败：" + (t.message ?: t.javaClass.simpleName))
 }
 
 private val dayFmtIn = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -155,7 +153,9 @@ private fun WeatherCard(onOpen: (List<WeatherDay>) -> Unit) {
     DashCard("天气", onClick = { if (days.isNotEmpty()) onOpen(days) }) {
         when {
             err.isNotEmpty() -> Text(err, style = MaterialTheme.typography.bodySmall)
+
             days.isEmpty() -> Text("天气加载中…", style = MaterialTheme.typography.bodySmall)
+
             else -> {
                 Text(
                     "北京 · 清华  " + weatherDesc(days[0].code) + "  " + cur + "°C",
@@ -247,6 +247,7 @@ private const val FEED_TTL_MS = 10 * 60_000L
 /** Cached campus feed (courses / notifications) shared across swipes. */
 private class FeedCache {
     @Volatile var text: String? = null
+
     @Volatile var at = 0L
 }
 
@@ -325,8 +326,11 @@ private fun TodoCard(onOpen: () -> Unit) {
         val hwNow = hw
         when {
             CampusStore.get() == null -> Text("未登录网络学堂（设置 → 校园账号）", style = MaterialTheme.typography.bodySmall)
+
             hwNote.isNotEmpty() -> Text(hwNote, style = MaterialTheme.typography.bodySmall)
+
             hwNow.isNullOrEmpty() -> Text("暂无未提交作业", style = MaterialTheme.typography.bodySmall)
+
             else -> hwNow.forEach { h ->
                 Text(
                     h.course + "｜" + h.title + "｜截止 " + h.deadline,
@@ -381,7 +385,9 @@ private fun CampusCard(title: String, feed: FeedCache, fetch: suspend () -> Stri
                         )
                     }
                 }
+
                 note.isNotEmpty() -> Text(note, style = MaterialTheme.typography.bodySmall)
+
                 else -> Text("加载中…", style = MaterialTheme.typography.bodySmall)
             }
         }
