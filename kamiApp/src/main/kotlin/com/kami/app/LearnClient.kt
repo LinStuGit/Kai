@@ -6,6 +6,9 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /*
  * learn.tsinghua.edu.cn read-only client — a Kotlin port of thu-learn-lib's
@@ -14,7 +17,15 @@ import java.net.URLEncoder
  * like the WeClaude browser-login export; no password is handled here.
  */
 /** One unsubmitted homework row, for the minus-one todo card. */
-data class HomeworkItem(val course: String, val title: String, val deadline: String)
+data class HomeworkItem(val course: String, val title: String, val deadline: String, val wlkcid: String = "", val zyid: String = "")
+
+/** Epoch seconds/millis ("1790123456") to "MM-dd HH:mm"; anything else passes through. */
+internal fun fmtEpochTs(v: String?): String {
+    val t = v?.trim() ?: return ""
+    if (!Regex("\\d{9,13}").matches(t)) return t
+    val ms = if (t.length >= 13) t.toLong() else t.toLong() * 1000L
+    return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(ms))
+}
 
 internal object LearnClient {
 
@@ -265,7 +276,7 @@ internal object LearnClient {
                         val important = if (n.optString("sfqd") == "1") "｜★重要" else ""
                         out.add(
                             html(n.optString("bt")) + "｜发布 " +
-                                n.optString("fbsjStr").ifBlank { n.optString("fbsj", "?") } + important,
+                                n.optString("fbsjStr").ifBlank { fmtEpochTs(n.optString("fbsj")) } + important,
                         )
                     }
                 } catch (t: Throwable) {
@@ -287,7 +298,7 @@ internal object LearnClient {
                 for (fi in 0 until arr.length()) {
                     val f = arr.getJSONObject(fi)
                     val kb = f.optLong("wjdx") / 1024
-                    out.add(html(f.optString("bt")) + "｜${kb}KB｜上传 " + f.optString("scsj", "?"))
+                    out.add(html(f.optString("bt")) + "｜${kb}KB｜上传 " + fmtEpochTs(f.optString("scsj"))))
                 }
             } catch (t: Throwable) {
             }
@@ -298,21 +309,196 @@ internal object LearnClient {
     }
 
     /** 未提交作业（负一屏待办用）：每课一查，单课失败容忍。 */
-    fun homeworkPending(): List<HomeworkItem> = perCourse { id, name ->
-        val out = mutableListOf<HomeworkItem>()
-        try {
-            val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
-            val arr = obj?.optJSONArray("aaData")
-            if (arr != null) {
-                for (i in 0 until arr.length()) {
-                    val h = arr.getJSONObject(i)
-                    out.add(HomeworkItem(name, html(h.optString("bt")), h.optString("jzsj", "?")))
+    fun homeworkPending(): List<HomeworkItem> =
+        perCourse { id, name ->
+            val out = mutableListOf<HomeworkItem>()
+            try {
+                val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
+                val arr = obj?.optJSONArray("aaData")
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val h = arr.getJSONObject(i)
+                        out.add(
+                        HomeworkItem(
+                            name, html(h.optString("bt")), fmtEpochTs(h.optString("jzsj")), id, h.optString("zyid"),
+                        ),
+                    )
+                    }
+                }
+            } catch (t: Throwable) {
+            }
+            out
+        }.map { it.second }
+
+    /** One announcement row (structured, for the minus-one table + detail). */
+    data class NotifItem(
+        val course: String,
+        val wlkcid: String,
+        val ggid: String,
+        val title: String,
+        val whenStr: String,
+        val important: Boolean,
+        val contentText: String,
+        val attName: String?,
+    )
+
+    /** Structured announcement rows across all courses (base64 ggnr decoded,
+     *  per thu-learn-lib: content ships inside the list JSON itself). */
+    fun notificationRows(): List<NotifItem> =
+        perCourse { id, name ->
+            val out = mutableListOf<NotifItem>()
+            for (suffix in listOf("Wgq", "Ygq")) {
+                try {
+                    val url = "$LEARN/b/wlxt/kcgg/wlkc_ggb/student/pageListXsby$suffix"
+                    val obj = requireOk(postJson(url, pageListForm(id))) ?: continue
+                    val arr = obj.optJSONArray("aaData") ?: continue
+                    for (ni in 0 until arr.length()) {
+                        val n = arr.getJSONObject(ni)
+                        val contentHtml = try {
+                            String(android.util.Base64.decode(n.optString("ggnr"), android.util.Base64.DEFAULT))
+                        } catch (t: Throwable) {
+                            ""
+                        }
+                        out.add(
+                            NotifItem(
+                                course = name,
+                                wlkcid = id,
+                                ggid = n.optString("ggid"),
+                                title = html(n.optString("bt")),
+                                whenStr = n.optString("fbsjStr").ifBlank { fmtEpochTs(n.optString("fbsj")) },
+                                important = n.optString("sfqd") == "1",
+                                contentText = html(contentHtml).trim(),
+                                attName = n.optString("fjmc").ifBlank { null },
+                            ),
+                        )
+                    }
+                } catch (t: Throwable) {
                 }
             }
-        } catch (t: Throwable) {
+            out
+        }.map { it.second }
+
+    /** Announcement attachment download URL (student beforeView page scrape). */
+    fun notificationAttachmentUrl(wlkcid: String, ggid: String): String? {
+        val r = http(
+            "$LEARN/f/wlxt/kcgg/wlkc_ggb/student/beforeViewXs?wlkcid=" +
+                URLEncoder.encode(wlkcid, "UTF-8") + "&id=" + URLEncoder.encode(ggid, "UTF-8"),
+        )
+        val m = Regex("href\\s*=\\s*\"([^\"]*wjid=[^\"]*)\"").find(r.body) ?: return null
+        val path = m.groupValues[1].replace("&amp;", "&")
+        return if (path.startsWith("http")) path else LEARN + path
+    }
+
+    /** Description text of one homework (POST detail, form id=zyid). */
+    fun homeworkDetail(wlkcid: String, zyid: String): String {
+        if (zyid.isBlank()) return "（无作业详情 id）"
+        val json = postJson("$LEARN/b/wlxt/kczy/zy/student/detail", "id=" + URLEncoder.encode(zyid, "UTF-8"))
+        if (json.optString("result") != "success") throw Exception("作业详情返回异常")
+        val msg = html(json.optString("msg")).trim()
+        return msg.ifBlank { "（无文字描述）" }
+    }
+
+    /** One course-file row (structured, for per-course tables + download). */
+    data class FileRow(val wjid: String, val title: String, val sizeKb: Long, val uploaded: String, val desc: String)
+
+    /** Course file list for the minus-one course drill-down. */
+    fun courseFiles(wlkcid: String): List<FileRow> {
+        seedFromStore()
+        val obj = requireOk(
+            getJson("$LEARN/b/wlxt/kj/wlkc_kjxxb/student/kjxxbByWlkcidAndSizeForStudent?wlkcid=$wlkcid&size=$MAX_SIZE"),
+        )
+        val arr = obj?.optJSONArray("resultsList") ?: obj?.optJSONArray("object") ?: JSONArray()
+        val out = mutableListOf<FileRow>()
+        for (fi in 0 until arr.length()) {
+            val f = arr.getJSONObject(fi)
+            out.add(
+                FileRow(
+                    wjid = f.optString("wjid"),
+                    title = html(f.optString("bt")),
+                    sizeKb = f.optLong("wjdx") / 1024,
+                    uploaded = fmtEpochTs(f.optString("scsj")),
+                    desc = html(f.optString("ms")).trim(),
+                ),
+            )
         }
-        out
-    }.map { it.second }
+        return out
+    }
+
+    /** Stream `url` (cookie-authenticated) into Download/Kami (MediaStore on 29+). */
+    fun downloadToFile(context: android.content.Context, url: String, name: String): String {
+        seedFromStore()
+        val u = URL(url)
+        val conn = (u.openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 60_000
+            instanceFollowRedirects = true
+            setRequestProperty("Cookie", cookieHeader(u.host))
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36")
+        }
+        try {
+            if (conn.responseCode !in 200..299) throw Exception("HTTP " + conn.responseCode)
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                val cv = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, name)
+                    put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeOf(name))
+                    put(
+                        android.provider.MediaStore.Downloads.RELATIVE_PATH,
+                        android.os.Environment.DIRECTORY_DOWNLOADS + "/Kami",
+                    )
+                }
+                val uri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv)
+                    ?: throw Exception("系统拒绝写入 Download/Kami")
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    conn.inputStream.use { it.copyTo(out) }
+                } ?: throw Exception("无法打开输出流")
+                return "已下载到 Download/Kami/：$name"
+            }
+            val dir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+            val f = java.io.File(dir, name)
+            conn.inputStream.use { input -> f.outputStream().use { input.copyTo(it) } }
+            return "已下载到应用目录：" + f.absolutePath
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "pdf" -> "application/pdf"
+        "doc" -> "application/msword"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "ppt" -> "application/vnd.ms-powerpoint"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "xls" -> "application/vnd.ms-excel"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "zip", "rar", "7z" -> "application/zip"
+        "txt" -> "text/plain"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "mp4" -> "video/mp4"
+        else -> "application/octet-stream"
+    }
+
+    /** One course row (structured, for the minus-one course table). */
+    data class CourseRow(val wlkcid: String, val name: String, val teacher: String, val kch: String)
+
+    /** Structured course list for the minus-one courses card. */
+    fun courseList(): List<CourseRow> {
+        seedFromStore()
+        val rows = courseRows(currentSemesterId())
+        val out = mutableListOf<CourseRow>()
+        for (ci in 0 until rows.length()) {
+            val c = rows.getJSONObject(ci)
+            out.add(
+                CourseRow(
+                    wlkcid = c.optString("wlkcid"),
+                    name = html(c.optString("kcm").ifBlank { c.optString("zywkcm") }),
+                    teacher = c.optString("jsm", "").ifBlank { "?" },
+                    kch = c.optString("kch"),
+                ),
+            )
+        }
+        return out
+    }
 
     /** The agent tool entry point. */
     fun agentCommand(action: String): String = when (action) {

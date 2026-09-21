@@ -70,6 +70,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -291,7 +294,7 @@ private val SETTINGS_ENTRIES = listOf(
     SettingsEntry("系统提示词", "自定义 agent 人设与规则 · 留空恢复默认", "set-prompt"),
     SettingsEntry("定时任务", "每日提醒 · 重要任务震动直达", "set-tasks"),
     SettingsEntry("沙箱管理", "内置 Alpine · 安装与状态", "set-sandbox"),
-    SettingsEntry("校园账号", "清华网络学堂 · 课程/作业/公告", "set-campus"),
+    SettingsEntry("校园账号", "网络学堂 / 荷塘雨课堂 · 课程/作业", "set-campus"),
     SettingsEntry("拓展与技能", "shell 拓展 · 提示词技能模板 · 内置能力", "set-ext"),
     SettingsEntry("记忆管理", "agent 持久记忆 · 查看/删除", "set-memory"),
     SettingsEntry("权限管理", "运行时权限 · 特殊访问", "set-perms"),
@@ -446,16 +449,22 @@ class MainActivity : FragmentActivity() {
                     screen.value.startsWith("set-") -> "settings"
                     screen.value.startsWith("dyn:") -> "settings"
                     screen.value == "campus-login" -> "settings"
+                    screen.value == "yk-login" -> "settings"
                     else -> "chat"
                 }
             }
 
             // Hot-reload signal for the config-driven UI: the polling loop
-            // bumps uiRev whenever kami_ui.json changes on disk.
-            LaunchedEffect(Unit) {
-                while (true) {
-                    kotlinx.coroutines.delay(1500)
-                    uiRev.value = UiConfigStore.mtime()
+            // bumps uiRev whenever kami_ui.json changes on disk. Gated on
+            // STARTED — a launcher app spends most of its life in the
+            // background and the naked loop kept waking the CPU for stats.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            LaunchedEffect(lifecycleOwner) {
+                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    while (true) {
+                        kotlinx.coroutines.delay(1500)
+                        uiRev.value = UiConfigStore.mtime()
+                    }
                 }
             }
             WebViewer.open = { url ->
@@ -510,9 +519,10 @@ class MainActivity : FragmentActivity() {
 
                             "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
 
-                            "set-campus" -> SubPage("校园账号") { CampusSection(onLogin = { screen.value = "campus-login" }) }
+                            "set-campus" -> SubPage("校园账号") { CampusSection(onLogin = { screen.value = "campus-login" }, onLoginYk = { screen.value = "yk-login" }) }
 
                             "campus-login" -> CampusLoginScreen(onBack = { screen.value = "settings" })
+                            "yk-login" -> YuketangLoginScreen(onBack = { screen.value = "settings" })
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
 

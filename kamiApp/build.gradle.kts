@@ -22,8 +22,8 @@ android {
                 .get()
                 .toInt()
         // Bump versionCode/versionName on every release.
-        versionCode = 25
-        versionName = "1.24"
+        versionCode = 26
+        versionName = "1.25"
     }
 
     // Debug builds are signed with the keystore committed at keystore/
@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.compose.material3)
     implementation(libs.androidx.foundation.android)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
     implementation(libs.shizuku.aidl)

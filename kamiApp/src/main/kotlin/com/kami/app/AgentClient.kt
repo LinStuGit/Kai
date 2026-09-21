@@ -49,6 +49,7 @@ object AgentClient {
             "技能模板；ui_config 读写界面配置 JSON——用户要求改界面排版、配色、黑夜模式、主页控件或增删设置子页时，" +
             "先 action=get 拿到当前格式，再 action=set 写回，保存后界面即时生效（theme/darkTheme/home/hidden/pages）；" +
             "campus 查清华网络学堂（课程/作业/公告/文件，用户需先在设置里完成校园账号 WebView 登录）；" +
+            "yuketang 查荷塘雨课堂（课程/作业/考试截止，用户需在 设置→校园账号 点「登录雨课堂」完成 WebView 登录）；" +
             "overlay_show 可在悬浮窗向用户展示网页/HTML（含内联 SVG 图表）/本地图片，" +
             "适合把可视化结果直接呈现在用户眼前。" +
             "屏幕操作要点：先 read_screen 定位（它会收起 Kami 悬浮球面板并收起键盘，" +
@@ -88,6 +89,7 @@ object AgentClient {
           {"type":"function","function":{"name":"ui_config","description":"读写 App 界面配置 JSON：theme 设置主题颜色（hex）；darkTheme 填 dark/light/空（空=跟随系统黑夜模式）；home 是主页下方控件列表；hidden 隐藏设置项（填入口路由如 set-perms 或子页 id）；pages 增删设置子页（widgets: header/text/link/button/switch）。保存后界面即时生效。改界面前先 action=get 看当前格式","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["get","set","reset"],"description":"get 读当前配置，set 写入 json 参数，reset 恢复默认"},"json":{"type":"string","description":"action=set 时的完整配置 JSON 文本"}},"required":["action"]}}},
           {"type":"function","function":{"name":"overlay_show","description":"在悬浮窗中显示内容（覆盖在任意应用上方）：url 打开网页、html 直接渲染（可用内联 SVG/图表）、image 显示本地图片文件。图表/可视化结果优先用 html+内联 SVG。hide 收起","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["show","hide"],"description":"默认 show"},"url":{"type":"string","description":"要打开的网页地址"},"html":{"type":"string","description":"要渲染的 HTML 片段（支持内联 SVG 图表）"},"image":{"type":"string","description":"本地图片文件路径"},"title":{"type":"string","description":"内容标题，可省略"}}}}},
           {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}}
+          {"type":"function","function":{"name":"yuketang","description":"荷塘雨课堂（pro.yuketang.cn）只读数据面：action=courses 课程列表；assignments 作业与考试（含截止时间）；status 登录状态。未登录时返回指引——让用户去 设置→校园账号 点「登录雨课堂」完成一次 WebView 登录，不要反复重试。只读：不代答题、不代提交","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","assignments"],"description":"默认 status"}},"required":["action"]}}}
         ]
         """.trimIndent(),
     )
@@ -441,6 +443,12 @@ object AgentClient {
                 LearnClient.agentCommand(args.optString("action", "status"))
             } catch (t: Throwable) {
                 "campus 查询失败：${t.message} — 若为会话问题，让用户在 设置→校园账号 重新登录"
+            }
+
+            "yuketang" -> try {
+                YuketangClient.agentCommand(args.optString("action", "status"))
+            } catch (t: Throwable) {
+                "yuketang 查询失败：${t.message} — 若为登录问题，让用户在 设置→校园账号 重新登录雨课堂"
             }
 
             "memory_save" -> {

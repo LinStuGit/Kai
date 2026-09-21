@@ -93,13 +93,18 @@ object CalendarTools {
         val rows = mutableListOf<EventRow>()
         context.contentResolver.query(
             Events.CONTENT_URI,
-            arrayOf(Events.TITLE, Events.DTSTART, Events.DTEND),
+            arrayOf(Events.TITLE, Events.DTSTART, Events.DTEND, Events.EVENT_LOCATION, Events.DESCRIPTION),
             "${Events.DTSTART} >= ? AND ${Events.DTSTART} <= ?",
             arrayOf(now.toString(), end.toString()),
             "${Events.DTSTART} ASC",
         )?.use { c ->
             while (c.moveToNext() && rows.size < 50) {
-                rows.add(EventRow(c.getLong(1), c.getLong(2), c.getString(0) ?: "(无标题)"))
+                rows.add(
+                    EventRow(
+                        c.getLong(1), c.getLong(2), c.getString(0) ?: "(无标题)",
+                        c.getString(3) ?: "", c.getString(4) ?: "",
+                    ),
+                )
             }
         }
         return rows
@@ -107,4 +112,10 @@ object CalendarTools {
 }
 
 /** One agenda row for the minus-one table (structured, unlike [CalendarTools.listEvents]). */
-data class EventRow(val start: Long, val end: Long, val title: String)
+data class EventRow(
+    val start: Long,
+    val end: Long,
+    val title: String,
+    val location: String,
+    val desc: String,
+)
