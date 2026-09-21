@@ -982,7 +982,7 @@ class MainActivity : FragmentActivity() {
                 )
             }
             Text(
-                "kami_ui.json：theme 配主题色（hex）；darkTheme=dark/light/空（空=跟随系统黑夜模式）；home 主页控件；hidden 隐藏设置项；pages 增删子页（widgets: header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。
+                "kami_ui.json：theme 配主题色（hex）；darkTheme=dark/light/空（空=跟随系统黑夜模式）；home 主页控件；hidden 隐藏设置项；pages 增删子页（widgets: header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
