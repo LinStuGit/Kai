@@ -201,8 +201,24 @@ object AgentClient {
             val code = conn.responseCode
             val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.readText().orEmpty()
-            val payload = if (code in 200..299) JSONObject(text) else JSONObject()
-            return SendResult(code, text, payload)
+            if (code in 200..299) {
+                // 网关过载/模型不可用时 HTTP 200 也可能只给错误信封（无 choices），
+                // 偶发 5xx 则是 HTML——都给出可读错误而不是 JSONException。
+                val payload = try {
+                    JSONObject(text)
+                } catch (t: Throwable) {
+                    throw IOException("模型 " + cfg.model + " 返回非 JSON（HTTP " + code + "）：" + text.take(120))
+                }
+                if (!payload.has("choices")) {
+                    val srv = payload.optString("message").ifBlank { text.take(150) }
+                    throw IOException(
+                        "模型 " + cfg.model + " 未返回结果：" + srv +
+                            " — 可能网关过载或模型暂不可用，可在 设置 → Agent 模型 换模型重试",
+                    )
+                }
+                return SendResult(code, text, payload)
+            }
+            return SendResult(code, text, JSONObject())
         } finally {
             liveConns.remove(conn)
             conn.disconnect()
@@ -248,7 +264,16 @@ object AgentClient {
             val text = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.readText().orEmpty()
             if (code !in 200..299) return "HTTP $code: ${text.take(200)}"
-            val reply = JSONObject(text).optJSONArray("choices")?.optJSONObject(0)
+            val json = try {
+                JSONObject(text)
+            } catch (t: Throwable) {
+                return "返回非 JSON（HTTP $code）：${text.take(150)}"
+            }
+            if (!json.has("choices")) {
+                return "未返回结果：" + json.optString("message").ifBlank { text.take(150) } +
+                    "（网关过载或模型暂不可用）"
+            }
+            val reply = json.optJSONArray("choices")?.optJSONObject(0)
                 ?.optJSONObject("message")?.optString("content").orEmpty()
             return if (reply.isBlank()) {
                 "连接成功（HTTP 200，模型 ${cfg.model}）— reasoning 模型可能无可见回复，通即可"

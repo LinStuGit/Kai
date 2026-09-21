@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ internal fun ChatScreen(
     onTerminal: () -> Unit,
     onSettings: () -> Unit,
     onArchive: () -> Unit,
+    onApps: () -> Unit = {},
     homeWidgets: List<UiConfigStore.Widget> = emptyList(),
     onTarget: (String) -> Unit = {},
 ) {
@@ -88,7 +90,8 @@ internal fun ChatScreen(
     // NOTE: sensitive-gate (biometric) resolving moved to MainActivity's root
     // composables — it must stay alive on every screen, not just the home.
 
-    var input by remember(session.id) { mutableStateOf("") }
+    // rememberSaveable: pager disposes offscreen pages, draft must survive the swipe.
+    var input by rememberSaveable(session.id) { mutableStateOf("") }
     val listState = rememberLazyListState()
     val lines = session.lines
     val entries = remember(lines) { buildEntries(lines) }
@@ -111,6 +114,7 @@ internal fun ChatScreen(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
+            TextButton(onClick = onApps) { Text("应用") }
             TextButton(onClick = onTerminal) { Text("终端") }
             TextButton(onClick = onSettings) { Text("设置") }
         }
