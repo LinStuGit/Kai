@@ -62,7 +62,7 @@ dependencies {
     // a real org.json so JSONObject/JSONArray behave like on-device.
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.20")
-    testImplementation("org.json:json:20240305")
+    testImplementation("org.json:json:20240303")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.biometric)
     implementation(libs.compose.material3)
