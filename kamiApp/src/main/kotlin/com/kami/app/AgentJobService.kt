@@ -49,21 +49,27 @@ class AgentJobService : Service() {
                 // 闹钟可能直接唤醒进程（无 MainActivity），补齐存储初始化
                 ReminderStore.init(this@AgentJobService)
                 SessionStore.init(this@AgentJobService)
-                val reply = try {
-                    AgentClient.turn("job:" + id, this@AgentJobService, JSONArray(), prompt) { ev ->
-                        progressText = ev.take(120)
-                        notifyBar("Kami 定时任务运行中", progressText, ongoing = true)
+                // turn 是 suspend：后台线程里用 runBlocking 提供协程环境
+                val outcome = runBlocking {
+                    try {
+                        val reply = AgentClient.turn("job:" + id, this@AgentJobService, JSONArray(), prompt) { ev ->
+                            progressText = ev.take(120)
+                            notifyBar("Kami 定时任务运行中", progressText, ongoing = true)
+                        }
+                        reply.text
+                    } catch (t: Throwable) {
+                        null
                     }
-                } catch (t: Throwable) {
+                }
+                if (outcome == null) {
                     notifyBar(
                         "定时任务失败：" + (r?.title ?: id),
-                        (t.message ?: t.javaClass.simpleName).take(300),
+                        "agent 执行失败——可能模型/网络不可用，详情见下次会话",
                         ongoing = false,
                     )
-                    Vibe.once(this@AgentJobService, 400)
-                    return@thread
+                } else {
+                    notifyBar("定时任务完成：" + (r?.title ?: id), outcome.take(300), ongoing = false)
                 }
-                notifyBar("定时任务完成：" + (r?.title ?: id), reply.content.take(300), ongoing = false)
                 Vibe.once(this@AgentJobService, 400)
             } finally {
                 inFlight.remove(id)
