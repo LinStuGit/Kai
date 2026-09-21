@@ -1,7 +1,5 @@
 package com.kami.app
 
-import java.net.HttpURLConnection
-import java.net.URL
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /** Short Chinese blurb for a WMO weather code (open-meteo). */
 private fun weatherDesc(code: Int): String = when (code) {
