@@ -210,7 +210,12 @@ internal fun TimetableScreen() {
         }
         when (view) {
             "month" -> MonthView(data, today, monthOffset, onOffset = { monthOffset = it })
-            "year" -> YearView(data, today, onMonth = { monthOffset = it; view = "month" })
+
+            "year" -> YearView(data, today, onMonth = {
+                monthOffset = it
+                view = "month"
+            })
+
             else -> WeekView(data, today, weekOffset, onOffset = { weekOffset = it })
         }
     }
@@ -289,8 +294,11 @@ private fun WeekView(data: TimetableStore.Data, today: LocalDate, offset: Int, o
                             .fillMaxHeight()
                             .padding(1.dp)
                             .background(
-                                if (slot != null) MaterialTheme.colorScheme.secondaryContainer
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                if (slot != null) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                },
                                 RoundedCornerShape(6.dp),
                             )
                             .clickable { if (slot != null) selected = slot },

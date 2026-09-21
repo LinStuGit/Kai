@@ -329,7 +329,7 @@ private fun weatherDetail(): Detail = Detail("天气 · 未来 7 天") {
 // ---- agenda (calendar) ----
 
 private fun agendaTableRows(rows: List<EventRow>): List<List<String>> = rows.map { r ->
-    listOf(fmtDate(r.start) + " " + fmtTime(r.start, r.end), r.location.ifBlank { "—"}, r.title)
+    listOf(fmtDate(r.start) + " " + fmtTime(r.start, r.end), r.location.ifBlank { "—" }, r.title)
 }
 
 private fun eventDetail(idx: Int): Detail {
