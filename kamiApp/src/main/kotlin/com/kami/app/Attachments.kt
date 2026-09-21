@@ -3,9 +3,9 @@ package com.kami.app
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import java.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Base64
 
 /** A resolved attachment: text files keep decoded content, images a base64 payload. */
 data class AttachmentPayload(
@@ -60,11 +60,13 @@ object Attachments {
                 } else {
                     AttachmentPayload(name, mime.ifBlank { "image/png" }, null, Base64.getEncoder().encodeToString(bytes))
                 }
+
             isTextMime(mime, name) -> {
                 val full = String(bytes, 0, minOf(bytes.size, MAX_TEXT_BYTES), Charsets.UTF_8)
                 val body = if (full.length > MAX_TEXT_CHARS) full.take(MAX_TEXT_CHARS) + "\n…（超长截断）" else full
                 AttachmentPayload(name, mime.ifBlank { "text/plain" }, body, null)
             }
+
             else -> null
         }
     }
@@ -129,6 +131,5 @@ object Attachments {
     }
 
     /** Short transcript suffix, e.g. "\n📎 a.txt、b.png". */
-    fun summary(names: List<String>): String =
-        if (names.isEmpty()) "" else "\n📎 " + names.joinToString("、")
+    fun summary(names: List<String>): String = if (names.isEmpty()) "" else "\n📎 " + names.joinToString("、")
 }
