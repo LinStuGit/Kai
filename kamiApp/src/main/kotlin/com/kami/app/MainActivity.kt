@@ -69,10 +69,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
@@ -521,6 +521,7 @@ class MainActivity : FragmentActivity() {
                             "set-campus" -> SubPage("校园账号") { CampusSection(onLogin = { screen.value = "campus-login" }, onLoginYk = { screen.value = "yk-login" }) }
 
                             "campus-login" -> CampusLoginScreen(onBack = { screen.value = "settings" })
+
                             "yk-login" -> YuketangLoginScreen(onBack = { screen.value = "settings" })
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }

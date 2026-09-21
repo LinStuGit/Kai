@@ -309,26 +309,29 @@ internal object LearnClient {
     }
 
     /** 未提交作业（负一屏待办用）：每课一查，单课失败容忍。 */
-    fun homeworkPending(): List<HomeworkItem> =
-        perCourse { id, name ->
-            val out = mutableListOf<HomeworkItem>()
-            try {
-                val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
-                val arr = obj?.optJSONArray("aaData")
-                if (arr != null) {
-                    for (i in 0 until arr.length()) {
-                        val h = arr.getJSONObject(i)
-                        out.add(
+    fun homeworkPending(): List<HomeworkItem> = perCourse { id, name ->
+        val out = mutableListOf<HomeworkItem>()
+        try {
+            val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
+            val arr = obj?.optJSONArray("aaData")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val h = arr.getJSONObject(i)
+                    out.add(
                         HomeworkItem(
-                            name, html(h.optString("bt")), fmtEpochTs(h.optString("jzsj")), id, h.optString("zyid"),
+                            name,
+                            html(h.optString("bt")),
+                            fmtEpochTs(h.optString("jzsj")),
+                            id,
+                            h.optString("zyid"),
                         ),
                     )
-                    }
                 }
-            } catch (t: Throwable) {
             }
-            out
-        }.map { it.second }
+        } catch (t: Throwable) {
+        }
+        out
+    }.map { it.second }
 
     /** One announcement row (structured, for the minus-one table + detail). */
     data class NotifItem(
@@ -344,39 +347,38 @@ internal object LearnClient {
 
     /** Structured announcement rows across all courses (base64 ggnr decoded,
      *  per thu-learn-lib: content ships inside the list JSON itself). */
-    fun notificationRows(): List<NotifItem> =
-        perCourse { id, name ->
-            val out = mutableListOf<NotifItem>()
-            for (suffix in listOf("Wgq", "Ygq")) {
-                try {
-                    val url = "$LEARN/b/wlxt/kcgg/wlkc_ggb/student/pageListXsby$suffix"
-                    val obj = requireOk(postJson(url, pageListForm(id))) ?: continue
-                    val arr = obj.optJSONArray("aaData") ?: continue
-                    for (ni in 0 until arr.length()) {
-                        val n = arr.getJSONObject(ni)
-                        val contentHtml = try {
-                            String(android.util.Base64.decode(n.optString("ggnr"), android.util.Base64.DEFAULT))
-                        } catch (t: Throwable) {
-                            ""
-                        }
-                        out.add(
-                            NotifItem(
-                                course = name,
-                                wlkcid = id,
-                                ggid = n.optString("ggid"),
-                                title = html(n.optString("bt")),
-                                whenStr = n.optString("fbsjStr").ifBlank { fmtEpochTs(n.optString("fbsj")) },
-                                important = n.optString("sfqd") == "1",
-                                contentText = html(contentHtml).trim(),
-                                attName = n.optString("fjmc").ifBlank { null },
-                            ),
-                        )
+    fun notificationRows(): List<NotifItem> = perCourse { id, name ->
+        val out = mutableListOf<NotifItem>()
+        for (suffix in listOf("Wgq", "Ygq")) {
+            try {
+                val url = "$LEARN/b/wlxt/kcgg/wlkc_ggb/student/pageListXsby$suffix"
+                val obj = requireOk(postJson(url, pageListForm(id))) ?: continue
+                val arr = obj.optJSONArray("aaData") ?: continue
+                for (ni in 0 until arr.length()) {
+                    val n = arr.getJSONObject(ni)
+                    val contentHtml = try {
+                        String(android.util.Base64.decode(n.optString("ggnr"), android.util.Base64.DEFAULT))
+                    } catch (t: Throwable) {
+                        ""
                     }
-                } catch (t: Throwable) {
+                    out.add(
+                        NotifItem(
+                            course = name,
+                            wlkcid = id,
+                            ggid = n.optString("ggid"),
+                            title = html(n.optString("bt")),
+                            whenStr = n.optString("fbsjStr").ifBlank { fmtEpochTs(n.optString("fbsj")) },
+                            important = n.optString("sfqd") == "1",
+                            contentText = html(contentHtml).trim(),
+                            attName = n.optString("fjmc").ifBlank { null },
+                        ),
+                    )
                 }
+            } catch (t: Throwable) {
             }
-            out
-        }.map { it.second }
+        }
+        out
+    }.map { it.second }
 
     /** Announcement attachment download URL (student beforeView page scrape). */
     fun notificationAttachmentUrl(wlkcid: String, ggid: String): String? {

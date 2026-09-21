@@ -139,7 +139,7 @@ private fun DashTable(
                         Modifier.clickable { onTag(tags[ri]) }
                     } else {
                         Modifier
-                    }
+                    },
                 )
                 .padding(vertical = if (dense) 3.dp else 5.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -168,41 +168,39 @@ private var weatherDays: List<WeatherDay> = emptyList()
 private var weatherCur = ""
 private var weatherAt = 0L
 
-private fun fetchWeather(): Boolean {
-    return try {
-        val url = "https://api.open-meteo.com/v1/forecast?latitude=40.0035&longitude=116.3264" +
-            "&current=temperature_2m,weather_code" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-            "&timezone=auto&forecast_days=7"
-        val conn = URL(url).openConnection() as HttpURLConnection
-        try {
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 15_000
-            val json = JSONObject(conn.inputStream.bufferedReader().readText())
-            val daily = json.getJSONObject("daily")
-            val times = daily.getJSONArray("time")
-            val codes = daily.getJSONArray("weather_code")
-            val tMin = daily.getJSONArray("temperature_2m_min")
-            val tMax = daily.getJSONArray("temperature_2m_max")
-            val pop = daily.getJSONArray("precipitation_probability_max")
-            weatherDays = (0 until times.length()).map { i ->
-                WeatherDay(
-                    times.optString(i),
-                    codes.optInt(i, -1),
-                    tMin.optDouble(i, 0.0),
-                    tMax.optDouble(i, 0.0),
-                    pop.optInt(i, 0),
-                )
-            }
-            weatherCur = json.getJSONObject("current").optDouble("temperature_2m", 0.0).toString()
-            weatherAt = System.currentTimeMillis()
-            true
-        } finally {
-            conn.disconnect()
+private fun fetchWeather(): Boolean = try {
+    val url = "https://api.open-meteo.com/v1/forecast?latitude=40.0035&longitude=116.3264" +
+        "&current=temperature_2m,weather_code" +
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+        "&timezone=auto&forecast_days=7"
+    val conn = URL(url).openConnection() as HttpURLConnection
+    try {
+        conn.connectTimeout = 10_000
+        conn.readTimeout = 15_000
+        val json = JSONObject(conn.inputStream.bufferedReader().readText())
+        val daily = json.getJSONObject("daily")
+        val times = daily.getJSONArray("time")
+        val codes = daily.getJSONArray("weather_code")
+        val tMin = daily.getJSONArray("temperature_2m_min")
+        val tMax = daily.getJSONArray("temperature_2m_max")
+        val pop = daily.getJSONArray("precipitation_probability_max")
+        weatherDays = (0 until times.length()).map { i ->
+            WeatherDay(
+                times.optString(i),
+                codes.optInt(i, -1),
+                tMin.optDouble(i, 0.0),
+                tMax.optDouble(i, 0.0),
+                pop.optInt(i, 0),
+            )
         }
-    } catch (t: Throwable) {
-        false
+        weatherCur = json.getJSONObject("current").optDouble("temperature_2m", 0.0).toString()
+        weatherAt = System.currentTimeMillis()
+        true
+    } finally {
+        conn.disconnect()
     }
+} catch (t: Throwable) {
+    false
 }
 
 private val dayFmtIn = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -365,8 +363,7 @@ private fun fmtTime(start: Long, end: Long): String {
 
 // ---- todo: reminders + learn homework + yuketang assignments ----
 
-private fun <T> fresh(cache: T?, at: Long, ttl: Long = FEED_TTL_MS): Boolean =
-    cache != null && System.currentTimeMillis() - at <= ttl
+private fun <T> fresh(cache: T?, at: Long, ttl: Long = FEED_TTL_MS): Boolean = cache != null && System.currentTimeMillis() - at <= ttl
 
 @Composable
 private fun TodoCard(onOpen: (Detail) -> Unit) {
@@ -440,8 +437,11 @@ private fun TodoCard(onOpen: (Detail) -> Unit) {
         Text("网络学堂 · 未提交作业", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             CampusStore.get() == null -> Text("未登录网络学堂（设置 → 校园账号）", style = MaterialTheme.typography.bodySmall)
+
             hw == null -> Text(if (hwRev == 0) "加载中…" else "获取失败（需校园网；会话失效时重登）", style = MaterialTheme.typography.bodySmall)
+
             hw.isEmpty() -> Text("暂无未提交作业", style = MaterialTheme.typography.bodySmall)
+
             else -> DashTable(
                 listOf("课程", "作业", "截止"),
                 listOf(2.2f, 3f, 2.2f),
@@ -457,8 +457,11 @@ private fun TodoCard(onOpen: (Detail) -> Unit) {
         Text("雨课堂 · 作业/考试", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             YuketangClient.cookie().isBlank() -> Text("未登录雨课堂（设置 → 校园账号）", style = MaterialTheme.typography.bodySmall)
+
             yk == null -> Text(if (ykRev == 0) "加载中…" else "获取失败（下拉重试或重新登录）", style = MaterialTheme.typography.bodySmall)
+
             yk.isEmpty() -> Text("暂无雨课堂作业/考试", style = MaterialTheme.typography.bodySmall)
+
             else -> DashTable(
                 listOf("课程", "条目", "截止"),
                 listOf(2.2f, 3f, 2.2f),
@@ -558,7 +561,9 @@ private fun CoursesCard(onOpen: (Detail) -> Unit) {
         } else {
             when {
                 courses == null -> Text(if (rev == 0) "加载中…" else "获取失败（需校园网；会话失效时重登）", style = MaterialTheme.typography.bodySmall)
+
                 courses.isEmpty() -> Text("（本学期无课程）", style = MaterialTheme.typography.bodySmall)
+
                 else -> {
                     DashTable(
                         listOf("课程", "教师", "课号"),
@@ -645,7 +650,9 @@ private fun NoticesCard(onOpen: (Detail) -> Unit) {
         } else {
             when {
                 notices == null -> Text(if (rev == 0) "加载中…" else "获取失败（需校园网；会话失效时重登）", style = MaterialTheme.typography.bodySmall)
+
                 notices.isEmpty() -> Text("（无课程公告）", style = MaterialTheme.typography.bodySmall)
+
                 else -> {
                     DashTable(
                         listOf("课程", "公告", "日期"),

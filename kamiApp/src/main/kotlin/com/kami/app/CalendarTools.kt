@@ -101,8 +101,11 @@ object CalendarTools {
             while (c.moveToNext() && rows.size < 50) {
                 rows.add(
                     EventRow(
-                        c.getLong(1), c.getLong(2), c.getString(0) ?: "(无标题)",
-                        c.getString(3) ?: "", c.getString(4) ?: "",
+                        c.getLong(1),
+                        c.getLong(2),
+                        c.getString(0) ?: "(无标题)",
+                        c.getString(3) ?: "",
+                        c.getString(4) ?: "",
                     ),
                 )
             }

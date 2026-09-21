@@ -99,8 +99,7 @@ internal object YuketangClient {
         return data.optJSONArray("list") ?: JSONArray()
     }
 
-    private fun courseName(c: JSONObject): String =
-        c.optString("name").ifBlank { c.optJSONObject("course")?.optString("name", "雨课堂课程") ?: "雨课堂课程" }
+    private fun courseName(c: JSONObject): String = c.optString("name").ifBlank { c.optJSONObject("course")?.optString("name", "雨课堂课程") ?: "雨课堂课程" }
 
     fun courses(): String {
         val rows = courseList()
@@ -118,6 +117,7 @@ internal object YuketangClient {
     fun status(): String = when {
         cookie().isBlank() ->
             "未登录雨课堂：请让用户在 设置 → 校园账号 点「登录雨课堂」完成 WebView 登录"
+
         else -> try {
             courseList()
             "已登录雨课堂，可查 courses/assignments"
@@ -151,8 +151,10 @@ internal object YuketangClient {
             for (page0 in 0 until MAX_PAGES) {
                 val acts: JSONArray? = try {
                     dataOf(
-                        http("/v2/api/web/logs/learn/" + java.net.URLEncoder.encode(cid, "UTF-8") +
-                            "?page=" + page0 + "&offset=" + PAGE_SIZE + "&sort=0&actype=-1"),
+                        http(
+                            "/v2/api/web/logs/learn/" + java.net.URLEncoder.encode(cid, "UTF-8") +
+                                "?page=" + page0 + "&offset=" + PAGE_SIZE + "&sort=0&actype=-1",
+                        ),
                         "学习日志格式异常",
                     ).optJSONArray("activities")
                 } catch (t: Throwable) {
