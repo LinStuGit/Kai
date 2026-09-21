@@ -61,7 +61,7 @@ object AgentClient {
 
     private val TOOLS: JSONArray = try {
         JSONArray(
-        """
+            """
         [
           {"type":"function","function":{"name":"run_shell","description":"在手机上以 shell uid（Shizuku，免 root）执行命令；支持 ; && 串联与管道","parameters":{"type":"object","properties":{"command":{"type":"string","description":"shell 命令"}},"required":["command"]}}},
           {"type":"function","function":{"name":"web_search","description":"联网搜索（Bing，DuckDuckGo 兜底），返回标题/链接/摘要。查资料、新闻、文档时用","parameters":{"type":"object","properties":{"query":{"type":"string","description":"搜索关键词"}},"required":["query"]}}},
@@ -92,7 +92,7 @@ object AgentClient {
           {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}},
           {"type":"function","function":{"name":"yuketang","description":"荷塘雨课堂（pro.yuketang.cn）只读数据面：action=courses 课程列表；assignments 作业与考试（含截止时间）；status 登录状态。未登录时返回指引——让用户去 设置→校园账号 点「登录雨课堂」完成一次 WebView 登录，不要反复重试。只读：不代答题、不代提交","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","assignments"],"description":"默认 status"}},"required":["action"]}}}
         ]
-        """.trimIndent(),
+            """.trimIndent(),
         )
     } catch (t: Throwable) {
         // 一个 schema 拼写错误不该砸掉整个 agent（1.25 教训：campus 行少个逗号 →

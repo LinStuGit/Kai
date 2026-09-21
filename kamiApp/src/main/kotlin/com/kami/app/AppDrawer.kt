@@ -133,11 +133,13 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
                     }
                     // 字母桶为主序（A-Z，# 殿后），桶内 zh Collator——zh 拼音序与音译
                     // 首字母可能不一致，纯 Collator 排序会把同字母段切碎、侧栏乱序
-                    .sortedWith(Comparator { a, b ->
-                        val ra = RANKS.indexOf(a.letter)
-                        val rb = RANKS.indexOf(b.letter)
-                        if (ra != rb) ra - rb else collator.compare(a.label, b.label)
-                    })
+                    .sortedWith(
+                        Comparator { a, b ->
+                            val ra = RANKS.indexOf(a.letter)
+                            val rb = RANKS.indexOf(b.letter)
+                            if (ra != rb) ra - rb else collator.compare(a.label, b.label)
+                        },
+                    )
             }
             appCache = list
             apps = list
