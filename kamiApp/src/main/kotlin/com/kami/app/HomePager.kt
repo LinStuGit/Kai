@@ -11,8 +11,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Home pager with the chat page in the middle: right-swipe to the
- * minus-one dashboard (and once more for the minus-two timetable),
- * left-swipe to the app drawer.
+ * minus-one dashboard, right-swipe once more (from the left edge of
+ * minus-one) to the minus-two timetable, left-swipe to the app drawer.
  */
 @Composable
 internal fun HomePager(
@@ -21,23 +21,23 @@ internal fun HomePager(
     minusTwo: @Composable () -> Unit,
     drawer: @Composable (goHome: () -> Unit) -> Unit,
 ) {
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 4 })
+    val pagerState = rememberPagerState(initialPage = 2, pageCount = { 4 })
     val scope = rememberCoroutineScope()
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
         when (page) {
-            0 -> minusOne()
+            0 -> minusTwo()
 
-            1 -> chat()
+            1 -> minusOne()
 
-            2 -> drawer {
-                scope.launch { pagerState.animateScrollToPage(1) }
+            2 -> chat()
+
+            else -> drawer {
+                scope.launch { pagerState.animateScrollToPage(2) }
             }
-
-            else -> minusTwo()
         }
     }
     // Registered after the pager, so it wins over the chat's double-back exit.
-    BackHandler(enabled = pagerState.currentPage != 1) {
-        scope.launch { pagerState.animateScrollToPage(1) }
+    BackHandler(enabled = pagerState.currentPage != 2) {
+        scope.launch { pagerState.animateScrollToPage(2) }
     }
 }
