@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/**
+/*
  * learn.tsinghua.edu.cn read-only client — a Kotlin port of thu-learn-lib's
  * read paths (courses / homework / notifications / files). The cookie session
  * is seeded by the in-app WebView login (设置 → 校园账号 → 完成登录), exactly
