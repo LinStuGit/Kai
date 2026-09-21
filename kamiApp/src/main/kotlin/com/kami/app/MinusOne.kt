@@ -525,6 +525,7 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
                     }
                 }
             }
+
             tag.startsWith("hw:") -> {
                 val h = hwCache?.getOrNull(tag.removePrefix("hw:").toInt())
                 if (h == null) {
@@ -533,6 +534,7 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
                     homeworkDetailPage(h)
                 }
             }
+
             tag.startsWith("yk:") -> {
                 val y = ykCache?.getOrNull(tag.removePrefix("yk:").toInt())
                 if (y == null) {
@@ -541,6 +543,7 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
                     yuketangItemDetail(y)
                 }
             }
+
             else -> Detail("提示") { DetailData(text = "无法识别的操作") }
         }
     },

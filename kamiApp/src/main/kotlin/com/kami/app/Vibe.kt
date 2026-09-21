@@ -12,14 +12,13 @@ import android.os.VibratorManager
  */
 object Vibe {
 
-    private fun v(ctx: Context): Vibrator =
-        if (Build.VERSION.SDK_INT >= 31) {
-            (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager)
-                .defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        }
+    private fun v(ctx: Context): Vibrator = if (Build.VERSION.SDK_INT >= 31) {
+        (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager)
+            .defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
 
     /** One short buzz of [ms] milliseconds (clamped 50..5000). */
     fun once(ctx: Context, ms: Long) {
