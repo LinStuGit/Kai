@@ -1,6 +1,6 @@
 package com.kami.app
 
-import android.net.HttpURLConnection
+import java.net.HttpURLConnection
 import java.net.URL
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
