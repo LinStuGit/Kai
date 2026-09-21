@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,11 +17,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -30,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class DrawerApp(val label: String, val pkg: String, val icon: ImageBitmap)
 
@@ -51,19 +59,25 @@ private fun drawableToBitmap(d: Drawable): ImageBitmap {
 internal fun AppDrawerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val pm = context.packageManager
-    val apps = remember {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        pm.queryIntentActivities(intent, 0)
-            .filter { it.activityInfo.packageName != context.packageName }
-            .distinctBy { it.activityInfo.packageName }
-            .sortedBy { it.loadLabel(pm).toString().lowercase() }
-            .map {
-                DrawerApp(
-                    it.loadLabel(pm).toString(),
-                    it.activityInfo.packageName,
-                    drawableToBitmap(it.activityInfo.loadIcon(pm)),
-                )
-            }
+    // Query + icon decode off the main thread — with 200+ apps this is slow.
+    var apps by remember { mutableStateOf(emptyList<DrawerApp>()) }
+    var loaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        apps = withContext(Dispatchers.IO) {
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            pm.queryIntentActivities(intent, 0)
+                .filter { it.activityInfo.packageName != context.packageName }
+                .distinctBy { it.activityInfo.packageName }
+                .sortedBy { it.loadLabel(pm).toString().lowercase() }
+                .map {
+                    DrawerApp(
+                        it.loadLabel(pm).toString(),
+                        it.activityInfo.packageName,
+                        drawableToBitmap(it.activityInfo.loadIcon(pm)),
+                    )
+                }
+        }
+        loaded = true
     }
     BackHandler { onBack() }
     Column(
@@ -72,7 +86,20 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("←") }
-            Text("应用（" + apps.size + "）", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (loaded) "应用（" + apps.size + "）" else "应用加载中…",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        if (!loaded) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Column
+        }
+        if (apps.isEmpty()) {
+            Text("未找到可启动应用（包可见性受限？）", style = MaterialTheme.typography.bodySmall)
+            return@Column
         }
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),

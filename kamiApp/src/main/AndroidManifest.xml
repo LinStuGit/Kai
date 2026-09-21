@@ -89,6 +89,15 @@
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
 
+    <!-- Package visibility (Android 11+): without this the app drawer
+     sees almost no launchable apps. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:label="Kami Console"
         android:icon="@mipmap/ic_launcher"

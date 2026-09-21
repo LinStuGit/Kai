@@ -12,13 +12,19 @@ import kotlinx.coroutines.launch
 /** Home pager: page 0 = chat home, page 1 = minus-one dashboard (swipe left). */
 @Composable
 internal fun HomePager(
-    chat: @Composable () -> Unit,
+    chat: @Composable (goMinusOne: () -> Unit) -> Unit,
     minusOne: @Composable () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-        if (page == 0) chat() else minusOne()
+        if (page == 0) {
+            chat {
+                scope.launch { pagerState.animateScrollToPage(1) }
+            }
+        } else {
+            minusOne()
+        }
     }
     // Registered after the pager, so it wins over the chat's double-back exit.
     BackHandler(enabled = pagerState.currentPage == 1) {

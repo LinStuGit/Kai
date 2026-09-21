@@ -524,18 +524,27 @@ class MainActivity : FragmentActivity() {
 
                             "set-ui" -> SubPage("界面配置") { UiSection() }
 
+                            "apps" -> AppDrawerScreen(onBack = { screen.value = "chat" })
+
                             else -> {
                                 val dynId = screen.value.removePrefix("dyn:")
                                 val dynPage = cfg.pages.firstOrNull { it.id == dynId }
                                 if (dynPage != null) {
                                     SubPage(dynPage.title) { DynPageSection(dynPage) }
                                 } else {
-                                    ChatScreen(
-                                        onTerminal = { screen.value = "term" },
-                                        onSettings = { screen.value = "settings" },
-                                        onArchive = { screen.value = "archive" },
-                                        homeWidgets = cfg.home,
-                                        onTarget = { screen.value = it },
+                                    HomePager(
+                                        chat = { goMinusOne ->
+                                            ChatScreen(
+                                                onTerminal = { screen.value = "term" },
+                                                onSettings = { screen.value = "settings" },
+                                                onArchive = { screen.value = "archive" },
+                                                onApps = { screen.value = "apps" },
+                                                onMinusOne = goMinusOne,
+                                                homeWidgets = cfg.home,
+                                                onTarget = { screen.value = it },
+                                            )
+                                        },
+                                        minusOne = { MinusOneScreen() },
                                     )
                                 }
                             }
