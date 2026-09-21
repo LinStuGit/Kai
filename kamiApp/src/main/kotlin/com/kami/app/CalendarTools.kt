@@ -84,4 +84,27 @@ object CalendarTools {
         }
         return out.toString().ifBlank { "（未来 $days 天没有日程）" }
     }
+
+    /** Structured agenda rows for the dashboard table (empty when not granted). */
+    fun listEventRows(context: Context, days: Int): List<EventRow> {
+        if (!granted(context)) return emptyList()
+        val now = System.currentTimeMillis()
+        val end = now + days.coerceIn(1, 60) * 86_400_000L
+        val rows = mutableListOf<EventRow>()
+        context.contentResolver.query(
+            Events.CONTENT_URI,
+            arrayOf(Events.TITLE, Events.DTSTART, Events.DTEND),
+            "${Events.DTSTART} >= ? AND ${Events.DTSTART} <= ?",
+            arrayOf(now.toString(), end.toString()),
+            "${Events.DTSTART} ASC",
+        )?.use { c ->
+            while (c.moveToNext() && rows.size < 50) {
+                rows.add(EventRow(c.getLong(1), c.getLong(2), c.getString(0) ?: "(无标题)"))
+            }
+        }
+        return rows
+    }
 }
+
+/** One agenda row for the minus-one table (structured, unlike [CalendarTools.listEvents]). */
+data class EventRow(val start: Long, val end: Long, val title: String)

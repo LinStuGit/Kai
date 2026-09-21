@@ -524,8 +524,6 @@ class MainActivity : FragmentActivity() {
 
                             "set-ui" -> SubPage("界面配置") { UiSection() }
 
-                            "apps" -> AppDrawerScreen(onBack = { screen.value = "chat" })
-
                             else -> {
                                 val dynId = screen.value.removePrefix("dyn:")
                                 val dynPage = cfg.pages.firstOrNull { it.id == dynId }
@@ -533,18 +531,17 @@ class MainActivity : FragmentActivity() {
                                     SubPage(dynPage.title) { DynPageSection(dynPage) }
                                 } else {
                                     HomePager(
-                                        chat = { goMinusOne ->
+                                        chat = {
                                             ChatScreen(
                                                 onTerminal = { screen.value = "term" },
                                                 onSettings = { screen.value = "settings" },
                                                 onArchive = { screen.value = "archive" },
-                                                onApps = { screen.value = "apps" },
-                                                onMinusOne = goMinusOne,
                                                 homeWidgets = cfg.home,
                                                 onTarget = { screen.value = it },
                                             )
                                         },
                                         minusOne = { MinusOneScreen() },
+                                        drawer = { goHome -> AppDrawerScreen(onBack = goHome) },
                                     )
                                 }
                             }
@@ -953,8 +950,39 @@ class MainActivity : FragmentActivity() {
             Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            var darkNow by remember { mutableStateOf(UiConfigStore.get().darkTheme) }
+            Text("夜间模式", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = darkNow.isEmpty(),
+                    onClick = {
+                        darkNow = ""
+                        status = UiConfigStore.setDarkTheme("")
+                        uiRev.value = UiConfigStore.mtime()
+                    },
+                    label = { Text("跟随系统") },
+                )
+                FilterChip(
+                    selected = darkNow == "dark",
+                    onClick = {
+                        darkNow = "dark"
+                        status = UiConfigStore.setDarkTheme("dark")
+                        uiRev.value = UiConfigStore.mtime()
+                    },
+                    label = { Text("深色") },
+                )
+                FilterChip(
+                    selected = darkNow == "light",
+                    onClick = {
+                        darkNow = "light"
+                        status = UiConfigStore.setDarkTheme("light")
+                        uiRev.value = UiConfigStore.mtime()
+                    },
+                    label = { Text("浅色") },
+                )
+            }
             Text(
-                "kami_ui.json：theme 配主题色（hex）；darkTheme=dark/light/空（空=跟随系统黑夜模式）；home 主页控件；hidden 隐藏设置项；pages 增删子页（widgets: header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。",
+                "kami_ui.json：theme 配主题色（hex）；darkTheme=dark/light/空（空=跟随系统黑夜模式）；home 主页控件；hidden 隐藏设置项；pages 增删子页（widgets: header/text/link/button/switch）。保存后界面即时生效；agent 也能用 ui_config 工具改这个文件。
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

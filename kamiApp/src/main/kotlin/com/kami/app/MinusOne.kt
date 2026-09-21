@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -19,10 +22,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -101,31 +109,116 @@ private fun WeatherCard() {
 @Composable
 private fun AgendaCard() {
     val context = LocalContext.current
-    var line by remember { mutableStateOf("日程加载中…") }
+    var rows by remember { mutableStateOf(emptyList<EventRow>()) }
+    var granted by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        line = if (!CalendarTools.granted(context)) {
-            "未授权日历权限——设置 → 权限管理 授权后显示近 3 天日程"
+        granted = CalendarTools.granted(context)
+        if (granted) {
+            rows = withContext(Dispatchers.IO) { CalendarTools.listEventRows(context, 3) }
+        }
+    }
+    DashCard("日程（近 3 天）") {
+        if (!granted) {
+            Text("未授权日历权限——设置 → 权限管理 授权后显示", style = MaterialTheme.typography.bodySmall)
+        } else if (rows.isEmpty()) {
+            Text("近 3 天无日程", style = MaterialTheme.typography.bodySmall)
         } else {
-            withContext(Dispatchers.IO) {
-                CalendarTools.listEvents(context, 3).ifBlank { "近 3 天无日程" }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("日期", Modifier.weight(1.7f), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("时间", Modifier.weight(2.6f), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("事件", Modifier.weight(3.2f), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            rows.forEach { r ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(fmtDate(r.start), Modifier.weight(1.7f), fontSize = 11.sp)
+                    Text(fmtTime(r.start, r.end), Modifier.weight(2.6f), fontSize = 11.sp)
+                    Text(
+                        r.title,
+                        Modifier.weight(3.2f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             }
         }
     }
-    DashCard("日程") { Text(line, style = MaterialTheme.typography.bodySmall) }
 }
 
-/** Upcoming reminders, soonest first. */
+private val dateFmt = SimpleDateFormat("MM-dd", Locale.getDefault())
+private val timeFmtOnly = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+private fun fmtDate(ms: Long): String = dateFmt.format(Date(ms))
+
+/** "HH:mm~HH:mm"; marks a trailing "+" when the event ends on another day. */
+private fun fmtTime(start: Long, end: Long): String {
+    val sameDay = dateFmt.format(Date(start)) == dateFmt.format(Date(end))
+    return timeFmtOnly.format(Date(start)) + "~" + timeFmtOnly.format(Date(end)) + if (sameDay) "" else "+"
+}
+
+/** Session cache so every swipe back doesn't re-fetch all courses. */
+private var hwCache: List<HomeworkItem>? = null
+private var hwCacheAt = 0L
+private const val HW_TTL_MS = 10 * 60_000L
+
+/** Reminders plus pending campus homework (learn 未提交). */
 @Composable
 private fun TodoCard() {
+    val context = LocalContext.current
     val items = ReminderStore.all()
         .sortedBy { ReminderScheduler.nextAt(it)?.timeInMillis ?: Long.MAX_VALUE }
         .take(6)
-    DashCard("待办 · 定时提醒") {
+    var hw by remember { mutableStateOf(hwCache) }
+    var hwNote by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        if (CampusStore.get() != null &&
+            (hwCache == null || System.currentTimeMillis() - hwCacheAt > HW_TTL_MS)
+        ) {
+            val fresh = withContext(Dispatchers.IO) {
+                try {
+                    LearnClient.homeworkPending()
+                } catch (t: Throwable) {
+                    null
+                }
+            }
+            if (fresh != null) {
+                hwCache = fresh
+                hwCacheAt = System.currentTimeMillis()
+                hw = fresh
+                hwNote = ""
+            } else {
+                hwNote = "作业获取失败（需校园网；会话失效时去 设置 → 校园账号 重登）"
+            }
+        }
+    }
+    DashCard("待办") {
+        Text("定时提醒", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (items.isEmpty()) {
-            Text("暂无待办——可以让 agent 创建提醒", style = MaterialTheme.typography.bodySmall)
+            Text("暂无——可以让 agent 创建提醒", style = MaterialTheme.typography.bodySmall)
         } else {
             items.forEach { r ->
                 Text(r.title + "｜" + ReminderScheduler.describe(r), style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("网络学堂 · 未提交作业", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val hwNow = hw
+        when {
+            CampusStore.get() == null -> Text("未登录网络学堂（设置 → 校园账号）", style = MaterialTheme.typography.bodySmall)
+            hwNote.isNotEmpty() -> Text(hwNote, style = MaterialTheme.typography.bodySmall)
+            hwNow.isNullOrEmpty() -> Text("暂无未提交作业", style = MaterialTheme.typography.bodySmall)
+            else -> hwNow.forEach { h ->
+                Text(
+                    h.course + "｜" + h.title + "｜截止 " + h.deadline,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

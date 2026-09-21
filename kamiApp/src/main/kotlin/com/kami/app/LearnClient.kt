@@ -13,6 +13,9 @@ import java.net.URLEncoder
  * is seeded by the in-app WebView login (设置 → 校园账号 → 完成登录), exactly
  * like the WeClaude browser-login export; no password is handled here.
  */
+/** One unsubmitted homework row, for the minus-one todo card. */
+data class HomeworkItem(val course: String, val title: String, val deadline: String)
+
 internal object LearnClient {
 
     private const val LEARN = "https://learn.tsinghua.edu.cn"
@@ -293,6 +296,24 @@ internal object LearnClient {
         if (items.isEmpty()) return "（无课程文件，或会话失效）"
         return "共 ${items.size} 个文件：\n" + items.joinToString("\n") { "• ${it.first}｜${it.second}" }
     }
+
+    /** 未提交作业（负一屏待办用）：每课一查，单课失败容忍。 */
+    fun homeworkPending(): List<HomeworkItem> =
+        perCourse { _, name ->
+            val out = mutableListOf<HomeworkItem>()
+            try {
+                val obj = requireOk(postJson("$LEARN/b/wlxt/kczy/zy/student/zyListWj", pageListForm(id)))
+                val arr = obj?.optJSONArray("aaData")
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val h = arr.getJSONObject(i)
+                        out.add(HomeworkItem(name, html(h.optString("bt")), h.optString("jzsj", "?")))
+                    }
+                }
+            } catch (t: Throwable) {
+            }
+            out
+        }.map { it.second }
 
     /** The agent tool entry point. */
     fun agentCommand(action: String): String = when (action) {

@@ -41,12 +41,17 @@ import kotlinx.coroutines.withContext
 
 private data class DrawerApp(val label: String, val pkg: String, val icon: ImageBitmap)
 
+/** Decode icons at this fixed size: full intrinsic adaptive icons (400px+)
+ *  x hundreds of apps used to mean huge bitmaps and janky grid scrolling. */
+private const val ICON_PX = 144
+
+/** Session cache: pager disposes the drawer page, don't re-query on every swipe. */
+private var appCache: List<DrawerApp>? = null
+
 /** Rasterize any drawable (incl. adaptive icons with no intrinsic size). */
 private fun drawableToBitmap(d: Drawable): ImageBitmap {
-    val w = if (d.intrinsicWidth > 0) d.intrinsicWidth else 48
-    val h = if (d.intrinsicHeight > 0) d.intrinsicHeight else 48
-    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    d.setBounds(0, 0, w, h)
+    val bmp = Bitmap.createBitmap(ICON_PX, ICON_PX, Bitmap.Config.ARGB_8888)
+    d.setBounds(0, 0, ICON_PX, ICON_PX)
     d.draw(Canvas(bmp))
     return bmp.asImageBitmap()
 }
@@ -63,21 +68,29 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
     var apps by remember { mutableStateOf(emptyList<DrawerApp>()) }
     var loaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        apps = withContext(Dispatchers.IO) {
-            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            pm.queryIntentActivities(intent, 0)
-                .filter { it.activityInfo.packageName != context.packageName }
-                .distinctBy { it.activityInfo.packageName }
-                .sortedBy { it.loadLabel(pm).toString().lowercase() }
-                .map {
-                    DrawerApp(
-                        it.loadLabel(pm).toString(),
-                        it.activityInfo.packageName,
-                        drawableToBitmap(it.activityInfo.loadIcon(pm)),
-                    )
-                }
+        val hit = appCache
+        if (hit != null) {
+            apps = hit
+            loaded = true
+        } else {
+            val list = withContext(Dispatchers.IO) {
+                val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                pm.queryIntentActivities(intent, 0)
+                    .filter { it.activityInfo.packageName != context.packageName }
+                    .distinctBy { it.activityInfo.packageName }
+                    .sortedBy { it.loadLabel(pm).toString().lowercase() }
+                    .map {
+                        DrawerApp(
+                            it.loadLabel(pm).toString(),
+                            it.activityInfo.packageName,
+                            drawableToBitmap(it.activityInfo.loadIcon(pm)),
+                        )
+                    }
+            }
+            appCache = list
+            apps = list
+            loaded = true
         }
-        loaded = true
     }
     BackHandler { onBack() }
     Column(

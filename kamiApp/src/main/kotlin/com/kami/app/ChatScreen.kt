@@ -77,8 +77,6 @@ internal fun ChatScreen(
     onTerminal: () -> Unit,
     onSettings: () -> Unit,
     onArchive: () -> Unit,
-    onApps: () -> Unit = {},
-    onMinusOne: () -> Unit = {},
     homeWidgets: List<UiConfigStore.Widget> = emptyList(),
     onTarget: (String) -> Unit = {},
 ) {
@@ -115,8 +113,6 @@ internal fun ChatScreen(
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
             )
-            TextButton(onClick = onMinusOne) { Text("负一屏") }
-            TextButton(onClick = onApps) { Text("应用") }
             TextButton(onClick = onTerminal) { Text("终端") }
             TextButton(onClick = onSettings) { Text("设置") }
         }

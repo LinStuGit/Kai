@@ -143,6 +143,25 @@ object UiConfigStore {
         }
     }
 
+    /** Night mode: "" follows the system; "dark"/"light" force one. */
+    fun setDarkTheme(value: String): String {
+        if (!::appContext.isInitialized) return "错误：未初始化"
+        return try {
+            val root = JSONObject(raw())
+            root.put("darkTheme", value)
+            parse(root.toString())
+            file().writeText(root.toString())
+            cachedMtime = -1L
+            when (value) {
+                "dark" -> "已切换：深色"
+                "light" -> "已切换：浅色"
+                else -> "已切换：跟随系统"
+            }
+        } catch (t: Throwable) {
+            "错误：" + (t.message ?: t.javaClass.simpleName)
+        }
+    }
+
     fun reset(): String {
         if (!::appContext.isInitialized) return "错误：未初始化"
         file().delete()
