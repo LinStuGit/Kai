@@ -20,6 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -160,9 +162,9 @@ private fun DashTable(
 
 // ---- module caches: swiping back and forth must not re-hit the network ----
 
-private const val FEED_TTL_MS = 10 * 60_000L
-private const val WEATHER_TTL_MS = 30 * 60_000L
-private const val AGENDA_TTL_MS = 5 * 60_000L
+private const val FEED_TTL_MS = 3 * 60_000L
+private const val WEATHER_TTL_MS = 15 * 60_000L
+private const val AGENDA_TTL_MS = 2 * 60_000L
 
 private var weatherDays: List<WeatherDay> = emptyList()
 private var weatherCur = ""
@@ -231,6 +233,20 @@ private var noticeCacheAt = 0L
 
 private var courseCache: List<LearnClient.CourseRow>? = null
 private var courseCacheAt = 0L
+
+/** 手动「↻ 刷新」：清空全部模块缓存，key(rev) 换帧后各卡重新拉取。 */
+private fun clearCaches() {
+    weatherAt = 0
+    agendaAt = 0
+    hwCache = null
+    hwCacheAt = 0
+    ykCache = null
+    ykCacheAt = 0
+    noticeCache = null
+    noticeCacheAt = 0
+    courseCache = null
+    courseCacheAt = 0
+}
 
 // ---- weather ----
 
@@ -337,7 +353,10 @@ private fun AgendaCard(onOpen: (Detail) -> Unit) {
     }
 }
 
-private fun agendaDetail(): Detail = Detail("日程 · 近 30 天") {
+private fun agendaDetail(): Detail = Detail(
+    "日程 · 近 30 天",
+    onTap = { tag -> eventDetail(tag.removePrefix("ev:").toInt()) },
+) {
     if (agendaRows.isEmpty()) {
         DetailData(text = "近 30 天无日程")
     } else {
@@ -585,7 +604,13 @@ private fun CoursesCard(onOpen: (Detail) -> Unit) {
     }
 }
 
-private fun coursesDetail(): Detail = Detail("本学期课程") {
+private fun coursesDetail(): Detail = Detail(
+    "本学期课程",
+    onTap = { wlkcid ->
+        courseCache?.firstOrNull { it.wlkcid == wlkcid }?.let { courseFilesDetail(it) }
+            ?: Detail("提示") { DetailData(text = "（课程列表已刷新，请重开）") }
+    },
+) {
     val courses = withContext(Dispatchers.IO) {
         courseCache ?: LearnClient.courseList()
     }
@@ -701,7 +726,10 @@ private fun noticeDetail(idx: Int): Detail {
     )
 }
 
-private fun noticesDetail(): Detail = Detail("课程公告") {
+private fun noticesDetail(): Detail = Detail(
+    "课程公告",
+    onTap = { tag -> noticeDetail(tag.removePrefix("gg:").toInt()) },
+) {
     val notices = noticeCache ?: emptyList()
     if (notices.isEmpty()) {
         DetailData(text = "（无课程公告）")
@@ -805,16 +833,36 @@ internal fun MinusOneScreen() {
     val stack = remember { mutableStateListOf<Detail>() }
     val scope = rememberCoroutineScope()
     val open: (Detail) -> Unit = { stack.add(it) }
+    var rev by remember { mutableStateOf(0) }
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            nowMs = System.currentTimeMillis()
+            delay(30_000)
+        }
+    }
+    val clock = remember(nowMs) {
+        SimpleDateFormat("MM-dd E HH:mm", Locale.CHINA).format(Date(nowMs))
+    }
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("负一屏", style = MaterialTheme.typography.titleLarge)
-        WeatherCard(onOpen = { open(weatherDetail()) })
-        AgendaCard(onOpen = open)
-        TodoCard(onOpen = open)
-        CoursesCard(onOpen = open)
-        NoticesCard(onOpen = open)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(clock, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = {
+                clearCaches()
+                rev++
+            }) { Text("↻ 刷新") }
+        }
+        key(rev) {
+            WeatherCard(onOpen = { open(weatherDetail()) })
+            AgendaCard(onOpen = open)
+            TodoCard(onOpen = open)
+            CoursesCard(onOpen = open)
+            NoticesCard(onOpen = open)
+        }
     }
     if (stack.isNotEmpty()) {
         val top = stack.last()

@@ -54,11 +54,21 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-private data class DrawerApp(val label: String, val pkg: String, val icon: ImageBitmap, val letter: String, val pinyin: String)
+private data class DrawerApp(
+    val label: String,
+    val pkg: String,
+    val icon: ImageBitmap,
+    val letter: String,
+    val pinyin: String,
+    val initials: String,
+)
 
 /** Decode icons at this fixed size: full intrinsic adaptive icons (400px+)
  *  x hundreds of apps used to mean huge bitmaps and janky grid scrolling. */
 private const val ICON_PX = 144
+
+/** Rail bucket order: A-Z then #. */
+private const val RANKS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#"
 
 /** Session cache: pager disposes the drawer page, don't re-query on every swipe. */
 private var appCache: List<DrawerApp>? = null
@@ -108,18 +118,26 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
                     .distinctBy { it.activityInfo.packageName }
                     .map {
                         val label = it.loadLabel(pm).toString()
-                        Triple(label, it.activityInfo.packageName, it.activityInfo.loadIcon(pm))
-                    }
-                    .sortedWith(Comparator { a, b -> collator.compare(a.first, b.first) })
-                    .map { (label, pkg, icon) ->
+                        val t = label.trim()
                         DrawerApp(
                             label = label,
-                            pkg = pkg,
-                            icon = drawableToBitmap(icon),
-                            letter = letterOf(label, translit),
-                            pinyin = translit.transliterate(label).lowercase(Locale.getDefault()),
+                            pkg = it.activityInfo.packageName,
+                            icon = drawableToBitmap(it.activityInfo.loadIcon(pm)),
+                            letter = letterOf(t, translit),
+                            pinyin = translit.transliterate(t).lowercase(Locale.getDefault()),
+                            initials = t.mapNotNull { ch ->
+                                val l = letterOf(ch.toString(), translit)
+                                if (l.length == 1 && l[0] in 'A'..'Z') l else null
+                            }.joinToString("").lowercase(Locale.getDefault()),
                         )
                     }
+                    // 字母桶为主序（A-Z，# 殿后），桶内 zh Collator——zh 拼音序与音译
+                    // 首字母可能不一致，纯 Collator 排序会把同字母段切碎、侧栏乱序
+                    .sortedWith(Comparator { a, b ->
+                        val ra = RANKS.indexOf(a.letter)
+                        val rb = RANKS.indexOf(b.letter)
+                        if (ra != rb) ra - rb else collator.compare(a.label, b.label)
+                    })
             }
             appCache = list
             apps = list
@@ -130,17 +148,23 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
 
     var query by rememberSaveable { mutableStateOf("") }
     val displayApps = remember(apps, query) {
-        if (query.isBlank()) {
+        val q = query.trim()
+        if (q.isEmpty()) {
             apps
         } else {
+            val ql = q.lowercase(Locale.getDefault())
+            // 强匹配：名称包含 / 包名包含 / 全拼或拼音首字母前缀，杜绝子串误伤
             apps.filter {
-                it.label.contains(query, true) || it.pkg.contains(query, true) || it.pinyin.contains(query, true)
+                it.label.contains(q, true) ||
+                    it.pkg.lowercase(Locale.getDefault()).contains(ql) ||
+                    it.pinyin.startsWith(ql) ||
+                    it.initials.startsWith(ql)
             }
         }
     }
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
-    val letters = remember(displayApps) { displayApps.map { it.letter }.distinct() }
+    val letters = remember(displayApps) { displayApps.map { it.letter }.distinct().sortedBy { RANKS.indexOf(it) } }
     val letterIndex = remember(displayApps) {
         val m = mutableMapOf<String, Int>()
         displayApps.forEachIndexed { i, a -> if (!m.containsKey(a.letter)) m[a.letter] = i }
@@ -169,7 +193,7 @@ internal fun AppDrawerScreen(onBack: () -> Unit) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("搜索应用（名称/包名/拼音）") },
+            placeholder = { Text("搜索应用（名称 / 拼音 / 首字母）") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )

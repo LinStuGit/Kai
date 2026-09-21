@@ -40,6 +40,13 @@ internal object YuketangClient {
 
     fun savedAt(): Long = prefs().getLong("savedAt", 0L)
 
+    /** WebView 实时 cookie：在内置浏览器开过任何雨课堂页面都会滚动续期。 */
+    private fun liveCookie(): String = try {
+        CookieManager.getInstance().getCookie("$ORIGIN/") ?: ""
+    } catch (t: Throwable) {
+        ""
+    }
+
     fun clear(): String {
         prefs().edit().clear().apply()
         cookieCache = ""
@@ -67,7 +74,13 @@ internal object YuketangClient {
         try {
             conn.connectTimeout = 15_000
             conn.readTimeout = 20_000
-            conn.setRequestProperty("Cookie", cookie())
+            // 实时 cookie 优先、快照兜底；取到新的就回写快照（保活）
+            val ck = liveCookie().ifBlank { cookie() }
+            if (ck.isNotEmpty() && ck != cookieCache) {
+                prefs().edit().putString("cookie", ck).putLong("savedAt", System.currentTimeMillis()).apply()
+                cookieCache = ck
+            }
+            conn.setRequestProperty("Cookie", ck)
             conn.setRequestProperty("xtbz", "ykt")
             conn.setRequestProperty("xt-agent", "web")
             conn.setRequestProperty(

@@ -143,6 +143,12 @@ private fun WebViewWithCookies() {
             WebView(ctx).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                // 移动端适配：整页适配屏宽 + 允许双指缩放（CAS/登录页是桌面排版）
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
+                settings.setSupportZoom(true)
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = WebViewClient()
                 loadUrl("https://learn.tsinghua.edu.cn/f/wlxt/index/course/student/")
@@ -195,6 +201,12 @@ private fun YuketangWebView() {
             WebView(ctx).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                // 移动端适配：整页适配屏宽 + 允许双指缩放（CAS/登录页是桌面排版）
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
+                settings.setSupportZoom(true)
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = WebViewClient()
                 loadUrl("https://pro.yuketang.cn/web")

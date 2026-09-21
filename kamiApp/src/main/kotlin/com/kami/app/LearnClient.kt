@@ -61,6 +61,15 @@ internal object LearnClient {
             pour(s.idCookies, "id.tsinghua.edu.cn")
             csrf = s.csrf
         }
+        // WebView 实时 cookie 后浇入覆盖同名旧值（最新会话态），快照只补缺口——
+        // 用户在内置浏览器里逛过校园网页即自动续期，减少「总要求重新登录」
+        try {
+            val cm = CookieManager.getInstance()
+            cm.getCookie("$LEARN/")?.let { pour(it, "learn.tsinghua.edu.cn") }
+            cm.getCookie("https://id.tsinghua.edu.cn/")?.let { pour(it, "id.tsinghua.edu.cn") }
+        } catch (t: Throwable) {
+            // CookieManager 不可用时退回纯快照
+        }
     }
 
     /** Seed from the WebView's live cookies and try to establish a session.

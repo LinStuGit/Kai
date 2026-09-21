@@ -59,7 +59,8 @@ object AgentClient {
 
     private const val MAX_TOOL_RESULT = 6000
 
-    private val TOOLS: JSONArray = JSONArray(
+    private val TOOLS: JSONArray = try {
+        JSONArray(
         """
         [
           {"type":"function","function":{"name":"run_shell","description":"在手机上以 shell uid（Shizuku，免 root）执行命令；支持 ; && 串联与管道","parameters":{"type":"object","properties":{"command":{"type":"string","description":"shell 命令"}},"required":["command"]}}},
@@ -88,11 +89,16 @@ object AgentClient {
           {"type":"function","function":{"name":"skill_run","description":"展开技能模板为完整任务指令，按展开结果立即执行","parameters":{"type":"object","properties":{"name":{"type":"string","description":"技能名"},"args":{"type":"object","description":"模板变量键值对，如 {\"日期\":\"明天\"}"}},"required":["name"]}}},
           {"type":"function","function":{"name":"ui_config","description":"读写 App 界面配置 JSON：theme 设置主题颜色（hex）；darkTheme 填 dark/light/空（空=跟随系统黑夜模式）；home 是主页下方控件列表；hidden 隐藏设置项（填入口路由如 set-perms 或子页 id）；pages 增删设置子页（widgets: header/text/link/button/switch）。保存后界面即时生效。改界面前先 action=get 看当前格式","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["get","set","reset"],"description":"get 读当前配置，set 写入 json 参数，reset 恢复默认"},"json":{"type":"string","description":"action=set 时的完整配置 JSON 文本"}},"required":["action"]}}},
           {"type":"function","function":{"name":"overlay_show","description":"在悬浮窗中显示内容（覆盖在任意应用上方）：url 打开网页、html 直接渲染（可用内联 SVG/图表）、image 显示本地图片文件。图表/可视化结果优先用 html+内联 SVG。hide 收起","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["show","hide"],"description":"默认 show"},"url":{"type":"string","description":"要打开的网页地址"},"html":{"type":"string","description":"要渲染的 HTML 片段（支持内联 SVG 图表）"},"image":{"type":"string","description":"本地图片文件路径"},"title":{"type":"string","description":"内容标题，可省略"}}}}},
-          {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}}
+          {"type":"function","function":{"name":"campus","description":"清华网络学堂数据面：action=courses 本学期课程列表；homework 聚合全部课程作业（含截止时间与成绩）；notifications 课程公告；files 课程文件；status 登录状态。未登录或失效时返回指引——让用户去 设置→校园账号 完成一次 WebView 登录即可，不要反复重试","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","homework","notifications","files"],"description":"默认 status"}},"required":["action"]}}},
           {"type":"function","function":{"name":"yuketang","description":"荷塘雨课堂（pro.yuketang.cn）只读数据面：action=courses 课程列表；assignments 作业与考试（含截止时间）；status 登录状态。未登录时返回指引——让用户去 设置→校园账号 点「登录雨课堂」完成一次 WebView 登录，不要反复重试。只读：不代答题、不代提交","parameters":{"type":"object","properties":{"action":{"type":"string","enum":["status","courses","assignments"],"description":"默认 status"}},"required":["action"]}}}
         ]
         """.trimIndent(),
-    )
+        )
+    } catch (t: Throwable) {
+        // 一个 schema 拼写错误不该砸掉整个 agent（1.25 教训：campus 行少个逗号 →
+        // TOOLS 类初始化即抛异常，所有模型对话与「测试连接」全部闪退）
+        JSONArray("[]")
+    }
 
     /**
      * One user turn of session [sessionId]: appends to its [history] and
