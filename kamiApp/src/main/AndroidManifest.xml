@@ -129,6 +129,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Full-screen alarm-style alert: visible over the lockscreen. -->
+        <activity
+            android:name=".FullscreenAlertActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
+
         <!-- Overlay while the agent runs outside the app: output + force stop -->
         <service
             android:name=".AgentOverlayService"

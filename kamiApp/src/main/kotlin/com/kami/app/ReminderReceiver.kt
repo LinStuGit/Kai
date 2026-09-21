@@ -47,7 +47,9 @@ class ReminderReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL, "定时任务", NotificationManager.IMPORTANCE_HIGH).apply {
-                    enableVibration(r.important)
+                    // 所有提醒都带震动；important 另有全屏闹钟界面
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 350, 250, 350)
                 },
             )
         }
@@ -69,7 +71,18 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)
         if (r.important) {
-            builder.setFullScreenIntent(contentPi, true)
+            // 全屏「闹钟界面」：锁屏可见、自动亮屏、持续震动
+            val alertPi = PendingIntent.getActivity(
+                ctx,
+                r.id.hashCode() or 0x40000000,
+                Intent(ctx, FullscreenAlertActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra("title", r.title)
+                    .putExtra("text", r.text)
+                    .putExtra("vibrate", true),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            builder.setFullScreenIntent(alertPi, true)
             builder.setVibrate(longArrayOf(0, 350, 250, 350))
         }
         nm.notify(r.id.hashCode(), builder.build())

@@ -305,7 +305,7 @@ private fun weatherDetail(): Detail = Detail("天气 · 未来 7 天") {
 // ---- agenda (calendar) ----
 
 private fun agendaTableRows(rows: List<EventRow>): List<List<String>> = rows.map { r ->
-    listOf(fmtDate(r.start), fmtTime(r.start, r.end), r.title)
+    listOf(fmtDate(r.start), fmtTime(r.start, r.end), r.location.ifBlank { "—" }, r.title)
 }
 
 private fun eventDetail(idx: Int): Detail {
@@ -338,8 +338,8 @@ private fun AgendaCard(onOpen: (Detail) -> Unit) {
             Text("近 30 天无日程", style = MaterialTheme.typography.bodySmall)
         } else {
             DashTable(
-                listOf("日期", "时间", "事件"),
-                listOf(1.7f, 2.6f, 3.2f),
+                listOf("日期", "时间", "地点", "事件"),
+                listOf(1.4f, 2.2f, 2.0f, 2.9f),
                 agendaTableRows(agendaRows.take(3)),
                 tags = agendaRows.indices.take(3).map { "ev:$it" },
                 onTag = { tag -> onOpen(eventDetail(tag.removePrefix("ev:").toInt())) },
@@ -361,8 +361,8 @@ private fun agendaDetail(): Detail = Detail(
         DetailData(text = "近 30 天无日程")
     } else {
         DetailData(
-            headers = listOf("日期", "时间", "事件"),
-            weights = listOf(1.7f, 2.6f, 3.2f),
+            headers = listOf("日期", "时间", "地点", "事件"),
+            weights = listOf(1.4f, 2.2f, 2.0f, 2.9f),
             rows = agendaTableRows(agendaRows),
             tags = agendaRows.indices.map { "ev:$it" },
             hint = "点任意一行查看时间/地点/备注",
@@ -511,29 +511,58 @@ private fun yuketangItemDetail(item: YuketangClient.YkItem): Detail {
     }
 }
 
-private fun todoDetail(reminders: List<Reminder>): Detail = Detail("待办详情") {
-    val rText = if (reminders.isEmpty()) {
-        "暂无"
-    } else {
-        reminders.joinToString("\n") { "• " + it.title + "｜" + ReminderScheduler.describe(it) }
-    }
-    val hw = withContext(Dispatchers.IO) {
+private fun todoDetail(reminders: List<Reminder>): Detail = Detail(
+    "待办详情",
+    onTap = { tag ->
+        when {
+            tag.startsWith("rem:") -> {
+                val r = reminders.getOrNull(tag.removePrefix("rem:").toInt())
+                if (r == null) {
+                    Detail("提示") { DetailData(text = "（提醒已删除，请重开）") }
+                } else {
+                    Detail(r.title) {
+                        DetailData(text = r.title + "\n" + ReminderScheduler.describe(r))
+                    }
+                }
+            }
+            tag.startsWith("hw:") -> {
+                val h = hwCache?.getOrNull(tag.removePrefix("hw:").toInt())
+                if (h == null) {
+                    Detail("提示") { DetailData(text = "（作业列表已刷新，请重开）") }
+                } else {
+                    homeworkDetailPage(h)
+                }
+            }
+            tag.startsWith("yk:") -> {
+                val y = ykCache?.getOrNull(tag.removePrefix("yk:").toInt())
+                if (y == null) {
+                    Detail("提示") { DetailData(text = "（条目已刷新，请重开）") }
+                } else {
+                    yuketangItemDetail(y)
+                }
+            }
+            else -> Detail("提示") { DetailData(text = "无法识别的操作") }
+        }
+    },
+) {
+    // 缓存优先：卡片已拉过的直接秒开，只在从未拉过时才联网
+    val hw = hwCache ?: withContext(Dispatchers.IO) {
         try {
-            LearnClient.homeworkPending()
+            LearnClient.homeworkPending().also {
+                hwCache = it
+                hwCacheAt = System.currentTimeMillis()
+            }
         } catch (t: Throwable) {
             null
         }
     }
-    val hwText = when {
-        CampusStore.get() == null -> "未登录网络学堂（设置 → 校园账号）"
-        hw == null -> "获取失败（需校园网；会话失效时重登）"
-        hw.isEmpty() -> "暂无"
-        else -> hw.joinToString("\n") { "• " + it.course + "｜" + it.title + "｜截止 " + it.deadline }
-    }
-    val yk = if (YuketangClient.cookie().isNotBlank()) {
+    val yk = ykCache ?: if (YuketangClient.cookie().isNotBlank()) {
         withContext(Dispatchers.IO) {
             try {
-                YuketangClient.assignments()
+                YuketangClient.assignments().also {
+                    ykCache = it
+                    ykCacheAt = System.currentTimeMillis()
+                }
             } catch (t: Throwable) {
                 null
             }
@@ -541,15 +570,31 @@ private fun todoDetail(reminders: List<Reminder>): Detail = Detail("待办详情
     } else {
         null
     }
-    val ykText = when {
-        YuketangClient.cookie().isBlank() -> "未登录雨课堂（设置 → 校园账号）"
-        yk == null -> "获取失败（重新登录雨课堂后重试）"
-        yk.isEmpty() -> "暂无"
-        else -> yk.joinToString("\n") { "• " + it.course + "｜" + it.title + "（" + it.kind + "）｜截止 " + it.deadline.ifBlank { "—" } }
+    val rows = mutableListOf<List<String>>()
+    val tags = mutableListOf<String>()
+    reminders.forEachIndexed { i, r ->
+        rows.add(listOf("提醒", r.title, ReminderScheduler.describe(r)))
+        tags.add("rem:$i")
     }
-    DetailData(
-        text = "定时提醒：\n$rText\n\n网络学堂 · 未提交作业：\n$hwText\n\n雨课堂 · 作业/考试：\n$ykText",
-    )
+    hw?.forEachIndexed { i, h ->
+        rows.add(listOf("学堂作业", h.course + " · " + h.title, "截止 " + h.deadline))
+        tags.add("hw:$i")
+    }
+    yk?.forEachIndexed { i, y ->
+        rows.add(listOf("雨课堂", y.course + " · " + y.title + "（" + y.kind + "）", y.deadline.ifBlank { "—" }))
+        tags.add("yk:$i")
+    }
+    if (rows.isEmpty()) {
+        DetailData(text = "暂无提醒 / 作业 / 考试（未登录或全部为空）")
+    } else {
+        DetailData(
+            headers = listOf("类别", "内容", "时间"),
+            weights = listOf(1.4f, 4.4f, 2.4f),
+            rows = rows,
+            tags = tags,
+            hint = "点任意行查看详情/下载，附件可存到 Download/Kami/",
+        )
+    }
 }
 
 // ---- campus courses + files ----

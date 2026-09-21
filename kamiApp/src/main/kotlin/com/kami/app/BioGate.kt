@@ -144,7 +144,10 @@ object SensitiveGate {
                     GATE_CHANNEL,
                     "操作确认",
                     NotificationManager.IMPORTANCE_HIGH,
-                ),
+                ).apply {
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 250, 200, 250)
+                },
             )
             val open = PendingIntent.getActivity(
                 ctx,
