@@ -3,8 +3,12 @@ package com.kami.app
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -41,6 +46,25 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
+/** Minimal outlined paperclip (material attach_file path) — no emoji, matches the app's flat icon style. */
+private val PaperclipIcon: ImageVector = ImageVector.Builder(
+    name = "Paperclip",
+    defaultWidth = 22.dp,
+    defaultHeight = 22.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+).apply {
+    path(
+        pathData = addPathNodes(
+            "M16.5,6v11.5c0,2.21 -1.79,4 -4,4s-4,-1.79 -4,-4V5c0,-1.38 1.12,-2.5 " +
+                "2.5,-2.5s2.5,1.12 2.5,2.5v10.5c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1V6H10v9.5" +
+                "c0,1.38 1.12,2.5 2.5,2.5s2.5,-1.12 2.5,-2.5V5c0,-2.21 -1.79,-4 -4,-4S7,2.79 " +
+                "7,5v12.5C7,20.54 9.46,23 12.5,23s5.5,-2.46 5.5,-5.5V6h-1.5z",
+        ),
+        fill = SolidColor(Color.Black),
+    )
+}.build()
 
 /** A render item: a plain chat line, or consecutive tool events as one group. */
 private sealed interface ChatEntry {
@@ -96,15 +120,19 @@ internal fun ChatScreen(
     var input by rememberSaveable(session.id) { mutableStateOf("") }
     // Pending chat attachments (picked via SAF; resolved to payloads on send).
     val pendingAtts = remember { mutableStateListOf<Pair<Uri, String>>() }
-    val pickFiles = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments(),
-    ) { uris ->
-        for (u in uris) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    DisposableEffect(Unit) {
+        MainActivity.filePickCallback = { uris ->
+            for (u in uris) {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        u,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+                pendingAtts.add(u to Attachments.nameOf(context, u))
             }
-            pendingAtts.add(u to Attachments.nameOf(context, u))
         }
+        onDispose { if (MainActivity.filePickCallback != null) MainActivity.filePickCallback = null }
     }
     val listState = rememberLazyListState()
     val lines = session.lines
@@ -216,7 +244,7 @@ internal fun ChatScreen(
                     TextButton(
                         onClick = { pendingAtts.remove(att) },
                         enabled = !session.busy,
-                    ) { Text("📎 " + att.second + " ✕", fontSize = 11.sp, maxLines = 1) }
+                    ) { Text(att.second + " ✕", fontSize = 11.sp, maxLines = 1) }
                 }
             }
         }
@@ -225,9 +253,9 @@ internal fun ChatScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             TextButton(
-                onClick = { pickFiles.launch(arrayOf("*/*")) },
+                onClick = { MainActivity.startFilePick() },
                 enabled = !session.busy,
-            ) { Text("📎", fontSize = 18.sp) }
+            ) { Icon(PaperclipIcon, contentDescription = "附件", tint = LocalContentColor.current) }
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },

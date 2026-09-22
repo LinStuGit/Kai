@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
 private const val REQ_SHIZUKU = 7001
+private const val REQ_FILE_PICK = 7002
 
 private const val EXT_HINT =
     "agent 用法（PC 端经 adb / Shizuku 下发，结果回读 logcat）：\n" +
@@ -357,6 +358,29 @@ private val PKG_RE = Regex("[a-z0-9][a-z0-9._-]*")
  */
 class MainActivity : FragmentActivity() {
 
+    companion object {
+        @Volatile
+        var instance: MainActivity? = null
+
+        /** ChatScreen's attachment picker result (see [onActivityResult]). */
+        @Volatile
+        var filePickCallback: ((List<Uri>) -> Unit)? = null
+
+        /** SAF multi-select with a small request code — the Compose
+         *  ActivityResultRegistry generates request codes that
+         *  FragmentActivity rejects ("Can only use lower 16 bits"), which
+         *  crashed the attach button. */
+        fun startFilePick() {
+            val act = instance ?: return
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                type = "*/*"
+            }
+            act.startActivityForResult(intent, REQ_FILE_PICK)
+        }
+    }
+
     private val shizukuAlive = mutableStateOf(false)
     private val shizukuGranted = mutableStateOf(false)
 
@@ -400,6 +424,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
         AppContextHolder.init(applicationContext)
         L10n.init(applicationContext)
         ExtensionStore.init(applicationContext)
@@ -577,8 +602,24 @@ class MainActivity : FragmentActivity() {
         AgentOverlayState.activityVisible.value = false
     }
 
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_FILE_PICK && resultCode == RESULT_OK) {
+            val uris = mutableListOf<Uri>()
+            val clip = data?.clipData
+            if (clip != null) {
+                for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)
+            } else {
+                data?.data?.let { uris.add(it) }
+            }
+            filePickCallback?.invoke(uris)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        if (instance === this) instance = null
         // Leaving for good: tear down persistent terminal session processes.
         if (isFinishing) Thread { TerminalHub.destroyAll() }.start()
         Shizuku.removeBinderReceivedListener(binderListener)
@@ -1223,7 +1264,11 @@ class MainActivity : FragmentActivity() {
                 probing = true
                 feedback = ""
                 Thread {
-                    val r = AgentClient.probe()
+                    val r = try {
+                        AgentClient.probe()
+                    } catch (t: Throwable) {
+                        "连接失败：${t.message ?: t.javaClass.simpleName}"
+                    }
                     android.os.Handler(context.mainLooper).post {
                         probing = false
                         feedback = r

@@ -83,7 +83,14 @@ object JwtKeyPool {
             if (conn.responseCode !in 200..299) {
                 throw IOException("check HTTP ${conn.responseCode}: ${text.take(200)}")
             }
-            val key = JSONObject(text).optString("data")
+            // Gateway down / captive portal can return an HTML error page —
+            // surface a readable error instead of JSONException (crashed 测试).
+            val json = try {
+                JSONObject(text)
+            } catch (t: Throwable) {
+                throw IOException("check 端点返回非 JSON（网关未启动/网络拦截？）：${text.take(80)}")
+            }
+            val key = json.optString("data")
             if (key.isBlank()) throw IOException("check 端点缺少 data 字段")
             return key
         } finally {

@@ -22,8 +22,8 @@ android {
                 .get()
                 .toInt()
         // Bump versionCode/versionName on every release.
-        versionCode = 30
-        versionName = "2.1"
+        versionCode = 31
+        versionName = "2.1.1"
     }
 
     // Debug builds are signed with the keystore committed at keystore/
