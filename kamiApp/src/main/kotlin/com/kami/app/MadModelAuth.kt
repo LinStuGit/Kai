@@ -141,8 +141,7 @@ object MadModelAuth {
         return key
     }
 
-    private fun xsrf(): String? =
-        Regex("XSRF-TOKEN=(.+?);").find(get(GET_COOKIE_URL) + ";")?.groupValues?.get(1)
+    private fun xsrf(): String? = Regex("XSRF-TOKEN=(.+?);").find(get(GET_COOKIE_URL) + ";")?.groupValues?.get(1)
 
     private fun get(url: String): String {
         val conn = URL(url).openConnection() as HttpURLConnection
