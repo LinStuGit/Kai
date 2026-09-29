@@ -98,7 +98,7 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         }
         HorizontalDivider()
         Text(
-            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。在浏览器页完成统一身份/二次认证登录（如再次出现登录页请继续完成），直到看到门户页面再点「完成登录」。注意：校园网 IP 变化会使 webvpn 会话立即失效，届时需重新登录。",
+            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。登录页可能出现两次（webvpn 外层 + 门户内层），全部完成后看到个人信息页面再点「完成登录」。注意：校园网 IP 变化会使 webvpn 会话立即失效，届时需重新登录。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -295,10 +295,10 @@ private fun WebvpnWebView() {
                 settings.displayZoomControls = false
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = WebViewClient()
-                // 直达 webvpn 包装的 info 门户：一次登录同时种下 webvpn 会话与
-                // 内层 info 会话（wengine 只代理登录不触 id 域，直接开 webvpn
-                // 根页可能只种外层会话、取不到门户 XSRF）
-                loadUrl(MadModelAuth.INFO_WRAPPED)
+                // 直达个人信息页（需门户登录）：门户首页匿名可见，落那里只种
+                // 得到 webvpn 外层会话；此页在内层匿名时会自动带出统一身份
+                // 登录页，外层+内层两段登录从同一入口串起来
+                loadUrl(MadModelAuth.USER_DATA_URL)
             }
         },
     )

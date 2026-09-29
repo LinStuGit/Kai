@@ -36,6 +36,15 @@ object MadModelAuth {
     internal const val INFO_WRAPPED =
         "$WEBVPN/https/77726476706e69737468656265737421f9f9479369247b59700f81b9991b2631506205de"
 
+    /**
+     * 个人信息页（需门户登录）——the WebView login entry. The portal home is
+     * anonymously viewable, so landing there plants the outer webvpn session
+     * only; grjbxx bounces through the wrapped id CAS until the inner portal
+     * login is completed, which is what the roaming step actually needs.
+     */
+    internal const val USER_DATA_URL =
+        "$INFO_WRAPPED/b/info/gxfw_fg/common/grjbxx"
+
     /** Asks the wengine for the inner info.tsinghua.edu.cn cookie (XSRF-TOKEN). */
     private const val GET_COOKIE_URL =
         "$WEBVPN/wengine-vpn/cookie?method=get&host=info.tsinghua.edu.cn" +
@@ -123,6 +132,20 @@ object MadModelAuth {
             csrf = xsrf()
                 ?: throw IOException("未取得门户 XSRF-TOKEN——webvpn 会话可能已失效，请重新登录信息门户")
         }
+        // ①½ the inner portal session must be logged in — the XSRF cookie is
+        // issued to anonymous visitors too, and the roam step then fails with
+        // 「用户未登录，无权限访问」. grjbxx is thu-info-lib's own login probe.
+        val ud = get("$USER_DATA_URL?_csrf=$csrf")
+        val ryh = try {
+            JSONObject(ud).optJSONObject("object")?.optString("ryh")
+        } catch (_: Throwable) {
+            null
+        }
+        if (ryh.isNullOrBlank()) {
+            throw IOException(
+                "门户内层未登录——请在登录页完成统一身份登录（会出现登录页），看到个人信息页面后再点「完成登录」",
+            )
+        }
         // ② portal roaming redirect (raw csrf — thu-info-lib interpolates unencoded)
         val roam = get(
             "$ROAMING_URL?yyfwid=$YYFWID&_csrf=$csrf&machine=p",
@@ -134,7 +157,11 @@ object MadModelAuth {
         }
         if (roamingUrl.isBlank()) {
             throw IOException(
-                "门户漫游未返回跳转 URL（会话失效或应用未授权）：${roam.take(200).replace('\n', ' ')}",
+                if (roam.contains("用户未登录")) {
+                    "门户内层未登录——请在登录页完成统一身份登录，看到个人信息页面后再点「完成登录」"
+                } else {
+                    "门户漫游未返回跳转 URL（会话失效或应用未授权）：${roam.take(200).replace('\n', ' ')}"
+                },
             )
         }
         // ③ ticket from the redirect URL; visit it, then exchange at check
