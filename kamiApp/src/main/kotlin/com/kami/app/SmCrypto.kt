@@ -20,14 +20,8 @@ internal object SmCrypto {
     // ============================== SM3 ==============================
 
     private val IV = intArrayOf(
-        0x7380166f,
-        0x4914b2b9,
-        0x172442d7,
-        0xda8a0600,
-        0xa96f30bc,
-        0x163138aa,
-        0xe38dee4d,
-        0xb0fb0e4e,
+        0x7380166f, 0x4914b2b9, 0x172442d7, 0xda8a0600.toInt(),
+        0xa96f30bc.toInt(), 0x163138aa, 0xe38dee4d.toInt(), 0xb0fb0e4e.toInt(),
     )
 
     private fun rotl(x: Int, n: Int) = (x shl n) or (x ushr (32 - n))
