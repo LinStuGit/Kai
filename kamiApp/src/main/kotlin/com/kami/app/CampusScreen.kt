@@ -33,10 +33,11 @@ import java.util.Locale
  * own CAS / dynamic-code JS chains; one tap exports the session cookies.
  */
 @Composable
-internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit) {
+internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWebvpn: () -> Unit) {
     val ctx = LocalContext.current
     val s = CampusStore.get()
     val ykCookie = YuketangClient.cookie()
+    val webvpnSavedAt = MadModelAuth.savedAt()
     Column(
         Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -92,6 +93,34 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit) {
             if (ykCookie.isNotBlank()) {
                 TextButton(onClick = {
                     Toast.makeText(ctx, YuketangClient.clear(), Toast.LENGTH_SHORT).show()
+                }) { Text("登出") }
+            }
+        }
+        HorizontalDivider()
+        Text(
+            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。在浏览器页完成统一身份/二次认证登录后点「完成登录」，应用自动漫游取 key。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            if (webvpnSavedAt == 0L) {
+                "状态：未登录（默认模型无法取 key）"
+            } else {
+                "状态：会话已保存 · " +
+                    SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(webvpnSavedAt))
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(onClick = onLoginWebvpn) {
+                Text(if (webvpnSavedAt == 0L) "登录信息门户" else "重新登录")
+            }
+            if (webvpnSavedAt != 0L) {
+                TextButton(onClick = {
+                    Toast.makeText(ctx, MadModelAuth.clear(), Toast.LENGTH_SHORT).show()
                 }) { Text("登出") }
             }
         }
@@ -210,6 +239,66 @@ private fun YuketangWebView() {
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                 webViewClient = WebViewClient()
                 loadUrl("https://pro.yuketang.cn/web")
+            }
+        },
+    )
+}
+
+/** Same shell, pointed at webvpn.tsinghua.edu.cn — feeds [MadModelAuth]. */
+@Composable
+internal fun WebvpnLoginScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onBack) { Text("← 取消") }
+            Text(
+                "信息门户登录",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            TextButton(onClick = {
+                Thread {
+                    val msg: String = try {
+                        MadModelAuth.exportFromWebview()
+                    } catch (t: Throwable) {
+                        t.message ?: "导出失败"
+                    }
+                    (ctx as? android.app.Activity)?.runOnUiThread {
+                        Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+                        if (!msg.contains("失败") && !msg.contains("未检测")) onBack()
+                    }
+                }.start()
+            }) { Text("✓ 完成登录") }
+        }
+        WebvpnWebView()
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun WebvpnWebView() {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            WebView(ctx).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
+                settings.setSupportZoom(true)
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
+                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                webViewClient = WebViewClient()
+                // 直达 webvpn 包装的 info 门户：一次登录同时种下 webvpn 会话与
+                // 内层 info 会话（wengine 只代理登录不触 id 域，直接开 webvpn
+                // 根页可能只种外层会话、取不到门户 XSRF）
+                loadUrl(MadModelAuth.INFO_WRAPPED)
             }
         },
     )

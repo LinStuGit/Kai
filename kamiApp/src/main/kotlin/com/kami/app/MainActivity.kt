@@ -547,11 +547,19 @@ class MainActivity : FragmentActivity() {
 
                             "set-sandbox" -> SubPage("沙箱管理") { SandboxSection() }
 
-                            "set-campus" -> SubPage("校园账号") { CampusSection(onLogin = { screen.value = "campus-login" }, onLoginYk = { screen.value = "yk-login" }) }
+                            "set-campus" -> SubPage("校园账号") {
+                                CampusSection(
+                                    onLogin = { screen.value = "campus-login" },
+                                    onLoginYk = { screen.value = "yk-login" },
+                                    onLoginWebvpn = { screen.value = "webvpn-login" },
+                                )
+                            }
 
                             "campus-login" -> CampusLoginScreen(onBack = { screen.value = "settings" })
 
                             "yk-login" -> YuketangLoginScreen(onBack = { screen.value = "settings" })
+
+                            "webvpn-login" -> WebvpnLoginScreen(onBack = { screen.value = "settings" })
 
                             "set-ext" -> SubPage("拓展与技能") { ExtensionsSection() }
 
@@ -1298,8 +1306,8 @@ class MainActivity : FragmentActivity() {
             }
             OutlinedButton(onClick = {
                 JwtKeyPool.dropAll()
-                feedback = "已换新全部 key（下次对话重新签发）"
-            }) { Text("换新全部 key") }
+                feedback = "已丢弃 key（下次对话重新漫游签发，旧 key 失效）"
+            }) { Text("换新 key") }
         }
     }
 

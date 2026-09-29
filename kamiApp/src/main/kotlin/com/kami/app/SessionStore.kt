@@ -26,8 +26,8 @@ internal data class AgentSession(
 
 /**
  * Multi-session registry: sessions run in parallel (each turn is its own
- * coroutine) and each maps to a distinct JWT via JwtKeyPool keyed
- * "chat:<id>". Sessions persist to disk live so a dead process hands them
+ * coroutine) and share the account's single live JWT via JwtKeyPool.
+ * Sessions persist to disk live so a dead process hands them
  * to [ArchiveStore] on the next start instead of losing them.
  */
 internal object SessionStore {

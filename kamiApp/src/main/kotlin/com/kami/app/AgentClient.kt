@@ -23,7 +23,8 @@ data class TurnReply(val text: String, val thinking: String?)
 /**
  * The on-device agent brain: a minimal OpenAI-compatible chat-completions
  * client with a tool-calling loop, hard-wired to the madmodel endpoint
- * (JWT-as-key, one token per session — see [MadModel] / [JwtKeyPool]).
+ * (JWT-as-key, one shared live token per account — see [MadModel] /
+ * [JwtKeyPool]).
  * The agent controls the phone through [ShizukuRunner], sees and drives
  * the screen via [ScreenControl], runs isolated commands in [ProotSandbox]
  * and persists features via [ExtensionStore].
