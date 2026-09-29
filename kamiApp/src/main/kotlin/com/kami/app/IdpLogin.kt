@@ -42,17 +42,16 @@ internal object IdpLogin {
     /** Session-scoped cookie jar + redirect-control HTTP helper. */
     private class Http(private val jar: MutableMap<String, String>) {
 
-        private fun conn(url: String, follow: Boolean): HttpURLConnection =
-            (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout = 30_000
-                instanceFollowRedirects = follow
-                setRequestProperty("User-Agent", UA)
-                setRequestProperty("Accept", "text/html, application/json, */*")
-                if (jar.isNotEmpty()) {
-                    setRequestProperty("Cookie", jar.entries.joinToString("; ") { "${it.key}=${it.value}" })
-                }
+        private fun conn(url: String, follow: Boolean): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            instanceFollowRedirects = follow
+            setRequestProperty("User-Agent", UA)
+            setRequestProperty("Accept", "text/html, application/json, */*")
+            if (jar.isNotEmpty()) {
+                setRequestProperty("Cookie", jar.entries.joinToString("; ") { "${it.key}=${it.value}" })
             }
+        }
 
         private fun finish(c: HttpURLConnection, resp: Resp): Resp {
             for (h in c.headerFields["Set-Cookie"].orEmpty()) {

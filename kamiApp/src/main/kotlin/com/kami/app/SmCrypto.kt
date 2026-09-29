@@ -20,8 +20,14 @@ internal object SmCrypto {
     // ============================== SM3 ==============================
 
     private val IV = intArrayOf(
-        0x7380166f, 0x4914b2b9, 0x172442d7, 0xda8a0600,
-        0xa96f30bc, 0x163138aa, 0xe38dee4d, 0xb0fb0e4e,
+        0x7380166f,
+        0x4914b2b9,
+        0x172442d7,
+        0xda8a0600,
+        0xa96f30bc,
+        0x163138aa,
+        0xe38dee4d,
+        0xb0fb0e4e,
     )
 
     private fun rotl(x: Int, n: Int) = (x shl n) or (x ushr (32 - n))
@@ -30,9 +36,8 @@ internal object SmCrypto {
 
     private fun p1(x: Int) = x xor rotl(x, 15) xor rotl(x, 23)
 
-    private fun be32(m: ByteArray, o: Int) =
-        ((m[o].toInt() and 0xff) shl 24) or ((m[o + 1].toInt() and 0xff) shl 16) or
-            ((m[o + 2].toInt() and 0xff) shl 8) or (m[o + 3].toInt() and 0xff)
+    private fun be32(m: ByteArray, o: Int) = ((m[o].toInt() and 0xff) shl 24) or ((m[o + 1].toInt() and 0xff) shl 16) or
+        ((m[o + 2].toInt() and 0xff) shl 8) or (m[o + 3].toInt() and 0xff)
 
     fun sm3(msg: ByteArray): ByteArray {
         val bitLen = msg.size.toLong() * 8
@@ -168,9 +173,14 @@ internal object SmCrypto {
         var ct = 1
         var done = 0
         while (done < klen) {
-            val h = sm3(z + byteArrayOf(
-                (ct ushr 24).toByte(), (ct ushr 16).toByte(), (ct ushr 8).toByte(), ct.toByte(),
-            ))
+            val h = sm3(
+                z + byteArrayOf(
+                    (ct ushr 24).toByte(),
+                    (ct ushr 16).toByte(),
+                    (ct ushr 8).toByte(),
+                    ct.toByte(),
+                ),
+            )
             val n = minOf(32, klen - done)
             System.arraycopy(h, 0, out, done, n)
             done += n
@@ -220,10 +230,13 @@ internal object SmCrypto {
     fun decryptHex(skHex: String, ctHex: String): ByteArray {
         val ct = unhex(ctHex.trim().lowercase().removePrefix("04"))
         require(ct.size > 65 + 32) { "SM2 密文过短" }
-        val c1 = mul(BigInteger(skHex.trim(), 16), Pt(
-            BigInteger(1, ct.copyOfRange(0, 32)),
-            BigInteger(1, ct.copyOfRange(32, 64)),
-        ))
+        val c1 = mul(
+            BigInteger(skHex.trim(), 16),
+            Pt(
+                BigInteger(1, ct.copyOfRange(0, 32)),
+                BigInteger(1, ct.copyOfRange(32, 64)),
+            ),
+        )
         check(c1.x != null)
         val x2 = to32(c1.x!!)
         val y2 = to32(c1.y!!)
@@ -282,8 +295,10 @@ internal object SmCrypto {
         mac.init(SecretKeySpec(key, "HmacSHA1"))
         val h = mac.doFinal(msg)
         val o = h[19].toInt() and 0x0f
-        val code = ((h[o].toInt() and 0x7f) shl 24 or ((h[o + 1].toInt() and 0xff) shl 16) or
-            ((h[o + 2].toInt() and 0xff) shl 8) or (h[o + 3].toInt() and 0xff)) % 1_000_000
+        val code = (
+            (h[o].toInt() and 0x7f) shl 24 or ((h[o + 1].toInt() and 0xff) shl 16) or
+                ((h[o + 2].toInt() and 0xff) shl 8) or (h[o + 3].toInt() and 0xff)
+            ) % 1_000_000
         return "%06d".format(code)
     }
 }

@@ -147,10 +147,12 @@ class SmCryptoTest {
         val out = SmCrypto.encryptHex(pub, msg, k)
         assertTrue(out.startsWith("04"))
         assertEquals(2 * (65 + 32 + msg.size), out.length)
-        assertTrue(SmCrypto.decryptHex(
-            "3945208F7B2144B13F36E38AC6D39F95889393692860B51A42FB81EF4DF7C5B8",
-            out,
-        ).contentEquals(msg))
+        assertTrue(
+            SmCrypto.decryptHex(
+                "3945208F7B2144B13F36E38AC6D39F95889393692860B51A42FB81EF4DF7C5B8",
+                out,
+            ).contentEquals(msg),
+        )
     }
 
     @Test

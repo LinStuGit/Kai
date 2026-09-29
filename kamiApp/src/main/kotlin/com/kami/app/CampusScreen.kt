@@ -143,8 +143,12 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            if (webvpnSavedAt == 0L) "状态：未配置（默认模型无法取 key）" else "状态：凭据已保存 · " +
-                SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(webvpnSavedAt)),
+            if (webvpnSavedAt == 0L) {
+                "状态：未配置（默认模型无法取 key）"
+            } else {
+                "状态：凭据已保存 · " +
+                    SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(webvpnSavedAt))
+            },
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(
