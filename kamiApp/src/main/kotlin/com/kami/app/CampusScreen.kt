@@ -14,12 +14,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.text.SimpleDateFormat
@@ -98,31 +104,76 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         }
         HorizontalDivider()
         Text(
-            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。登录页可能出现两次（webvpn 外层 + 门户内层），全部完成后看到个人信息页面再点「完成登录」。注意：校园网 IP 变化会使 webvpn 会话立即失效，届时需重新登录。",
+            "默认模型（madmodel）key：2026-09 起网关只收 CAS ticket（一账号同时只有一个存活 key，新取顶掉旧 key）。凭据直连统一认证签发（PC madmodel_router 同款链路，不经 webvpn、不受校园网 IP 变化影响）；账号密码仅存本机应用私有目录。受信设备指纹可免二次认证——首次如要求二次认证，填 TOTP 密钥或复用 PC 端已信任的指纹。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        var idUser by remember { mutableStateOf(MadModelAuth.idUser()) }
+        var idPass by remember { mutableStateOf(MadModelAuth.idPass()) }
+        var idTotp by remember { mutableStateOf(MadModelAuth.totpSecret()) }
+        var idFp by remember { mutableStateOf(if (MadModelAuth.idUser().isBlank()) "" else MadModelAuth.fingerprint()) }
+        OutlinedTextField(
+            value = idUser,
+            onValueChange = { idUser = it },
+            label = { Text("统一身份账号") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = idPass,
+            onValueChange = { idPass = it },
+            label = { Text("统一身份密码") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = idTotp,
+            onValueChange = { idTotp = it },
+            label = { Text("TOTP 密钥（可选，Base32）") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = idFp,
+            onValueChange = { idFp = it },
+            label = { Text("设备指纹（可选；PC router 已信任的可复用）") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Text(
-            if (webvpnSavedAt == 0L) {
-                "状态：未登录（默认模型无法取 key）"
-            } else {
-                "状态：会话已保存 · " +
-                    SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(webvpnSavedAt))
-            },
+            if (webvpnSavedAt == 0L) "状态：未配置（默认模型无法取 key）" else "状态：凭据已保存 · " +
+                SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(webvpnSavedAt)),
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Button(onClick = onLoginWebvpn) {
-                Text(if (webvpnSavedAt == 0L) "登录信息门户" else "重新登录")
-            }
+            Button(onClick = {
+                Thread {
+                    val msg: String = try {
+                        MadModelAuth.saveIdp(idUser, idPass, idTotp, idFp)
+                        JwtKeyPool.dropAll()
+                        JwtKeyPool.acquire("settings")
+                        "已取到模型 key"
+                    } catch (t: Throwable) {
+                        "取 key 失败：${t.message}"
+                    }
+                    (ctx as? android.app.Activity)?.runOnUiThread {
+                        Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+                    }
+                }.start()
+            }) { Text("保存并获取 key") }
             if (webvpnSavedAt != 0L) {
                 TextButton(onClick = {
                     Toast.makeText(ctx, MadModelAuth.clear(), Toast.LENGTH_SHORT).show()
-                }) { Text("登出") }
+                }) { Text("清除") }
             }
+        }
+        TextButton(onClick = onLoginWebvpn) {
+            Text("网页登录（webvpn 门户漫游备用路线）")
         }
     }
 }

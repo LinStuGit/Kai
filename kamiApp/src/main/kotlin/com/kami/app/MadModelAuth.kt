@@ -90,9 +90,38 @@ object MadModelAuth {
 
     fun savedAt(): Long = prefs().getLong("savedAt", 0)
 
+    // ---- 统一身份凭据（直连 IdP 路线，参照 PC madmodel_router） ----
+
+    fun idUser(): String = prefs().getString("idpUser", "").orEmpty()
+
+    fun idPass(): String = prefs().getString("idpPass", "").orEmpty()
+
+    fun totpSecret(): String = prefs().getString("idpTotp", "").orEmpty()
+
+    /** Stable per-install device fingerprint (router 同款 hex16)；受信后免二次认证。 */
+    fun fingerprint(): String {
+        var fp = prefs().getString("idpFp", "").orEmpty()
+        if (fp.isBlank()) {
+            val b = ByteArray(16)
+            java.security.SecureRandom().nextBytes(b)
+            fp = b.joinToString("") { "%02x".format(it) }
+            prefs().edit().putString("idpFp", fp).apply()
+        }
+        return fp
+    }
+
+    fun saveIdp(user: String, pass: String, totp: String, fp: String) {
+        prefs().edit()
+            .putString("idpUser", user.trim())
+            .putString("idpPass", pass)
+            .putString("idpTotp", totp.trim())
+            .putString("idpFp", fp.trim())
+            .apply()
+    }
+
     fun clear(): String {
         prefs().edit().clear().apply()
-        return "已清除 webvpn 会话"
+        return "已清除 webvpn 会话与统一身份凭据"
     }
 
     /** Server killed the session (e.g. logoutByIpChange) — drop the stale
@@ -111,7 +140,7 @@ object MadModelAuth {
         }
         persist()
         return try {
-            fetchToken()
+            fetchViaWebvpn()
             "已登录，模型 key 已获取"
         } catch (t: Throwable) {
             "会话已保存，但取 key 失败：${t.message}"
@@ -119,10 +148,23 @@ object MadModelAuth {
     }
 
     /**
-     * The roaming chain. Throws [IOException] with an actionable message when
-     * any hop fails (most commonly: webvpn session expired → re-login).
+     * Key acquisition dispatch: with credentials on file the direct IdP chain
+     * runs (router 做法 — no webvpn, works across IP changes); otherwise the
+     * legacy webvpn portal-roaming chain is the fallback.
      */
     fun fetchToken(): String {
+        if (idUser().isNotBlank() && idPass().isNotBlank()) return fetchViaIdp()
+        return fetchViaWebvpn()
+    }
+
+    private fun fetchViaIdp(): String {
+        val jwt = IdpLogin.fetchJwt(idUser(), idPass(), totpSecret(), fingerprint())
+        Log.i(TAG, "IdP login OK, key acquired (iat jwt)")
+        prefs().edit().putLong("savedAt", System.currentTimeMillis()).apply()
+        return jwt
+    }
+
+    private fun fetchViaWebvpn(): String {
         seed()
         if (jar.isEmpty()) throw IOException("webvpn 未登录——设置→校园账号→登录信息门户")
         // ① inner info session → XSRF-TOKEN
