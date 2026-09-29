@@ -98,7 +98,7 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         }
         HorizontalDivider()
         Text(
-            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。在浏览器页完成统一身份/二次认证登录后点「完成登录」，应用自动漫游取 key。",
+            "登录信息门户（webvpn.tsinghua.edu.cn）：默认模型（madmodel）的 key 现在需经门户漫游签发，且一个账号同时只有一个存活 key（新取会顶掉旧 key，多会话共享）。在浏览器页完成统一身份/二次认证登录（如再次出现登录页请继续完成），直到看到门户页面再点「完成登录」。注意：校园网 IP 变化会使 webvpn 会话立即失效，届时需重新登录。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

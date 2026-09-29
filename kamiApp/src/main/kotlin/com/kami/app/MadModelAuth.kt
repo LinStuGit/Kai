@@ -1,12 +1,12 @@
 package com.kami.app
 
 import android.content.Context
+import android.util.Log
 import android.webkit.CookieManager
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 /**
  * madmodel key acquisition via the info-portal roaming chain (2026-09 gateway
@@ -23,6 +23,8 @@ import java.net.URLEncoder
  * CookieManager on every fetch, so browsing webvpn in the app re-warms it.
  */
 object MadModelAuth {
+
+    private const val TAG = "MadModelAuth"
 
     private const val WEBVPN = "https://webvpn.tsinghua.edu.cn"
 
@@ -84,6 +86,13 @@ object MadModelAuth {
         return "已清除 webvpn 会话"
     }
 
+    /** Server killed the session (e.g. logoutByIpChange) — drop the stale
+     *  snapshot so 状态 shows 未登录 instead of a dead 会话已保存. */
+    private fun invalidate() {
+        prefs().edit().clear().apply()
+        jar.clear()
+    }
+
     /** Called from the ✓ 完成登录 button: grab the WebView cookies, prove the
      *  chain works by immediately fetching a token. */
     fun exportFromWebview(): String {
@@ -114,9 +123,9 @@ object MadModelAuth {
             csrf = xsrf()
                 ?: throw IOException("未取得门户 XSRF-TOKEN——webvpn 会话可能已失效，请重新登录信息门户")
         }
-        // ② portal roaming redirect
+        // ② portal roaming redirect (raw csrf — thu-info-lib interpolates unencoded)
         val roam = get(
-            "$ROAMING_URL?yyfwid=$YYFWID&_csrf=${URLEncoder.encode(csrf, "UTF-8")}&machine=p",
+            "$ROAMING_URL?yyfwid=$YYFWID&_csrf=$csrf&machine=p",
         )
         val roamingUrl = try {
             JSONObject(roam).optJSONObject("object")?.optString("roamingurl") ?: ""
@@ -124,7 +133,9 @@ object MadModelAuth {
             ""
         }
         if (roamingUrl.isBlank()) {
-            throw IOException("门户漫游未返回跳转 URL（会话失效或应用未授权）：${roam.take(120)}")
+            throw IOException(
+                "门户漫游未返回跳转 URL（会话失效或应用未授权）：${roam.take(200).replace('\n', ' ')}",
+            )
         }
         // ③ ticket from the redirect URL; visit it, then exchange at check
         val ticket = Regex("ticket=(.+)").find(roamingUrl)?.groupValues?.get(1)
@@ -166,6 +177,13 @@ object MadModelAuth {
                 conn.errorStream ?: throw IOException("HTTP ${conn.responseCode}: $url")
             }
             val text = stream.bufferedReader().readText()
+            Log.i(TAG, "GET $url -> ${conn.responseCode} final=${conn.url} body=${text.take(400)}")
+            // webvpn 会话绑 IP（logoutByIpChange）：网络切换后首个被代理请求会被
+            // 服务端注销并重定向到登录页——识别后清掉本地快照并明确告知
+            if (conn.url.toString().contains("logoutByIpChange=true")) {
+                invalidate()
+                throw IOException("webvpn 会话因网络切换（IP 变化）已被注销——请重新登录信息门户")
+            }
             for (h in conn.headerFields["Set-Cookie"].orEmpty()) {
                 h.split(";").firstOrNull()?.let { pour(it) }
             }
