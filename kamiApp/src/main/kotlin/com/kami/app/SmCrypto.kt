@@ -60,7 +60,7 @@ internal object SmCrypto {
             var g = v[6]
             var h = v[7]
             for (j in 0 until 64) {
-                val t = if (j < 16) 0x79cc4519 else 0x9d8a7a87
+                val t = if (j < 16) 0x79cc4519 else 0x9d8a7a87.toInt()
                 val ss1 = rotl(rotl(a, 12) + e + rotl(t, j % 32), 7)
                 val ss2 = ss1 xor rotl(a, 12)
                 val ff = if (j < 16) a xor b xor c else (a and b) or (a and c) or (b and c)
