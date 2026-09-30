@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.text.SimpleDateFormat
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.Date
 import java.util.Locale
 
@@ -49,7 +52,7 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
-            "登录清华网络学堂（learn.tsinghua.edu.cn）：在浏览器页完成 CAS / 动态码登录后点「完成登录」导出会话，之后 agent 可查课程/作业/公告/文件。需校园网或校内直连环境；校园卡/电费等 info 平面暂未支持。",
+            "网络学堂网页登录（备用）：下方「统一身份登录」即可同时登录网络学堂并拿到模型 key；此处仅用于 Cookie 会话失效后的手动修复——在浏览器页完成 CAS / 动态码登录后点「完成登录」导出会话，agent 可查课程/作业/公告/文件。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -104,7 +107,7 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         }
         HorizontalDivider()
         Text(
-            "默认模型（madmodel）key：2026-09 起网关只收 CAS ticket（一账号同时只有一个存活 key，新取顶掉旧 key）。凭据直连统一认证签发（PC madmodel_router 同款链路，不经 webvpn、不受校园网 IP 变化影响）；账号密码仅存本机应用私有目录。受信设备指纹可免二次认证——首次如要求二次认证，填 TOTP 密钥或复用 PC 端已信任的指纹。",
+            "统一身份登录（网络学堂 + 默认模型 key）：一套账号密码同时建立 learn.tsinghua.edu.cn 会话（headless CAS，thu-learn-lib 同链路）与 madmodel 模型 key（直连统一认证签发，不经 webvpn、不受校园网 IP 变化影响）。账号密码仅存本机应用私有目录；受信设备指纹可免二次认证——首次登录如要求二次认证会弹窗选企业微信/短信验证码（填了 TOTP 密钥则自动通过）。注意：一账号同时只有一个存活 key，重取会顶掉 PC 端 router 的 key。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -151,6 +154,33 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
             },
             style = MaterialTheme.typography.bodyMedium,
         )
+        // 二次认证交互桥：登录线程在 gate 上阻塞，弹窗作答后 countDown 放行
+        var twofaReq by remember { mutableStateOf<TwoFaReq?>(null) }
+        val gate = remember {
+            object : IdpLogin.TwoFaGate {
+                @Volatile private var latch = CountDownLatch(1)
+                @Volatile private var ans: String? = null
+                private fun ask(r: TwoFaReq): String? {
+                    ans = null
+                    val l = CountDownLatch(1)
+                    latch = l
+                    twofaReq = r
+                    l.await(10, TimeUnit.MINUTES)
+                    twofaReq = null
+                    return ans
+                }
+                override fun chooseMethod(available: List<String>): String? = ask(TwoFaReq(available, null, null))
+                override fun enterCode(method: String, err: String?): String? = ask(TwoFaReq(listOf(method), method, err))
+                fun submit(s: String) {
+                    ans = s
+                    latch.countDown()
+                }
+                fun cancel() {
+                    ans = null
+                    latch.countDown()
+                }
+            }
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -159,17 +189,15 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
                 Thread {
                     val msg: String = try {
                         MadModelAuth.saveIdp(idUser, idPass, idTotp, idFp)
-                        JwtKeyPool.dropAll()
-                        JwtKeyPool.acquire("settings")
-                        "已取到模型 key"
+                        MadModelAuth.loginInteractive(gate)
                     } catch (t: Throwable) {
-                        "取 key 失败：${t.message}"
+                        "登录失败：${t.message}"
                     }
                     (ctx as? android.app.Activity)?.runOnUiThread {
                         Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
                     }
                 }.start()
-            }) { Text("保存并获取 key") }
+            }) { Text("保存并登录（网络学堂 + 模型 key）") }
             if (webvpnSavedAt != 0L) {
                 TextButton(onClick = {
                     Toast.makeText(ctx, MadModelAuth.clear(), Toast.LENGTH_SHORT).show()
@@ -179,8 +207,57 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         TextButton(onClick = onLoginWebvpn) {
             Text("网页登录（webvpn 门户漫游备用路线）")
         }
+        twofaReq?.let { req ->
+            AlertDialog(
+                onDismissRequest = { gate.cancel() },
+                title = { Text(if (req.sentMethod == null) "二次认证" else "输入验证码") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (req.sentMethod == null) {
+                            Text("请选择二次认证方式：", style = MaterialTheme.typography.bodyMedium)
+                            req.methods.forEach { m ->
+                                TextButton(onClick = { gate.submit(m) }) { Text(IdpLogin.label(m)) }
+                            }
+                        } else {
+                            Text(
+                                "验证码已通过${IdpLogin.label(req.sentMethod)}发送",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            req.err?.let {
+                                Text(
+                                    "上次校验失败：$it",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            val code = remember(req) { mutableStateOf("") }
+                            OutlinedTextField(
+                                value = code.value,
+                                onValueChange = { code.value = it },
+                                label = { Text("验证码") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Button(
+                                onClick = { gate.submit(code.value) },
+                                enabled = code.value.isNotBlank(),
+                            ) { Text("确定") }
+                        }
+                        TextButton(onClick = { gate.cancel() }) { Text("取消") }
+                    }
+                },
+                confirmButton = {},
+            )
+        }
     }
 }
+
+/** 二次认证弹窗的一次提问：方式选择（sentMethod=null）或验证码输入。 */
+internal class TwoFaReq(
+    val methods: List<String>,
+    val sentMethod: String?,
+    val err: String?,
+)
 
 /** In-app browser that performs the CAS login, plus the export button. */
 @Composable

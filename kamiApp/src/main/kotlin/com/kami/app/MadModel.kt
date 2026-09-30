@@ -54,6 +54,12 @@ object JwtKeyPool {
         entry = null
     }
 
+    /** 交互登录已拿到的现成 key 直接入池（省一次后台重取）。 */
+    @Synchronized
+    fun setKey(key: String) {
+        entry = Entry(key, decodeIat(key), System.currentTimeMillis())
+    }
+
     /** Single (session, iat, minutes until refresh) row for the settings card. */
     @Synchronized
     fun snapshot(): List<Triple<String, Long?, Long>> {
