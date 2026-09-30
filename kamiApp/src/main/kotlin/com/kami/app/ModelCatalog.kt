@@ -155,11 +155,11 @@ internal object ModelCatalog {
         if (end < 0) throw IOException("modelList 数组未闭合")
         val seg = jsFromModelList.substring(start, end)
         val out = ArrayList<Raw>()
-        for (mm in Regex("\\{[^{}]*value:[\"']([^\"']+)[\"'][^{}]*\\}").findAll(seg)) {
+        for (mm in Regex("""\{[^{}]*value\s*:\s*["']([^"']+)["'][^{}]*\}""").findAll(seg)) {
             val obj = mm.groupValues[0]
             val value = mm.groupValues[1]
-            val sp = Regex("supportImage:(!0|!1|true|false)").find(obj)
-            val eff = Regex("effortOptions:\\[([^\\]]*)\\]").find(obj)?.groupValues?.get(1).orEmpty()
+            val sp = Regex("""supportImage\s*:\s*(!0|!1|true|false)""").find(obj)
+            val eff = Regex("""effortOptions\s*:\s*\[([^\]]*)\]""").find(obj)?.groupValues?.get(1).orEmpty()
             out.add(
                 Raw(
                     value = value,
@@ -198,7 +198,8 @@ internal object ModelCatalog {
         return out
     }
 
-    private fun q(obj: String, key: String): String? = Regex(key + ":\"(.*?)\"").find(obj)?.groupValues?.get(1)
+    private fun q(obj: String, key: String): String? =
+        Regex(key + """\s*:\s*["]([^"]*)["]""").find(obj)?.groupValues?.get(1)
 
     // ---- 缓存 / 持久化 ----
 
