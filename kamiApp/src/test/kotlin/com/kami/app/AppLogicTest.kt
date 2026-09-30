@@ -178,7 +178,7 @@ class ModelCatalogTest {
             ]
           };
         })()
-        """.trimIndent()
+    """.trimIndent()
 
     @Test
     fun parsesModelListMetadata() {

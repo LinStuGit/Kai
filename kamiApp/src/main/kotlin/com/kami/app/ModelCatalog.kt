@@ -72,8 +72,7 @@ internal object ModelCatalog {
     fun lastError(): String? = lastError
 
     /** 变体 id → 注入后的请求体（model 换基础模型 + 思考/effort 参数）；非变体不动。 */
-    fun applyTo(body: JSONObject, model: String): JSONObject =
-        applyTo(body, model, ensure(AppContextHolder.get())[model])
+    fun applyTo(body: JSONObject, model: String): JSONObject = applyTo(body, model, ensure(AppContextHolder.get())[model])
 
     internal fun applyTo(body: JSONObject, model: String, v: Variant?): JSONObject {
         if (v == null || (v.thinking == null && v.effort == null)) return body // 原样透传变体/非目录模型
@@ -139,7 +138,9 @@ internal object ModelCatalog {
             } else {
                 when (c) {
                     '"' -> inStr = true
+
                     '[' -> depth++
+
                     ']' -> {
                         depth--
                         if (depth == 0) {
@@ -197,8 +198,7 @@ internal object ModelCatalog {
         return out
     }
 
-    private fun q(obj: String, key: String): String? =
-        Regex(key + ":\"(.*?)\"").find(obj)?.groupValues?.get(1)
+    private fun q(obj: String, key: String): String? = Regex(key + ":\"(.*?)\"").find(obj)?.groupValues?.get(1)
 
     // ---- 缓存 / 持久化 ----
 
