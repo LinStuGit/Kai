@@ -1,5 +1,6 @@
 package com.kami.app
 
+import org.json.JSONObject
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -159,5 +160,93 @@ class SmCryptoTest {
     fun totpRfcVector() {
         // RFC 6238 SHA1 测试种子（ASCII "12345678901234567890"），t=59 → 6 位 287082
         assertEquals("287082", SmCrypto.totp("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59L))
+    }
+}
+
+class ModelCatalogTest {
+
+    private val js = """
+        (function(){
+          var e = {
+            modelList: [
+              {value: "DeepSeek-V4-Flash", label: "DeepSeek V4 Flash", supportImage: !0,
+               thinkingParam: "thinking", effortOptions: ["low", "high"], thinkingField: "reasoning_content"},
+              {value: "DeepSeek-R1-W8A8", label: "R1 W8A8", supportImage: !1,
+               thinkingParam: null, effortOptions: ["medium"]},
+              {value: "Qwen3-32B", label: "Qwen3", supportImage: !1,
+               thinkingParam: "enable_thinking", effortOptions: []}
+            ]
+          };
+        })()
+        """.trimIndent()
+
+    @Test
+    fun parsesModelListMetadata() {
+        val raw = ModelCatalog.parseModelList(js)
+        assertEquals(3, raw.size)
+        assertEquals("DeepSeek-V4-Flash", raw[0].value)
+        assertEquals("DeepSeek V4 Flash", raw[0].label)
+        assertTrue(raw[0].supportImage)
+        assertEquals("thinking", raw[0].thinkingParam)
+        assertEquals(listOf("low", "high"), raw[0].effortOptions)
+        assertEquals(null, raw[1].thinkingParam)
+        assertEquals(listOf("medium"), raw[1].effortOptions)
+        assertEquals("enable_thinking", raw[2].thinkingParam)
+        assertEquals(emptyList<String>(), raw[2].effortOptions)
+    }
+
+    @Test
+    fun expandsRouterVariants() {
+        val v = ModelCatalog.expand(ModelCatalog.parseModelList(js))
+        assertEquals(
+            setOf(
+                "DeepSeek-V4-Flash", "DeepSeek-V4-Flash-nothink", "DeepSeek-V4-Flash-think-low", "DeepSeek-V4-Flash-think-high",
+                "DeepSeek-R1-W8A8", "DeepSeek-R1-W8A8-effort-medium",
+                "Qwen3-32B", "Qwen3-32B-nothink", "Qwen3-32B-think-on",
+            ),
+            v.keys,
+        )
+        val think = v["DeepSeek-V4-Flash-think-high"]!!
+        assertEquals("DeepSeek-V4-Flash", think.base)
+        assertEquals(true, think.thinking)
+        assertEquals("high", think.effort)
+        assertEquals("thinking", think.thinkingParam)
+        assertEquals(true, think.supportImage)
+        val effortOnly = v["DeepSeek-R1-W8A8-effort-medium"]!!
+        assertEquals("DeepSeek-R1-W8A8", effortOnly.base)
+        assertEquals(null, effortOnly.thinking)
+        assertEquals(null, effortOnly.thinkingParam)
+        assertEquals("medium", effortOnly.effort)
+        val nothink = v["Qwen3-32B-nothink"]!!
+        assertEquals("Qwen3-32B", nothink.base)
+        assertEquals(false, nothink.thinking)
+    }
+
+    @Test
+    fun injectionMatchesRouterSemantics() {
+        val v = ModelCatalog.expand(ModelCatalog.parseModelList(js))
+        fun body(id: String): JSONObject = ModelCatalog.applyTo(JSONObject().put("model", id), id, v[id])
+        // think+effort: kwargs true + reasoning_effort
+        val b1 = body("DeepSeek-V4-Flash-think-high")
+        assertEquals("DeepSeek-V4-Flash", b1.getString("model"))
+        assertEquals(true, b1.getJSONObject("chat_template_kwargs").getBoolean("thinking"))
+        assertEquals("high", b1.getString("reasoning_effort"))
+        // nothink: kwargs false, 无 effort
+        val b2 = body("DeepSeek-V4-Flash-nothink")
+        assertEquals("DeepSeek-V4-Flash", b2.getString("model"))
+        assertEquals(false, b2.getJSONObject("chat_template_kwargs").getBoolean("thinking"))
+        assertFalse(b2.has("reasoning_effort"))
+        // effort-only（无思考开关）: 仅 reasoning_effort
+        val b3 = body("DeepSeek-R1-W8A8-effort-medium")
+        assertEquals("DeepSeek-R1-W8A8", b3.getString("model"))
+        assertEquals("medium", b3.getString("reasoning_effort"))
+        assertFalse(b3.has("chat_template_kwargs"))
+        // 原样透传变体与非目录模型：body 不动
+        val b4 = body("DeepSeek-V4-Flash")
+        assertFalse(b4.has("chat_template_kwargs"))
+        assertFalse(b4.has("reasoning_effort"))
+        assertEquals("DeepSeek-V4-Flash", b4.getString("model"))
+        val b5 = body("whatever-model")
+        assertEquals("whatever-model", b5.getString("model"))
     }
 }

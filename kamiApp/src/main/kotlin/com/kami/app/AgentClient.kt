@@ -213,10 +213,13 @@ object AgentClient {
             JSONObject().put("role", "system").put("content", systemContent()),
         )
         for (i in 0 until history.length()) msgs.put(history.getJSONObject(i))
-        val body = JSONObject()
-            .put("model", cfg.model)
-            .put("messages", msgs)
-            .put("tools", toolSchemas(disabled))
+        val body = ModelCatalog.applyTo(
+            JSONObject()
+                .put("model", cfg.model)
+                .put("messages", msgs)
+                .put("tools", toolSchemas(disabled)),
+            cfg.model,
+        )
 
         val conn = URL(cfg.base.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
@@ -277,10 +280,13 @@ object AgentClient {
         if (!ModelStore.ready(ctx)) return "配置不完整：端点/模型/key 需填写完整"
         val pooled = cfg.key.isBlank()
         val key = if (pooled) JwtKeyPool.acquire("probe") else cfg.key
-        val body = JSONObject()
-            .put("model", cfg.model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "ping")))
-            .put("max_tokens", 16)
+        val body = ModelCatalog.applyTo(
+            JSONObject()
+                .put("model", cfg.model)
+                .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", "ping")))
+                .put("max_tokens", 16),
+            cfg.model,
+        )
         val conn = URL(cfg.base.trimEnd('/') + "/chat/completions")
             .openConnection() as HttpURLConnection
         try {

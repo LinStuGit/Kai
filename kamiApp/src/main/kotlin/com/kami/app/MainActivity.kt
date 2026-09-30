@@ -1213,7 +1213,35 @@ class MainActivity : FragmentActivity() {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ModelStore.MADMODEL_MODELS.forEach { m ->
+            // 模型目录：进设置页即后台抓网站 index-{CODE}.js（router 同款），失败沿用上次/内置
+            var catRev by remember { mutableStateOf(0) }
+            var catMsg by remember { mutableStateOf("") }
+            LaunchedEffect(Unit) {
+                Thread {
+                    val msg = ModelCatalog.refresh(context)
+                    (context as? android.app.Activity)?.runOnUiThread {
+                        catMsg = msg
+                        catRev++
+                    }
+                }.start()
+            }
+            val catalogIds = remember(revision, catRev) { ModelCatalog.ids(context) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(onClick = {
+                    Thread {
+                        val msg = ModelCatalog.refresh(context)
+                        (context as? android.app.Activity)?.runOnUiThread {
+                            catMsg = msg
+                            catRev++
+                        }
+                    }.start()
+                }) { Text("刷新模型列表") }
+                Text(catMsg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            catalogIds.forEach { m ->
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -1224,7 +1252,17 @@ class MainActivity : FragmentActivity() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(selected = picked == m, onClick = null)
-                    Text(m, fontSize = 13.sp)
+                    Column {
+                        Text(m, fontSize = 13.sp)
+                        val lb = remember(catalogIds, m) { ModelCatalog.labelOf(context, m) }
+                        if (lb.isNotEmpty() && lb != m + "（内置种子）") {
+                            Text(
+                                lb,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
             }
         } else {

@@ -18,7 +18,7 @@ object ModelStore {
     const val MODE_MADMODEL = "madmodel"
     const val MODE_CUSTOM = "custom"
 
-    /** Models offered by the madmodel gateway (agent-facing defaults). */
+    /** Fallback seed; the live catalog is scraped dynamically ([ModelCatalog]). */
     val MADMODEL_MODELS = listOf(
         "DeepSeek-V4-Flash-0731",
         "DeepSeek-R1-Distill-Qwen-32B",
@@ -34,7 +34,7 @@ object ModelStore {
     }
 
     fun madmodelModel(context: Context): String = prefs(context).getString("madmodel_model", null)
-        ?.takeIf { it in MADMODEL_MODELS } ?: MadModel.MODEL
+        ?.takeIf { it.isNotBlank() } ?: MadModel.MODEL
 
     fun setMadmodelModel(context: Context, model: String) {
         prefs(context).edit().putString("madmodel_model", model).apply()
