@@ -198,8 +198,7 @@ internal object ModelCatalog {
         return out
     }
 
-    private fun q(obj: String, key: String): String? =
-        Regex(key + """\s*:\s*["]([^"]*)["]""").find(obj)?.groupValues?.get(1)
+    private fun q(obj: String, key: String): String? = Regex(key + """\s*:\s*["]([^"]*)["]""").find(obj)?.groupValues?.get(1)
 
     // ---- 缓存 / 持久化 ----
 
