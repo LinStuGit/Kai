@@ -161,7 +161,7 @@ object MadModelAuth {
      * 交互式统一登录（设置页「保存并登录」按钮）：同一套凭据先签 madmodel key，
      * 再 headless 登录网络学堂（learn 会话进 CampusStore，喂 LearnClient）。
      */
-    fun loginInteractive(gate: IdpLogin.TwoFaGate): String {
+    internal fun loginInteractive(gate: IdpLogin.TwoFaGate): String {
         val r = IdpLogin.loginAll(idUser(), idPass(), totpSecret(), fingerprint(), gate)
         if (r.learnCookies.isNotBlank()) {
             CampusStore.save(
