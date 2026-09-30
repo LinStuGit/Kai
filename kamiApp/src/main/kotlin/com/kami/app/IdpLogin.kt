@@ -151,8 +151,7 @@ internal object IdpLogin {
         /** 单跳 POST（IdP check/doubleAuth 都以 200 页面应答，router 同款不跟 3xx）。 */
         fun post(url: String, form: Map<String, String>): Resp = rawPost(url, form)
 
-        fun snapshot(host: String): String =
-            jar[host]?.entries?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
+        fun snapshot(host: String): String = jar[host]?.entries?.joinToString("; ") { "${it.key}=${it.value}" } ?: ""
     }
 
     // ---- 入口 ----
@@ -397,7 +396,6 @@ internal object IdpLogin {
         return null
     }
 
-    private fun grabTicket(http: Http, callback: String?): String =
-        callback?.let { chaseTicket(http, it) }
-            ?: throw IOException("登录成功页无跳转链接，未找到 ticket")
+    private fun grabTicket(http: Http, callback: String?): String = callback?.let { chaseTicket(http, it) }
+        ?: throw IOException("登录成功页无跳转链接，未找到 ticket")
 }

@@ -30,10 +30,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.text.SimpleDateFormat
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Campus account plane (设置 → 校园账号): two WebView direct logins — the Web
@@ -159,6 +159,7 @@ internal fun CampusSection(onLogin: () -> Unit, onLoginYk: () -> Unit, onLoginWe
         val gate = remember {
             object : IdpLogin.TwoFaGate {
                 @Volatile private var latch = CountDownLatch(1)
+
                 @Volatile private var ans: String? = null
                 private fun ask(r: TwoFaReq): String? {
                     ans = null
